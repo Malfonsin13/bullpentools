@@ -1,0 +1,60 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <div id="modeSelection">
+      <button id="bullpenModeBtn">Bullpen Mode</button>
+      <button id="liveBPModeBtn">Live BP Mode</button>
+  </div>
+  <div id="bullpenMode" style="display:none;">
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Pitch Tracker</title>
+          <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap" rel="stylesheet">
+          <link rel="stylesheet" href="style.css">
+      </head>
+      <body>
+          <h1>Pitch Tracker</h1>
+          <div id="totalPitches">Total Pitches: 0</div>
+          <div id="currentCount">Current Count: 0-0</div>
+          <div id="raceWins">Race Wins: 0</div>
+          <button id="strikeBtn">Strike</button>
+          <button id="ballBtn">Ball</button>
+          <div id="completedCounts">Completed Counts:</div>
+          <ul id="countLog"></ul>
+
+          <script src="script.js"></script>
+      </body>
+      </html>
+  </div>
+  <div id="liveBPMode" style="display:none;">
+    <div id="liveBPMode" style="display:none;">
+        <h2>Live BP Mode</h2>
+        <div>
+            <button class="btn" id="ballStrike">Ball/Strike</button>
+            <button class="btn" id="whiff">Whiff</button>
+            <button class="btn" id="calledStrike">Called Strike</button>
+            <button class="btn" id="ball">Ball</button>
+            <button class="btn" id="foul">Foul</button>
+            <button class="btn" id="inPlay">In Play</button>
+        </div>
+        <div>
+            <button class="btn" id="fourSeam">4S</button>
+            <button class="btn" id="twoSeam">2S</button>
+            <button class="btn" id="cutter">CT</button>
+            <!-- Add other pitch types as needed -->
+        </div>
+        <div>
+            <button class="btn" id="groundball">Groundball</button>
+            <button class="btn" id="flyball">FlyBall</button>
+            <button class="btn" id="linedrive">LineDrive</button>
+        </div>
+        <!-- Elements to Display Counts, Outcomes, etc. -->
+    </div>
+  </div>
+  
+    
