@@ -1,0 +1,30 @@
+body {
+    text-align: center;
+    font-family: 'Permanent Marker', cursive;
+    background-color: #0a2351; /* Brewers' Navy Blue */
+    color: #ffb517; /* Brewers' Gold */
+}
+
+button {
+    margin: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #ffffff;
+    color: #0a2351;
+    border: none;
+    border-radius: 5px;
+    font-family: 'Permanent Marker', cursive;
+}
+
+#currentCount, #raceWins {
+    margin-bottom: 20px;
+}
+
+ul {
+    list-style-type: none;
+}
+
+li {
+    margin: 5px 0;
+}
