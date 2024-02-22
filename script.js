@@ -1,9 +1,10 @@
 let pitchCount = 0;
 let strikeCount = 0;
 let raceWins = 0;
+let totalPitchesBullpen = 0; // Tracks total pitches in Bullpen Mode
 let totalPitches = 0; // Tracks total pitches in Live BP Mode
 let mode = "bullpen";
-let pitchType = ""; // Variable to store the selected pitch type in Live BP Mode
+let pitchType = "";
 
 document.getElementById('bullpenModeBtn').addEventListener('click', function() {
   mode = "bullpen";
@@ -27,24 +28,28 @@ function toggleMode() {
 }
 
 document.getElementById('strikeBtn').addEventListener('click', function() {
+  strikeCount++;
+  pitchCount++;
   if (mode === "bullpen") {
-    strikeCount++;
-    pitchCount++;
+    totalPitchesBullpen++;
+  } else {
     totalPitches++;
-    updateUI();
-    updateCurrentCount();
-    checkRaceCondition();
   }
+  updateUI();
+  updateCurrentCount();
+  checkRaceCondition();
 });
 
 document.getElementById('ballBtn').addEventListener('click', function() {
+  pitchCount++;
   if (mode === "bullpen") {
-    pitchCount++;
+    totalPitchesBullpen++;
+  } else {
     totalPitches++;
-    updateUI();
-    updateCurrentCount();
-    checkRaceCondition();
   }
+  updateUI();
+  updateCurrentCount();
+  checkRaceCondition();
 });
 
 // Live BP mode: Pitch Type Selection
@@ -65,21 +70,34 @@ function showOutcomeSelection() {
 document.querySelectorAll("#outcomeSelection .btn").forEach(button => {
   button.addEventListener('click', function() {
     let outcome = this.id; // Store the selected outcome
+    if (mode === "liveBP") { // Ensure we're in LIVE BP MODE
+      totalPitches++; // Increment total pitches for Live BP Mode
+      console.log("Total Pitches (Live BP Mode):", totalPitches); // Debugging: Log total pitches count
+      updateUI(); // Update the UI immediately
+    }
     processOutcome(outcome); // Process the outcome
   });
 });
 
+
 // Process the selected outcome
 function processOutcome(outcome) {
+  console.log("Total Pitches before increment:", totalPitches); // Log before increment for Live BP Mode
+  // Removed the increment line from here to avoid double counting
+  console.log("Total Pitches after increment:", totalPitches); // Log after increment for Live BP Mode
+
   updateCountBasedOnOutcome(outcome);
-  totalPitches++; // Increment total pitches with each outcome processed
   if (outcome === "inPlay") {
     showInPlaySelection(); // Show in-play outcome options for further selection
   } else {
     logPitchResult(pitchType, outcome); // Log the pitch result
     resetForNextPitch(); // Reset for the next pitch
   }
+  updateUI(); // Ensure UI is updated to reflect the new total pitch count
 }
+
+
+
 
 // Show the In Play Outcome Selection module
 function showInPlaySelection() {
@@ -135,9 +153,16 @@ function updateCountBasedOnOutcome(outcome) {
 }
 
 function updateUI() {
-  document.getElementById('totalPitches').innerText = `Total Pitches: ${totalPitches}`;
-  document.getElementById('currentCount').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
+  if (mode === "bullpen") {
+    document.getElementById('totalPitches').innerText = `Total Pitches: ${totalPitchesBullpen}`;
+  } else if (mode === "liveBP") {
+    document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
+  }
+  // Assuming you want to keep the current count display common between modes, or add similar logic if they're different
+  let currentCountDisplay = mode === "bullpen" ? 'currentCount' : 'currentCountLiveBP';
+  document.getElementById(currentCountDisplay).innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
 }
+
 
 function updateCurrentCount() {
   document.getElementById('currentCount').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
