@@ -141,16 +141,25 @@ function showPitchTypeSelection() {
 
 // Update the count based on the outcome (e.g., ball, strike)
 function updateCountBasedOnOutcome(outcome) {
+  // Increment strikeCount for outcomes that count as strikes
   if (outcome === "whiff" || outcome === "calledStrike" || outcome === "foul") {
     strikeCount++;
-  } else if (outcome === "ball") {
-    pitchCount++;
-  }
-  // Increment pitchCount for every outcome processed, except for "inPlay" and "hbp" where the count resets
+  } 
+
+  // Increment pitchCount for all outcomes except 'inPlay' and 'hbp'
+  // 'inPlay' and 'hbp' outcomes reset the count, so they don't increment pitchCount here
   if (!(outcome === "inPlay" || outcome === "hbp")) {
     pitchCount++;
   }
+
+  // Ensure pitchCount does not exceed 3 (for balls) and strikeCount does not exceed 2
+  pitchCount = Math.min(pitchCount, 4); // Considering a full count as 4 balls (3-2)
+  strikeCount = Math.min(strikeCount, 3); // Considering a full count as 3 strikes (3-2)
+
+  // Update the UI to reflect the new counts
+  updateUI();
 }
+
 
 function updateUI() {
   if (mode === "bullpen") {
@@ -175,16 +184,21 @@ function resetCount() {
 }
 
 function checkRaceCondition() {
-  if (strikeCount == 2 && pitchCount <= 3) {
-    raceWins++;
-    logCount(strikeCount, pitchCount - strikeCount);
-    updateRaceWins();
-    resetCount();
-  } else if (pitchCount >= 3) {
-    logCount(strikeCount, pitchCount - strikeCount);
-    resetCount();
+  if (strikeCount == 2 && pitchCount == 2) { // When there are 2 strikes and no balls (0-2 count)
+    raceWins++; // Increment race wins as per the existing rule
+    logCount(strikeCount, pitchCount - strikeCount); // Log the count
+    updateRaceWins(); // Update the UI to reflect the new number of race wins
+    resetCount(); // Reset the count for the next pitch
+  } else if (pitchCount - strikeCount == 2 && strikeCount == 0) { // When there are 2 balls and no strikes (2-0 count)
+    // Note: We don't increment raceWins here as per the new rule
+    logCount(strikeCount, pitchCount - strikeCount); // Log the count
+    resetCount(); // Reset the count for the next pitch
+  } else if (pitchCount >= 3) { // If the count exceeds 2 balls or 2 strikes (excluding the 2-0 and 0-2 scenarios handled above)
+    logCount(strikeCount, pitchCount - strikeCount); // Log the count
+    resetCount(); // Reset the count for the next pitch
   }
 }
+
 
 function updateRaceWins() {
   document.getElementById('raceWins').innerText = `Race Wins: ${raceWins}`;
