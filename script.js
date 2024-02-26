@@ -5,6 +5,9 @@ let totalPitchesBullpen = 0; // Tracks total pitches in Bullpen Mode
 let totalPitches = 0; // Tracks total pitches in Live BP Mode
 let mode = "bullpen";
 let pitchType = "";
+let lastAction = null;
+let lastRaceWin = false; // true if the last action credited a race win
+let actionLog = [];
 
 document.getElementById('bullpenModeBtn').addEventListener('click', function() {
   mode = "bullpen";
@@ -28,6 +31,13 @@ function toggleMode() {
 }
 
 document.getElementById('strikeBtn').addEventListener('click', function() {
+
+  actionLog.push({
+    type: 'strike',
+    completedCount: false,
+    wasRaceWin: false,
+    prePitchCount: { strikes: strikeCount, balls: pitchCount - strikeCount }
+  });
   strikeCount++;
   pitchCount++;
   if (mode === "bullpen") {
@@ -38,9 +48,17 @@ document.getElementById('strikeBtn').addEventListener('click', function() {
   updateUI();
   updateCurrentCount();
   checkRaceCondition();
+  lastAction = 'strike'; // Set lastAction to 'strike'
 });
 
 document.getElementById('ballBtn').addEventListener('click', function() {
+  actionLog.push({
+    type: 'ball',
+    completedCount: false,
+    wasRaceWin: false,
+    prePitchCount: { strikes: strikeCount, balls: pitchCount - strikeCount }
+  });
+
   pitchCount++;
   if (mode === "bullpen") {
     totalPitchesBullpen++;
@@ -50,6 +68,33 @@ document.getElementById('ballBtn').addEventListener('click', function() {
   updateUI();
   updateCurrentCount();
   checkRaceCondition();
+  lastAction = 'ball'; // Set lastAction to 'ball'
+});
+
+document.getElementById('undoBtn').addEventListener('click', function() {
+  if (actionLog.length > 0) {
+    const lastAction = actionLog.pop();
+
+    strikeCount = lastAction.prePitchCount.strikes;
+    pitchCount = lastAction.prePitchCount.strikes + lastAction.prePitchCount.balls;
+
+    if (mode === "bullpen") {
+      totalPitchesBullpen--;
+    } else {
+      totalPitches--;
+    }
+
+    if (lastAction.wasRaceWin) {
+      raceWins = Math.max(0, raceWins - 1);
+    }
+
+    if (lastAction.completedCount) {
+      removeLastCompletedCount();
+    }
+
+    updateUI();
+    updateCurrentCount();
+  }
 });
 
 // Live BP mode: Pitch Type Selection
@@ -144,7 +189,7 @@ function updateCountBasedOnOutcome(outcome) {
   // Increment strikeCount for outcomes that count as strikes
   if (outcome === "whiff" || outcome === "calledStrike" || outcome === "foul") {
     strikeCount++;
-  } 
+  }
 
   // Increment pitchCount for all outcomes except 'inPlay' and 'hbp'
   // 'inPlay' and 'hbp' outcomes reset the count, so they don't increment pitchCount here
@@ -160,6 +205,12 @@ function updateCountBasedOnOutcome(outcome) {
   updateUI();
 }
 
+function removeLastCompletedCount() {
+  const countLog = document.getElementById('countLog');
+  if (countLog.lastChild) {
+    countLog.removeChild(countLog.lastChild);
+  }
+}
 
 function updateUI() {
   if (mode === "bullpen") {
@@ -184,21 +235,32 @@ function resetCount() {
 }
 
 function checkRaceCondition() {
-  if (strikeCount == 2 && pitchCount == 2) { // When there are 2 strikes and no balls (0-2 count)
-    raceWins++; // Increment race wins as per the existing rule
-    logCount(strikeCount, pitchCount - strikeCount); // Log the count
-    updateRaceWins(); // Update the UI to reflect the new number of race wins
-    resetCount(); // Reset the count for the next pitch
-  } else if (pitchCount - strikeCount == 2 && strikeCount == 0) { // When there are 2 balls and no strikes (2-0 count)
-    // Note: We don't increment raceWins here as per the new rule
-    logCount(strikeCount, pitchCount - strikeCount); // Log the count
-    resetCount(); // Reset the count for the next pitch
-  } else if (pitchCount >= 3) { // If the count exceeds 2 balls or 2 strikes (excluding the 2-0 and 0-2 scenarios handled above)
-    logCount(strikeCount, pitchCount - strikeCount); // Log the count
-    resetCount(); // Reset the count for the next pitch
+  let completedCount = false;
+
+  if (strikeCount == 2) {
+    raceWins++;
+    completedCount = true;
+    // Ensure this is the action that caused the race win
+    if (actionLog.length > 0 && actionLog[actionLog.length - 1].type === 'strike') {
+      actionLog[actionLog.length - 1].wasRaceWin = true;
+    }
+    logCount(strikeCount, pitchCount - strikeCount);
+    resetCount();
+    updateRaceWins();
+  } else if (pitchCount - strikeCount == 2 && strikeCount == 0) {
+    completedCount = true;
+    logCount(strikeCount, pitchCount - strikeCount);
+    resetCount();
+  } else if (pitchCount >= 3) {
+    completedCount = true;
+    logCount(strikeCount, pitchCount - strikeCount);
+    resetCount();
+  }
+
+  if (completedCount && actionLog.length > 0) {
+    actionLog[actionLog.length - 1].completedCount = true;
   }
 }
-
 
 function updateRaceWins() {
   document.getElementById('raceWins').innerText = `Race Wins: ${raceWins}`;
