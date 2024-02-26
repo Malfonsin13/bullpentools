@@ -127,21 +127,32 @@ document.querySelectorAll("#outcomeSelection .btn").forEach(button => {
 
 // Process the selected outcome
 function processOutcome(outcome) {
-  console.log("Total Pitches before increment:", totalPitches); // Log before increment for Live BP Mode
-  // Removed the increment line from here to avoid double counting
-  console.log("Total Pitches after increment:", totalPitches); // Log after increment for Live BP Mode
-
-  updateCountBasedOnOutcome(outcome);
-  if (outcome === "inPlay") {
-    showInPlaySelection(); // Show in-play outcome options for further selection
-  } else {
-    logPitchResult(pitchType, outcome); // Log the pitch result
-    resetForNextPitch(); // Reset for the next pitch
+  if (outcome === "ball") {
+    pitchCount++;
+    if (pitchCount - strikeCount >= 4) { // Check if there are 4 balls
+      resetCount();
+    }
+  } else if (["whiff", "calledStrike", "foul"].includes(outcome)) {
+    strikeCount++;
+    pitchCount++;
+    if (strikeCount >= 3) { // Check if there are 3 strikes
+      resetCount();
+    }
+  } else if (outcome === "inPlay" || outcome === "hbp") {
+    resetCount(); // Reset for "In Play" or "HBP" outcomes
   }
-  updateUI(); // Ensure UI is updated to reflect the new total pitch count
+
+  if (!["inPlay", "hbp"].includes(outcome)) { // If not "In Play" or "HBP", log the pitch and prepare for the next one
+    logPitchResult(pitchType, outcome);
+    resetForNextPitch(false);
+  }
+
+  if (outcome === "inPlay") {
+    showInPlaySelection();
+  }
+
+  updateUI(); // Ensure the UI is updated with the latest counts and information
 }
-
-
 
 
 // Show the In Play Outcome Selection module
@@ -167,42 +178,23 @@ function logPitchResult(pitchType, result) {
   let currentCountText = `${pitchCount - strikeCount}-${strikeCount}`;
   newEntry.innerText = `${pitchType.toUpperCase()}, Result: ${result}, Count: ${currentCountText}`;
   pitchLog.appendChild(newEntry);
+  updateCurrentCount();
   updateUI(); // Update the UI with the new total pitch count and current count
 }
 
 // Reset UI for the next pitch in Live BP mode
-function resetForNextPitch() {
-  pitchType = ""; // Clear the selected pitch type
-  resetCount(); // Reset the count for the next pitch
-  showPitchTypeSelection(); // Show pitch type selection again
+function resetForNextPitch(resetCounts = true) {
+  pitchType = "";
+  showPitchTypeSelection();
+  if (resetCounts) {
+    resetCount(); // This will also update the UI
+  }
 }
-
 // Show the Pitch Type Selection module, hide others
 function showPitchTypeSelection() {
   document.getElementById('pitchTypeSelection').style.display = 'block';
   document.getElementById('outcomeSelection').style.display = 'none';
   document.getElementById('inPlaySelection').style.display = 'none';
-}
-
-// Update the count based on the outcome (e.g., ball, strike)
-function updateCountBasedOnOutcome(outcome) {
-  // Increment strikeCount for outcomes that count as strikes
-  if (outcome === "whiff" || outcome === "calledStrike" || outcome === "foul") {
-    strikeCount++;
-  }
-
-  // Increment pitchCount for all outcomes except 'inPlay' and 'hbp'
-  // 'inPlay' and 'hbp' outcomes reset the count, so they don't increment pitchCount here
-  if (!(outcome === "inPlay" || outcome === "hbp")) {
-    pitchCount++;
-  }
-
-  // Ensure pitchCount does not exceed 3 (for balls) and strikeCount does not exceed 2
-  pitchCount = Math.min(pitchCount, 4); // Considering a full count as 4 balls (3-2)
-  strikeCount = Math.min(strikeCount, 3); // Considering a full count as 3 strikes (3-2)
-
-  // Update the UI to reflect the new counts
-  updateUI();
 }
 
 function removeLastCompletedCount() {
@@ -215,18 +207,18 @@ function removeLastCompletedCount() {
 function updateUI() {
   if (mode === "bullpen") {
     document.getElementById('totalPitches').innerText = `Total Pitches: ${totalPitchesBullpen}`;
+    document.getElementById('currentCount').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
   } else if (mode === "liveBP") {
     document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
+    document.getElementById('currentCountLiveBP').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
   }
-  // Assuming you want to keep the current count display common between modes, or add similar logic if they're different
+}
+
+function updateCurrentCount() {
   let currentCountDisplay = mode === "bullpen" ? 'currentCount' : 'currentCountLiveBP';
   document.getElementById(currentCountDisplay).innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
 }
 
-
-function updateCurrentCount() {
-  document.getElementById('currentCount').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
-}
 
 function resetCount() {
   pitchCount = 0;
