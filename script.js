@@ -207,7 +207,14 @@ function removeLastCompletedCount() {
 function updateUI() {
   if (mode === "bullpen") {
     document.getElementById('totalPitches').innerText = `Total Pitches: ${totalPitchesBullpen}`;
-    document.getElementById('currentCount').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
+
+    // Check for 2-strike counts and append a fire emoji
+    let strikeDisplay = strikeCount === 2 ? `${strikeCount}🔥` : strikeCount;
+    document.getElementById('currentCount').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeDisplay}`;
+
+    // Display race wins as fire emojis
+    let raceWinsDisplay = '🔥'.repeat(raceWins); // Repeat the fire emoji based on the number of race wins
+    document.getElementById('raceWins').innerText = `Race Wins: ${raceWinsDisplay}`; // Make sure you have an element with the id 'raceWins'
   } else if (mode === "liveBP") {
     document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
     document.getElementById('currentCountLiveBP').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
@@ -238,7 +245,7 @@ function checkRaceCondition() {
     }
     logCount(strikeCount, pitchCount - strikeCount);
     resetCount();
-    updateRaceWins();
+    updateRaceWins(); // Make sure to call updateRaceWins here to immediately reflect the change
   } else if (pitchCount - strikeCount == 2 && strikeCount == 0) {
     completedCount = true;
     logCount(strikeCount, pitchCount - strikeCount);
@@ -255,8 +262,11 @@ function checkRaceCondition() {
 }
 
 function updateRaceWins() {
-  document.getElementById('raceWins').innerText = `Race Wins: ${raceWins}`;
+  // Display race wins as fire emojis
+  let raceWinsDisplay = '🔥'.repeat(raceWins); // Repeat the fire emoji based on the number of race wins
+  document.getElementById('raceWins').innerText = `Race Wins: ${raceWinsDisplay}`;
 }
+
 
 function logCount(strikes, balls) {
   let countLog = document.getElementById('countLog');
