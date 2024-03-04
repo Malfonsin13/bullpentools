@@ -132,23 +132,30 @@ function processOutcome(outcome) {
     if (pitchCount - strikeCount >= 4) { // Check if there are 4 balls
       resetCount();
     }
-  } else if (["whiff", "calledStrike", "foul"].includes(outcome)) {
+  } else if (["whiff", "calledStrike"].includes(outcome)) {
     strikeCount++;
     pitchCount++;
     if (strikeCount >= 3) { // Check if there are 3 strikes
       resetCount();
     }
-  } else if (outcome === "inPlay" || outcome === "hbp") {
-    resetCount(); // Reset for "In Play" or "HBP" outcomes
+  } else if (outcome === "foul") {
+    if (strikeCount < 2) { // Only increase strike count if less than 2
+      strikeCount++;
+      pitchCount++; // Increment pitch count only if strike count is increased
+    }
+  } else if (outcome === "inPlay") {
+    resetCount(); // Reset for "In Play" outcome
+    showInPlaySelection();
+  } else if (outcome === "hbp") {
+    // Log the HBP outcome before resetting for the next pitch
+    logPitchResult(pitchType, "HBP"); // Log the pitch with "HBP" outcome
+    resetCount(); // Reset count for "HBP" outcome
+    resetForNextPitch(); // Reset for the next pitch and show the pitch type selection screen
   }
 
   if (!["inPlay", "hbp"].includes(outcome)) { // If not "In Play" or "HBP", log the pitch and prepare for the next one
     logPitchResult(pitchType, outcome);
     resetForNextPitch(false);
-  }
-
-  if (outcome === "inPlay") {
-    showInPlaySelection();
   }
 
   updateUI(); // Ensure the UI is updated with the latest counts and information
