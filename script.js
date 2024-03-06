@@ -6,6 +6,7 @@ let totalPitches = 0; // Tracks total pitches in Live BP Mode
 let mode = "bullpen";
 let pitchType = "";
 let lastAction = null;
+let totalStrikesBullpen = 0;
 let lastRaceWin = false; // true if the last action credited a race win
 let actionLog = [];
 
@@ -40,6 +41,7 @@ document.getElementById('strikeBtn').addEventListener('click', function() {
   });
   strikeCount++;
   pitchCount++;
+  totalStrikesBullpen++;
   if (mode === "bullpen") {
     totalPitchesBullpen++;
   } else {
@@ -86,6 +88,10 @@ document.getElementById('undoBtn').addEventListener('click', function() {
 
     if (lastAction.wasRaceWin) {
       raceWins = Math.max(0, raceWins - 1);
+    }
+
+    if (lastAction.type === 'strike') {
+      totalStrikesBullpen = Math.max(0, totalStrikesBullpen - 1); 
     }
 
     if (lastAction.completedCount) {
@@ -214,14 +220,19 @@ function removeLastCompletedCount() {
 function updateUI() {
   if (mode === "bullpen") {
     document.getElementById('totalPitches').innerText = `Total Pitches: ${totalPitchesBullpen}`;
-
-    // Check for 2-strike counts and append a fire emoji
     let strikeDisplay = strikeCount === 2 ? `${strikeCount}🔥` : strikeCount;
     document.getElementById('currentCount').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeDisplay}`;
+    let raceWinsDisplay = '🔥'.repeat(raceWins);
+    document.getElementById('raceWins').innerText = `Race Wins: ${raceWinsDisplay}`;
 
-    // Display race wins as fire emojis
-    let raceWinsDisplay = '🔥'.repeat(raceWins); // Repeat the fire emoji based on the number of race wins
-    document.getElementById('raceWins').innerText = `Race Wins: ${raceWinsDisplay}`; // Make sure you have an element with the id 'raceWins'
+    // Calculate strike percentage using total strikes and total pitches for the session
+    let strikePercentage = totalPitchesBullpen > 0 ? (totalStrikesBullpen / totalPitchesBullpen) * 100 : 0;
+    const strikePercentageElement = document.getElementById('strikePercentage');
+    strikePercentageElement.innerText = `Strike %: ${strikePercentage.toFixed(2)}`;
+
+    // Change the color based on the strike percentage
+    strikePercentageElement.style.color = getPercentageColor(strikePercentage);
+
   } else if (mode === "liveBP") {
     document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
     document.getElementById('currentCountLiveBP').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
@@ -274,6 +285,19 @@ function updateRaceWins() {
   document.getElementById('raceWins').innerText = `Race Wins: ${raceWinsDisplay}`;
 }
 
+function getPercentageColor(percentage) {
+  // Define start (light blue) and end (fire engine red) colors in RGB
+  const startColor = { r: 173, g: 216, b: 230 }; // Light blue
+  const endColor = { r: 255, g: 0, b: 0 }; // Fire engine red
+
+  // Calculate the RGB values for the current percentage
+  const r = Math.round(startColor.r + (endColor.r - startColor.r) * (percentage / 100));
+  const g = Math.round(startColor.g + (endColor.g - startColor.g) * (percentage / 100));
+  const b = Math.round(startColor.b + (endColor.b - startColor.b) * (percentage / 100));
+
+  // Return the color in CSS format
+  return `rgb(${r}, ${g}, ${b})`;
+}
 
 function logCount(strikes, balls) {
   let countLog = document.getElementById('countLog');
