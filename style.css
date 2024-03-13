@@ -28,3 +28,21 @@ ul {
 li {
     margin: 5px 0;
 }
+
+/* Navy Blue Shades for 4S, 2S, CT */
+#fourSeam, #twoSeam, #cutter {
+  background-color: #274472; /* Lighter Navy Blue */
+  color: white;
+}
+
+/* Metallic Gold Shades for CB, SL */
+#curveBall, #slider {
+  background-color: #d3a625; /* A different shade of gold */
+  color: white;
+}
+
+/* Royal Blue Shades for CH, SP */
+#changeup, #splitter {
+  background-color: #3c8ddb; /* Lighter Royal Blue */
+  color: white;
+}
