@@ -82,21 +82,24 @@ document.getElementById('undoBtn').addEventListener('click', function() {
 
     if (mode === "bullpen") {
       totalPitchesBullpen--;
-      // Additional bullpen-specific logic if needed...
+
+      // Decrement total strikes if the last action was a strike
+      if (lastAction.type === 'strike') {
+        totalStrikesBullpen = Math.max(0, totalStrikesBullpen - 1);
+      }
+
+      if (lastAction.completedCount) {
+        removeLastCompletedCount();
+      }
     } else if (mode === "liveBP") {
       totalPitches--;
-      if (lastAction.type === 'pitchTypeSelection' || lastAction.type === 'outcomeSelection') {
-        showPitchTypeSelection();
-      }
-      // Remove the last pitch log entry in Live BP Mode
-      removeLastPitchLogEntry();
+      // Similar logic for liveBP mode if applicable
     }
 
     updateUI();
     updateCurrentCount();
   }
 });
-
 
 // Live BP mode: Pitch Type Selection
 document.querySelectorAll("#pitchTypeSelection .btn").forEach(button => {
