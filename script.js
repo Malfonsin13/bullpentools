@@ -82,20 +82,14 @@ document.getElementById('undoBtn').addEventListener('click', function() {
 
     if (mode === "bullpen") {
       totalPitchesBullpen--;
-    } else {
+      // Additional bullpen-specific logic if needed...
+    } else if (mode === "liveBP") {
       totalPitches--;
-    }
-
-    if (lastAction.wasRaceWin) {
-      raceWins = Math.max(0, raceWins - 1);
-    }
-
-    if (lastAction.type === 'strike') {
-      totalStrikesBullpen = Math.max(0, totalStrikesBullpen - 1); 
-    }
-
-    if (lastAction.completedCount) {
-      removeLastCompletedCount();
+      if (lastAction.type === 'pitchTypeSelection' || lastAction.type === 'outcomeSelection') {
+        showPitchTypeSelection();
+      }
+      // Remove the last pitch log entry in Live BP Mode
+      removeLastPitchLogEntry();
     }
 
     updateUI();
@@ -103,11 +97,18 @@ document.getElementById('undoBtn').addEventListener('click', function() {
   }
 });
 
+
 // Live BP mode: Pitch Type Selection
 document.querySelectorAll("#pitchTypeSelection .btn").forEach(button => {
   button.addEventListener('click', function() {
-    pitchType = this.id; // Store the selected pitch type
-    showOutcomeSelection(); // Proceed to outcome selection
+    pitchType = this.id;
+    actionLog.push({
+      type: 'pitchTypeSelection',
+      pitchType: pitchType,
+      prePitchCount: { strikes: strikeCount, balls: pitchCount - strikeCount },
+      totalPitchesBefore: totalPitches // Store the total pitches count before this action
+    });
+    showOutcomeSelection();
   });
 });
 
@@ -121,9 +122,14 @@ function showOutcomeSelection() {
 document.querySelectorAll("#outcomeSelection .btn").forEach(button => {
   button.addEventListener('click', function() {
     let outcome = this.id; // Store the selected outcome
+    actionLog.push({
+      type: 'outcomeSelection',
+      outcome: outcome,
+      prePitchCount: { strikes: strikeCount, balls: pitchCount - strikeCount },
+      totalPitchesBefore: totalPitches // Store the total pitches count before this action
+    });
     if (mode === "liveBP") { // Ensure we're in LIVE BP MODE
       totalPitches++; // Increment total pitches for Live BP Mode
-      console.log("Total Pitches (Live BP Mode):", totalPitches); // Debugging: Log total pitches count
       updateUI(); // Update the UI immediately
     }
     processOutcome(outcome); // Process the outcome
@@ -232,12 +238,29 @@ function updateUI() {
 
     // Change the color based on the strike percentage
     strikePercentageElement.style.color = getPercentageColor(strikePercentage);
-
   } else if (mode === "liveBP") {
     document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
     document.getElementById('currentCountLiveBP').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
   }
+  // Control the visibility of the Undo button based on the actionLog length and total pitches
+  const shouldDisplayUndo = (mode === "bullpen" && totalPitchesBullpen > 0) || (mode === "liveBP" && totalPitches > 0);
+  document.getElementById('undoBtn').style.display = shouldDisplayUndo ? 'inline-block' : 'none';
 }
+
+function getPercentageColor(percentage) {
+  // Define start (light blue) and end (fire engine red) colors in RGB
+  const startColor = { r: 173, g: 216, b: 230 }; // Light blue
+  const endColor = { r: 255, g: 0, b: 0 }; // Fire engine red
+
+  // Calculate the RGB values for the current percentage
+  const r = Math.round(startColor.r + (endColor.r - startColor.r) * (percentage / 100));
+  const g = Math.round(startColor.g + (endColor.g - startColor.g) * (percentage / 100));
+  const b = Math.round(startColor.b + (endColor.b - startColor.b) * (percentage / 100));
+
+  // Return the color in CSS format
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 
 function updateCurrentCount() {
   let currentCountDisplay = mode === "bullpen" ? 'currentCount' : 'currentCountLiveBP';
@@ -304,6 +327,14 @@ function logCount(strikes, balls) {
   let newEntry = document.createElement('li');
   newEntry.innerText = `Final Count: ${balls}-${strikes}`;
   countLog.appendChild(newEntry);
+}
+
+function removeLastPitchLogEntry() {
+  // Assuming 'pitchLog' is the ID of your pitch log <ul> element in Live BP Mode
+  const pitchLog = document.getElementById('pitchLog');
+  if (pitchLog && pitchLog.lastChild) {
+    pitchLog.removeChild(pitchLog.lastChild);
+  }
 }
 
 
