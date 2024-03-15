@@ -7,6 +7,7 @@ let mode = "bullpen";
 let pitchType = "";
 let lastAction = null;
 let totalStrikesBullpen = 0;
+let totalStrikesLiveBP = 0;
 let lastRaceWin = false; // true if the last action credited a race win
 let actionLog = [];
 
@@ -78,28 +79,37 @@ document.getElementById('undoBtn').addEventListener('click', function() {
     const lastAction = actionLog.pop();
 
     strikeCount = lastAction.prePitchCount.strikes;
-    pitchCount = lastAction.prePitchCount.strikes + lastAction.prePitchCount.balls;
+    pitchCount = lastAction.prePitchCount.balls + lastAction.prePitchCount.strikes;
 
     if (mode === "bullpen") {
       totalPitchesBullpen--;
-
-      // Decrement total strikes if the last action was a strike
-      if (lastAction.type === 'strike') {
-        totalStrikesBullpen = Math.max(0, totalStrikesBullpen - 1);
+      if (lastAction.wasRaceWin) {
+        raceWins = Math.max(0, raceWins - 1);
       }
-
+      if (lastAction.type === 'strike') {
+        totalStrikesBullpen--;
+      }
       if (lastAction.completedCount) {
         removeLastCompletedCount();
       }
     } else if (mode === "liveBP") {
       totalPitches--;
-      // Similar logic for liveBP mode if applicable
+      if (lastAction.type === 'pitchTypeSelection' || lastAction.type === 'outcomeSelection') {
+        showPitchTypeSelection();
+      }
+      // Ensure counts are properly reset when they should be
+      if (totalPitches === 0) {
+        strikeCount = 0;
+        pitchCount = 0;
+      }
+      removeLastPitchLogEntry();
     }
 
     updateUI();
     updateCurrentCount();
   }
 });
+
 
 // Live BP mode: Pitch Type Selection
 document.querySelectorAll("#pitchTypeSelection .btn").forEach(button => {
@@ -140,23 +150,25 @@ document.querySelectorAll("#outcomeSelection .btn").forEach(button => {
 });
 
 
-// Process the selected outcome
 function processOutcome(outcome) {
   if (outcome === "ball") {
     pitchCount++;
-    if (pitchCount - strikeCount >= 4) { // Check if there are 4 balls
+    if (pitchCount - strikeCount >= 4) {
       resetCount();
     }
-  } else if (["whiff", "calledStrike"].includes(outcome)) {
-    strikeCount++;
-    pitchCount++;
-    if (strikeCount >= 3) { // Check if there are 3 strikes
-      resetCount();
-    }
-  } else if (outcome === "foul") {
-    if (strikeCount < 2) { // Only increase strike count if less than 2
+  } else if (["whiff", "calledStrike", "foul"].includes(outcome)) { // Include "foul" in the conditions
+    let wasStrike = (outcome === "foul" && strikeCount < 2) || outcome !== "foul";
+    if (wasStrike) {
       strikeCount++;
-      pitchCount++; // Increment pitch count only if strike count is increased
+      pitchCount++;
+      // Check for race win condition when strikeCount reaches 2
+      if (strikeCount === 2 && (pitchCount - strikeCount === 0 || pitchCount - strikeCount === 1)) {
+        raceWins++;
+        updateRaceWins();
+      }
+      if (strikeCount >= 3) { // Reset count if it's a strikeout
+        resetCount();
+      }
     }
   } else if (outcome === "inPlay") {
     resetCount(); // Reset for "In Play" outcome
@@ -244,6 +256,10 @@ function updateUI() {
   } else if (mode === "liveBP") {
     document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
     document.getElementById('currentCountLiveBP').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
+
+    let strikePercentageLiveBP = totalPitches > 0 ? (totalStrikesLiveBP / totalPitches) * 100 : 0;
+    document.getElementById('strikePercentageLiveBP').innerText = `Strike %: ${strikePercentageLiveBP.toFixed(2)}`;
+
   }
   // Control the visibility of the Undo button based on the actionLog length and total pitches
   const shouldDisplayUndo = (mode === "bullpen" && totalPitchesBullpen > 0) || (mode === "liveBP" && totalPitches > 0);
@@ -269,7 +285,6 @@ function updateCurrentCount() {
   let currentCountDisplay = mode === "bullpen" ? 'currentCount' : 'currentCountLiveBP';
   document.getElementById(currentCountDisplay).innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
 }
-
 
 function resetCount() {
   pitchCount = 0;
@@ -306,10 +321,16 @@ function checkRaceCondition() {
 }
 
 function updateRaceWins() {
-  // Display race wins as fire emojis
-  let raceWinsDisplay = '🔥'.repeat(raceWins); // Repeat the fire emoji based on the number of race wins
-  document.getElementById('raceWins').innerText = `Race Wins: ${raceWinsDisplay}`;
+  let raceWinsDisplay = raceWins > 0 ? '🔥'.repeat(raceWins) : ''; // Ensure there's a display even when raceWins is 0
+  if (mode === "bullpen") {
+    document.getElementById('raceWins').innerText = `Race Wins: ${raceWinsDisplay}`;
+  } else if (mode === "liveBP") {
+    // This now correctly targets the race wins display for LiveBP mode
+    document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplay}`;
+  }
 }
+
+
 
 function getPercentageColor(percentage) {
   // Define start (light blue) and end (fire engine red) colors in RGB
