@@ -94,6 +94,9 @@ document.getElementById('undoBtn').addEventListener('click', function() {
       }
     } else if (mode === "liveBP") {
       totalPitches--;
+      if (lastAction.wasRaceWin) {
+        raceWins = Math.max(0, raceWins - 1);
+      }
       if (lastAction.type === 'pitchTypeSelection' || lastAction.type === 'outcomeSelection') {
         showPitchTypeSelection();
       }
@@ -165,6 +168,7 @@ function processOutcome(outcome) {
       if (strikeCount === 2 && (pitchCount - strikeCount === 0 || pitchCount - strikeCount === 1)) {
         raceWins++;
         updateRaceWins();
+        actionLog[actionLog.length - 1].wasRaceWin = true;
       }
       if (strikeCount >= 3) { // Reset count if it's a strikeout
         resetCount();
