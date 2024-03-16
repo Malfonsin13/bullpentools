@@ -96,6 +96,7 @@ document.getElementById('undoBtn').addEventListener('click', function() {
       totalPitches--;
       if (lastAction.wasRaceWin) {
         raceWins = Math.max(0, raceWins - 1);
+        updateRaceWins();
       }
       if (lastAction.type === 'pitchTypeSelection' || lastAction.type === 'outcomeSelection') {
         showPitchTypeSelection();
