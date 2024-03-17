@@ -98,6 +98,10 @@ document.getElementById('undoBtn').addEventListener('click', function() {
         raceWins = Math.max(0, raceWins - 1);
         updateRaceWins();
       }
+      // Check if the last action was a strike and adjust totalStrikesLiveBP accordingly
+      if (["whiff", "calledStrike"].includes(lastAction.outcome) || (lastAction.outcome === "foul" && lastAction.prePitchCount.strikes < 2)) {
+        totalStrikesLiveBP = Math.max(0, totalStrikesLiveBP - 1);  // Ensure totalStrikesLiveBP doesn't go negative
+      }
       if (lastAction.type === 'pitchTypeSelection' || lastAction.type === 'outcomeSelection') {
         showPitchTypeSelection();
       }
@@ -165,6 +169,7 @@ function processOutcome(outcome) {
     if (wasStrike) {
       strikeCount++;
       pitchCount++;
+      totalStrikesLiveBP++;
       // Check for race win condition when strikeCount reaches 2
       if (strikeCount === 2 && (pitchCount - strikeCount === 0 || pitchCount - strikeCount === 1)) {
         raceWins++;
@@ -263,8 +268,10 @@ function updateUI() {
     document.getElementById('currentCountLiveBP').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
 
     let strikePercentageLiveBP = totalPitches > 0 ? (totalStrikesLiveBP / totalPitches) * 100 : 0;
+    // Update the strike percentage display
     document.getElementById('strikePercentageLiveBP').innerText = `Strike %: ${strikePercentageLiveBP.toFixed(2)}`;
-
+    // Apply dynamic coloring based on strike percentage
+    document.getElementById('strikePercentageLiveBP').style.color = getPercentageColor(strikePercentageLiveBP);
   }
   // Control the visibility of the Undo button based on the actionLog length and total pitches
   const shouldDisplayUndo = (mode === "bullpen" && totalPitchesBullpen > 0) || (mode === "liveBP" && totalPitches > 0);
