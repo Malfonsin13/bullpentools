@@ -98,17 +98,13 @@ document.getElementById('undoBtn').addEventListener('click', function() {
         raceWins = Math.max(0, raceWins - 1);
         updateRaceWins();
       }
-      // Check if the last action was a strike and adjust totalStrikesLiveBP accordingly
       if (["whiff", "calledStrike"].includes(lastAction.outcome) || (lastAction.outcome === "foul" && lastAction.prePitchCount.strikes < 2)) {
-        totalStrikesLiveBP = Math.max(0, totalStrikesLiveBP - 1);  // Ensure totalStrikesLiveBP doesn't go negative
+        totalStrikesLiveBP--;
       }
-      if (lastAction.type === 'pitchTypeSelection' || lastAction.type === 'outcomeSelection') {
-        showPitchTypeSelection();
-      }
-      // Ensure counts are properly reset when they should be
-      if (totalPitches === 0) {
+      if (totalPitches === 0) { // Reset everything if all actions have been undone
         strikeCount = 0;
         pitchCount = 0;
+        totalStrikesLiveBP = 0; // Ensure totalStrikesLiveBP is also reset
       }
       removeLastPitchLogEntry();
     }
@@ -267,8 +263,7 @@ function updateUI() {
     document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
     document.getElementById('currentCountLiveBP').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
 
-    let strikePercentageLiveBP = totalPitches > 0 ? (totalStrikesLiveBP / totalPitches) * 100 : 0;
-    // Update the strike percentage display
+    let strikePercentageLiveBP = totalPitches > 0 ? Math.min((totalStrikesLiveBP / totalPitches) * 100, 100) : 0;
     document.getElementById('strikePercentageLiveBP').innerText = `Strike %: ${strikePercentageLiveBP.toFixed(2)}`;
     // Apply dynamic coloring based on strike percentage
     document.getElementById('strikePercentageLiveBP').style.color = getPercentageColor(strikePercentageLiveBP);
