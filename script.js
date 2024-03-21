@@ -115,12 +115,14 @@ document.getElementById('undoBtn').addEventListener('click', function() {
     if (totalPitches === 0) {
       strikeCount = 0;
       pitchCount = 0;
-      totalStrikesLiveBP = 0;
+      totalStrikesLiveBP = 0
+      raceWins = 0;
     }
 
     removeLastPitchLogEntry();
     updateUI();
     updateCurrentCount();
+    updateRaceWins();
   }
 });
 
