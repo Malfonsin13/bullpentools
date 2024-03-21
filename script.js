@@ -77,11 +77,20 @@ document.getElementById('ballBtn').addEventListener('click', function() {
 document.getElementById('undoBtn').addEventListener('click', function() {
   if (actionLog.length > 0) {
     const lastAction = actionLog.pop();
+    totalPitches = Math.max(0, totalPitches - 1); // Always decrement totalPitches here
 
-    strikeCount = lastAction.prePitchCount.strikes;
-    pitchCount = lastAction.prePitchCount.balls + lastAction.prePitchCount.strikes;
+    if (actionLog.length > 0) {
+      const newLastAction = actionLog[actionLog.length - 1]; // Corrected variable name to avoid confusion
+      strikeCount = newLastAction.prePitchCount.strikes;
+      pitchCount = newLastAction.prePitchCount.balls + newLastAction.prePitchCount.strikes;
+    } else {
+      // If there are no more actions in the log, it means all actions have been undone, so reset counts to 0
+      strikeCount = 0;
+      pitchCount = 0;
+    }
 
     if (mode === "bullpen") {
+      // Bullpen mode specific undo logic
       totalPitchesBullpen--;
       if (lastAction.wasRaceWin) {
         raceWins = Math.max(0, raceWins - 1);
@@ -92,23 +101,24 @@ document.getElementById('undoBtn').addEventListener('click', function() {
       if (lastAction.completedCount) {
         removeLastCompletedCount();
       }
-    } else if (mode === "liveBP") {
-      totalPitches--;
-      if (lastAction.wasRaceWin) {
-        raceWins = Math.max(0, raceWins - 1);
-        updateRaceWins();
-      }
-      if (["whiff", "calledStrike"].includes(lastAction.outcome) || (lastAction.outcome === "foul" && lastAction.prePitchCount.strikes < 2)) {
-        totalStrikesLiveBP--;
-      }
-      if (totalPitches === 0) { // Reset everything if all actions have been undone
-        strikeCount = 0;
-        pitchCount = 0;
-        totalStrikesLiveBP = 0; // Ensure totalStrikesLiveBP is also reset
-      }
-      removeLastPitchLogEntry();
+    } else {
+      // For non-bullpen mode, recalculate totalStrikesLiveBP based on remaining 'strike' actions
+      totalStrikesLiveBP = actionLog.filter(action => action.type === 'strike').length;
     }
 
+    if (lastRaceWin && raceWins > 0) {
+      raceWins--;
+      lastRaceWin = false;
+    }
+
+    // If totalPitches is 0 after all undo operations, reset everything
+    if (totalPitches === 0) {
+      strikeCount = 0;
+      pitchCount = 0;
+      totalStrikesLiveBP = 0;
+    }
+
+    removeLastPitchLogEntry();
     updateUI();
     updateCurrentCount();
   }
