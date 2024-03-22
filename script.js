@@ -76,34 +76,34 @@ document.getElementById('ballBtn').addEventListener('click', function() {
 
 document.getElementById('undoBtn').addEventListener('click', function() {
   if (actionLog.length > 0) {
-    const lastAction = actionLog.pop();
+    const lastAction = actionLog.pop(); // Pop the last action from the log
+
+    if (lastAction.wasRaceWin) {
+      // Check if the last action had awarded a race win and undo it
+      raceWins = Math.max(0, raceWins - 1);
+    }
 
     if (actionLog.length > 0) {
-      const lastAction = actionLog[actionLog.length - 1]; // Look at the new last action, which is now the previous state we want to revert to
-      strikeCount = lastAction.prePitchCount.strikes;
-      pitchCount = lastAction.prePitchCount.strikes + lastAction.prePitchCount.balls;
-      if (totalPitches === 0) {
-        // Reset everything if all actions have been undone
-        strikeCount = 0;
-        pitchCount = 0;
-        totalStrikesLiveBP = 0;
-      }
+      // If there are still actions in the log after popping the last one
+      const prevAction = actionLog[actionLog.length - 1]; // Note the change in variable name to avoid confusion
+
+      strikeCount = prevAction.prePitchCount.strikes;
+      pitchCount = prevAction.prePitchCount.strikes + prevAction.prePitchCount.balls;
+      totalStrikesLiveBP = actionLog.filter(action => action.type === 'strike').length; // Recalculate total strikes from remaining log
 
     } else {
-      // If there are no more actions in the log, reset counts to 0
+      // If the action log is empty after popping, reset all counts
       strikeCount = 0;
       pitchCount = 0;
+      totalStrikesLiveBP = 0; // Ensure total strikes is also reset
     }
 
     if (mode === "bullpen") {
-      // Bullpen mode undo logic remains unchanged
+      // Bullpen mode undo logic
       totalPitchesBullpen--;
       strikeCount = lastAction.prePitchCount.strikes;
       pitchCount = lastAction.prePitchCount.balls + lastAction.prePitchCount.strikes;
 
-      if (lastAction.wasRaceWin) {
-        raceWins = Math.max(0, raceWins - 1);
-      }
       if (lastAction.type === 'strike') {
         totalStrikesBullpen--;
       }
@@ -111,13 +111,9 @@ document.getElementById('undoBtn').addEventListener('click', function() {
         removeLastCompletedCount();
       }
     } else {
+      // Live BP mode adjustments
       totalPitches = Math.max(0, totalPitches - 1);
-      totalStrikesLiveBP = actionLog.filter(action => action.type === 'strike').length; // Recalculate based on remaining 'strike' actions in the log
-    }
-
-    if (lastRaceWin && raceWins > 0) {
-      raceWins--; // Decrement race wins if the last action was a race win
-      lastRaceWin = false; // Reset lastRaceWin flag
+      // Strike percentage recalculated outside this block for both modes
     }
 
     removeLastPitchLogEntry(); // Remove the last pitch entry from the UI log
@@ -125,7 +121,6 @@ document.getElementById('undoBtn').addEventListener('click', function() {
     updateCurrentCount(); // Update the displayed count
   }
 });
-
 
 // Live BP mode: Pitch Type Selection
 document.querySelectorAll("#pitchTypeSelection .btn").forEach(button => {
@@ -272,12 +267,15 @@ function updateUI() {
     // Change the color based on the strike percentage
     strikePercentageElement.style.color = getPercentageColor(strikePercentage);
   } else if (mode === "liveBP") {
-    document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
+  document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
     document.getElementById('currentCountLiveBP').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
+
+    // Update the race wins display for liveBP mode
+    let raceWinsDisplayLiveBP = '🔥'.repeat(raceWins);
+    document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplayLiveBP}`;
 
     let strikePercentageLiveBP = totalPitches > 0 ? Math.min((totalStrikesLiveBP / totalPitches) * 100, 100) : 0;
     document.getElementById('strikePercentageLiveBP').innerText = `Strike %: ${strikePercentageLiveBP.toFixed(2)}`;
-    // Apply dynamic coloring based on strike percentage
     document.getElementById('strikePercentageLiveBP').style.color = getPercentageColor(strikePercentageLiveBP);
   }
   // Control the visibility of the Undo button based on the actionLog length and total pitches
