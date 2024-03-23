@@ -76,11 +76,11 @@ document.getElementById('ballBtn').addEventListener('click', function() {
 
 document.getElementById('undoBtn').addEventListener('click', function() {
   if (actionLog.length > 0) {
-    const lastAction = actionLog.pop(); // Pop the last action from the log
+    const lastAction = actionLog.pop();
 
     if (lastAction.wasRaceWin) {
-      // Check if the last action had awarded a race win and undo it
       raceWins = Math.max(0, raceWins - 1);
+      updateRaceWins();
     }
 
     if (actionLog.length > 0) {
@@ -89,13 +89,13 @@ document.getElementById('undoBtn').addEventListener('click', function() {
 
       strikeCount = prevAction.prePitchCount.strikes;
       pitchCount = prevAction.prePitchCount.strikes + prevAction.prePitchCount.balls;
-      totalStrikesLiveBP = actionLog.filter(action => action.type === 'strike').length; // Recalculate total strikes from remaining log
+      totalStrikesLiveBP = actionLog.filter(action => action.type === 'strike').length;
 
     } else {
-      // If the action log is empty after popping, reset all counts
+
       strikeCount = 0;
       pitchCount = 0;
-      totalStrikesLiveBP = 0; // Ensure total strikes is also reset
+      totalStrikesLiveBP = 0;
     }
 
     if (mode === "bullpen") {
@@ -113,7 +113,11 @@ document.getElementById('undoBtn').addEventListener('click', function() {
     } else {
       // Live BP mode adjustments
       totalPitches = Math.max(0, totalPitches - 1);
-      // Strike percentage recalculated outside this block for both modes
+      if (totalPitches === 0) {
+        pitchCount = 0;
+        strikeCount = 0;
+      }
+
     }
 
     removeLastPitchLogEntry(); // Remove the last pitch entry from the UI log
@@ -267,14 +271,16 @@ function updateUI() {
     // Change the color based on the strike percentage
     strikePercentageElement.style.color = getPercentageColor(strikePercentage);
   } else if (mode === "liveBP") {
-  document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
+    document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
     document.getElementById('currentCountLiveBP').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
 
     // Update the race wins display for liveBP mode
     let raceWinsDisplayLiveBP = '🔥'.repeat(raceWins);
     document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplayLiveBP}`;
 
-    let strikePercentageLiveBP = totalPitches > 0 ? Math.min((totalStrikesLiveBP / totalPitches) * 100, 100) : 0;
+    // Adjust strike count for undo actions in liveBP mode
+    const adjustedStrikeCount = Math.max(0, strikeCount - actionLog.filter(action => action.type === 'strike').length);
+    let strikePercentageLiveBP = totalPitches > 0 ? (adjustedStrikeCount / totalPitches) * 100 : 0;
     document.getElementById('strikePercentageLiveBP').innerText = `Strike %: ${strikePercentageLiveBP.toFixed(2)}`;
     document.getElementById('strikePercentageLiveBP').style.color = getPercentageColor(strikePercentageLiveBP);
   }
