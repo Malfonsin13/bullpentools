@@ -120,9 +120,9 @@ document.getElementById('undoBtn').addEventListener('click', function() {
 
     }
 
-    removeLastPitchLogEntry(); // Remove the last pitch entry from the UI log
-    updateUI(); // Refresh UI elements to reflect the new state
-    updateCurrentCount(); // Update the displayed count
+    removeLastPitchLogEntry();
+    updateUI();
+    updateCurrentCount();
   }
 });
 
@@ -280,7 +280,7 @@ function updateUI() {
 
     // Adjust strike count for undo actions in liveBP mode
     const adjustedStrikeCount = Math.max(0, strikeCount - actionLog.filter(action => action.type === 'strike').length);
-    let strikePercentageLiveBP = totalPitches > 0 ? (adjustedStrikeCount / totalPitches) * 100 : 0;
+    let strikePercentageLiveBP = totalPitches > 0 ? (totalStrikesLiveBP / totalPitches) * 100 : 0;
     document.getElementById('strikePercentageLiveBP').innerText = `Strike %: ${strikePercentageLiveBP.toFixed(2)}`;
     document.getElementById('strikePercentageLiveBP').style.color = getPercentageColor(strikePercentageLiveBP);
   }
