@@ -367,6 +367,77 @@ function removeLastPitchLogEntry() {
   }
 }
 
+function exportLiveBPStats() {
+  // Initialize stats counters
+  let totalPitches = 0;
+  let strikeCount = 0;
+  let raceWins = 0;
+  let totalKs = 0;
+  let totalWalks = 0;
+  let pitchTypeStats = {};
+
+  // Iterate through actionLog to compute stats
+  actionLog.forEach(action => {
+    if (action.type === 'pitchTypeSelection' || action.type === 'outcomeSelection') {
+      totalPitches++;
+      const pitchType = action.pitchType;
+
+      if (!pitchTypeStats[pitchType]) {
+        pitchTypeStats[pitchType] = { strikes: 0, whiffs: 0, calledStrikes: 0 };
+      }
+
+      if (['whiff', 'calledStrike', 'foul'].includes(action.outcome)) {
+        strikeCount++;
+        pitchTypeStats[pitchType].strikes++;
+        if (action.outcome === 'whiff') {
+          pitchTypeStats[pitchType].whiffs++;
+        } else if (action.outcome === 'calledStrike') {
+          pitchTypeStats[pitchType].calledStrikes++;
+        }
+      }
+
+      if (action.wasRaceWin) {
+        raceWins++;
+      }
+
+      if (action.prePitchCount.strikes === 2 && ['whiff', 'calledStrike'].includes(action.outcome)) {
+        totalKs++;
+      }
+
+      if (action.type === 'ball' && action.prePitchCount.balls === 3) {
+        totalWalks++;
+      }
+    }
+  });
+
+  // Calculate strike percentage
+  let strikePercentage = totalPitches > 0 ? (strikeCount / totalPitches) * 100 : 0;
+
+  // Format stats text
+  let statsText = `Total Pitches: ${totalPitches}\n`;
+  statsText += `Total Race Wins: ${raceWins}\n`;
+  statsText += `Strike %: ${strikePercentage.toFixed(2)}%\n`;
+
+  for (const [pitchType, stats] of Object.entries(pitchTypeStats)) {
+    const pitchTypeStrikePercentage = stats.strikes / totalPitches * 100;
+    statsText += `${pitchType} Strike %: ${pitchTypeStrikePercentage.toFixed(2)}%, Whiffs: ${stats.whiffs}, Called Strikes: ${stats.calledStrikes}\n`;
+  }
+
+  statsText += `Total Ks: ${totalKs}\n`;
+  statsText += `Total Walks: ${totalWalks}\n`;
+
+  // Copy stats to clipboard
+  navigator.clipboard.writeText(statsText).then(() => {
+    console.log('Live BP stats copied to clipboard.');
+  }).catch(err => {
+    console.error('Failed to copy stats to clipboard:', err);
+  });
+}
+
+// Add an event listener to your Export button (once you have it in your HTML)
+document.getElementById('exportBtn').addEventListener('click', exportLiveBPStats);
+
+
 document.addEventListener('DOMContentLoaded', function() {
   toggleMode();
 });
