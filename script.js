@@ -77,7 +77,7 @@ document.getElementById('undoBtn').addEventListener('click', function() {
   if (actionLog.length > 0) {
     const lastAction = actionLog.pop();
     console.log('Popped Action:', lastAction);
-    
+
     if (lastAction.wasRaceWin) {
       raceWins = Math.max(0, raceWins - 1);
     }
@@ -106,7 +106,7 @@ document.getElementById('undoBtn').addEventListener('click', function() {
       totalPitches--;
 
       if (lastAction.type === 'strike' || (lastAction.type === 'outcomeSelection' && ["whiff", "calledStrike", "foul"].includes(lastAction.outcome))) {
-          totalStrikesLiveBP--;
+        totalStrikesLiveBP--;
       }
     }
 
@@ -368,36 +368,32 @@ function removeLastPitchLogEntry() {
 }
 
 function exportLiveBPStats() {
-  // Initialize stats counters
-  let totalPitches = 0;
-  let strikeCount = 0;
-  let raceWins = 0;
-  let totalKs = 0;
-  let totalWalks = 0;
-  let pitchTypeStats = {};
+  let exportedTotalPitches = mode === "bullpen" ? totalPitchesBullpen : totalPitches; // Choose based on mode
+  let exportedStrikePercentage = (mode === "bullpen" ? totalStrikesBullpen : totalStrikesLiveBP) / exportedTotalPitches * 100;
 
-  // Iterate through actionLog to compute stats
+  // No need to re-declare raceWins here, just use it directly.
+
+  let totalKs = 0; // Initialize totalKs, calculate based on your logic or actionLog analysis
+  let totalWalks = 0; // Initialize totalWalks, calculate based on your logic or actionLog analysis
+
+  let pitchTypeStats = {};
   actionLog.forEach(action => {
     if (action.type === 'pitchTypeSelection' || action.type === 'outcomeSelection') {
-      totalPitches++;
-      const pitchType = action.pitchType;
+      const pitchType = action.pitchType || 'unknown';
 
       if (!pitchTypeStats[pitchType]) {
-        pitchTypeStats[pitchType] = { strikes: 0, whiffs: 0, calledStrikes: 0 };
+        pitchTypeStats[pitchType] = { total: 0, strikes: 0, whiffs: 0, calledStrikes: 0 };
       }
 
+      pitchTypeStats[pitchType].total++;
+
       if (['whiff', 'calledStrike', 'foul'].includes(action.outcome)) {
-        strikeCount++;
         pitchTypeStats[pitchType].strikes++;
         if (action.outcome === 'whiff') {
           pitchTypeStats[pitchType].whiffs++;
         } else if (action.outcome === 'calledStrike') {
           pitchTypeStats[pitchType].calledStrikes++;
         }
-      }
-
-      if (action.wasRaceWin) {
-        raceWins++;
       }
 
       if (action.prePitchCount.strikes === 2 && ['whiff', 'calledStrike'].includes(action.outcome)) {
@@ -410,23 +406,18 @@ function exportLiveBPStats() {
     }
   });
 
-  // Calculate strike percentage
-  let strikePercentage = totalPitches > 0 ? (strikeCount / totalPitches) * 100 : 0;
+  let statsText = `Total Pitches: ${exportedTotalPitches}\n`;
+  statsText += `Total Race Wins: ${raceWins}\n`; // Directly use raceWins here
+  statsText += `Strike %: ${exportedStrikePercentage.toFixed(2)}%\n`;
 
-  // Format stats text
-  let statsText = `Total Pitches: ${totalPitches}\n`;
-  statsText += `Total Race Wins: ${raceWins}\n`;
-  statsText += `Strike %: ${strikePercentage.toFixed(2)}%\n`;
-
-  for (const [pitchType, stats] of Object.entries(pitchTypeStats)) {
-    const pitchTypeStrikePercentage = stats.strikes / totalPitches * 100;
+  Object.entries(pitchTypeStats).forEach(([pitchType, stats]) => {
+    const pitchTypeStrikePercentage = stats.strikes / stats.total * 100;
     statsText += `${pitchType} Strike %: ${pitchTypeStrikePercentage.toFixed(2)}%, Whiffs: ${stats.whiffs}, Called Strikes: ${stats.calledStrikes}\n`;
-  }
+  });
 
   statsText += `Total Ks: ${totalKs}\n`;
   statsText += `Total Walks: ${totalWalks}\n`;
 
-  // Copy stats to clipboard
   navigator.clipboard.writeText(statsText).then(() => {
     console.log('Live BP stats copied to clipboard.');
   }).catch(err => {
