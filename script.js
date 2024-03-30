@@ -9,6 +9,7 @@ let pitchType = "";
 let lastAction = null;
 let totalStrikesLiveBP = 0;
 let actionLog = [];
+let foulsAfterTwoStrikes = 0;
 
 document.getElementById('bullpenModeBtn').addEventListener('click', function() {
   mode = "bullpen";
@@ -178,6 +179,10 @@ function processOutcome(outcome) {
     }
   } else if (["whiff", "calledStrike", "foul"].includes(outcome)) {
 
+    if (outcome === "foul" && strikeCount === 2) {
+      foulsAfterTwoStrikes++;
+    }
+
     let wasStrike = (outcome === "foul" && strikeCount < 2) || outcome !== "foul";
     if (wasStrike) {
       strikeCount++;
@@ -281,7 +286,7 @@ function updateUI() {
     document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplayLiveBP}`;
 
     const adjustedStrikeCount = Math.max(0, strikeCount - actionLog.filter(action => action.type === 'strike').length);
-    let strikePercentageLiveBP = totalPitches > 0 ? (totalStrikesLiveBP / totalPitches) * 100 : 0;
+    let strikePercentageLiveBP = totalPitches > 0 ? ((totalStrikesLiveBP + foulsAfterTwoStrikes) / totalPitches) * 100 : 0;
     document.getElementById('strikePercentageLiveBP').innerText = `Strike %: ${strikePercentageLiveBP.toFixed(2)}`;
     document.getElementById('strikePercentageLiveBP').style.color = getPercentageColor(strikePercentageLiveBP);
   }
@@ -367,25 +372,25 @@ function removeLastPitchLogEntry() {
   }
 }
 
-function exportLiveBPStats() {
-  let exportedTotalPitches = mode === "bullpen" ? totalPitchesBullpen : totalPitches; // Choose based on mode
-  let exportedStrikePercentage = (mode === "bullpen" ? totalStrikesBullpen : totalStrikesLiveBP) / exportedTotalPitches * 100;
+      function exportLiveBPStats() {
+        let exportedTotalPitches = totalPitches; // Use totalPitches for Live BP mode
+        let exportedStrikePercentage = (totalStrikesLiveBP + foulsAfterTwoStrikes) / exportedTotalPitches * 100;
 
-  // No need to re-declare raceWins here, just use it directly.
+        let totalKs = 0; // Initialize totalKs
+        let totalWalks = 0; // Initialize totalWalks
 
-  let totalKs = 0; // Initialize totalKs, calculate based on your logic or actionLog analysis
-  let totalWalks = 0; // Initialize totalWalks, calculate based on your logic or actionLog analysis
+        let pitchTypeStats = {}; // Start with an empty object
 
-  let pitchTypeStats = {};
-  actionLog.forEach(action => {
-    if (action.type === 'pitchTypeSelection' || action.type === 'outcomeSelection') {
-      const pitchType = action.pitchType || 'unknown';
+        actionLog.forEach(action => {
+          if (action.type === 'outcomeSelection') {
+            const pitchType = action.pitchType || 'unknown';
 
-      if (!pitchTypeStats[pitchType]) {
-        pitchTypeStats[pitchType] = { total: 0, strikes: 0, whiffs: 0, calledStrikes: 0 };
-      }
+            // Dynamically initialize pitchType if not present
+            if (!pitchTypeStats[pitchType]) {
+              pitchTypeStats[pitchType] = { total: 0, strikes: 0, whiffs: 0, calledStrikes: 0 };
+            }
 
-      pitchTypeStats[pitchType].total++;
+            pitchTypeStats[pitchType].total++;
 
       if (['whiff', 'calledStrike', 'foul'].includes(action.outcome)) {
         pitchTypeStats[pitchType].strikes++;
@@ -407,12 +412,14 @@ function exportLiveBPStats() {
   });
 
   let statsText = `Total Pitches: ${exportedTotalPitches}\n`;
-  statsText += `Total Race Wins: ${raceWins}\n`; // Directly use raceWins here
+  statsText += `Total Race Wins: ${raceWins}\n`;
   statsText += `Strike %: ${exportedStrikePercentage.toFixed(2)}%\n`;
 
   Object.entries(pitchTypeStats).forEach(([pitchType, stats]) => {
-    const pitchTypeStrikePercentage = stats.strikes / stats.total * 100;
-    statsText += `${pitchType} Strike %: ${pitchTypeStrikePercentage.toFixed(2)}%, Whiffs: ${stats.whiffs}, Called Strikes: ${stats.calledStrikes}\n`;
+    if (stats.total > 0) { // Only include pitch types that were thrown
+      const pitchTypeStrikePercentage = stats.strikes / stats.total * 100;
+      statsText += `${pitchType} Strike %: ${pitchTypeStrikePercentage.toFixed(2)}%, Whiffs: ${stats.whiffs}, Called Strikes: ${stats.calledStrikes}\n`;
+    }
   });
 
   statsText += `Total Ks: ${totalKs}\n`;
@@ -425,7 +432,6 @@ function exportLiveBPStats() {
   });
 }
 
-// Add an event listener to your Export button (once you have it in your HTML)
 document.getElementById('exportBtn').addEventListener('click', exportLiveBPStats);
 
 
