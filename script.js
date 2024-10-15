@@ -266,34 +266,30 @@ function removeLastCompletedCount() {
 }
 
 function updateUI() {
+  let strikePercentage = pitchCount > 0 ? (strikeCount / pitchCount) * 100 : 0; // <--- Changed here: Calculate strike percentage based on current count
   if (mode === "bullpen") {
     document.getElementById('totalPitches').innerText = `Total Pitches: ${totalPitchesBullpen}`;
     let strikeDisplay = strikeCount === 2 ? `${strikeCount}🔥` : strikeCount;
     document.getElementById('currentCount').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeDisplay}`;
     let raceWinsDisplay = '🔥'.repeat(raceWins);
     document.getElementById('raceWins').innerText = `Race Wins: ${raceWinsDisplay}`;
-
-    let strikePercentage = totalPitchesBullpen > 0 ? (totalStrikesBullpen / totalPitchesBullpen) * 100 : 0;
     const strikePercentageElement = document.getElementById('strikePercentage');
     strikePercentageElement.innerText = `Strike %: ${strikePercentage.toFixed(2)}`;
-
     strikePercentageElement.style.color = getPercentageColor(strikePercentage);
   } else if (mode === "liveBP") {
     document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
     document.getElementById('currentCountLiveBP').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
-
     let raceWinsDisplayLiveBP = '🔥'.repeat(raceWins);
     document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplayLiveBP}`;
-
-    const adjustedStrikeCount = Math.max(0, strikeCount - actionLog.filter(action => action.type === 'strike').length);
-    let strikePercentageLiveBP = totalPitches > 0 ? ((totalStrikesLiveBP + foulsAfterTwoStrikes) / totalPitches) * 100 : 0;
-    document.getElementById('strikePercentageLiveBP').innerText = `Strike %: ${strikePercentageLiveBP.toFixed(2)}`;
-    document.getElementById('strikePercentageLiveBP').style.color = getPercentageColor(strikePercentageLiveBP);
+    const strikePercentageElementLiveBP = document.getElementById('strikePercentageLiveBP');
+    strikePercentageElementLiveBP.innerText = `Strike %: ${strikePercentage.toFixed(2)}`;
+    strikePercentageElementLiveBP.style.color = getPercentageColor(strikePercentage);
   }
 
   const shouldDisplayUndo = (mode === "bullpen" && totalPitchesBullpen > 0) || (mode === "liveBP" && totalPitches > 0);
   document.getElementById('undoBtn').style.display = shouldDisplayUndo ? 'inline-block' : 'none';
 }
+
 
 function getPercentageColor(percentage) {
 
