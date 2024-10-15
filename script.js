@@ -21,6 +21,11 @@ document.getElementById('liveBPModeBtn').addEventListener('click', function() {
   toggleMode();
 });
 
+document.getElementById('putawayModeBtn').addEventListener('click', function() {
+  mode = "putaway";
+  toggleMode();
+});
+
 function toggleMode() {
   if (mode === "bullpen") {
     document.getElementById('bullpenMode').style.display = 'block';
@@ -28,6 +33,9 @@ function toggleMode() {
   } else if (mode === "liveBP") {
     document.getElementById('bullpenMode').style.display = 'none';
     document.getElementById('liveBPMode').style.display = 'block';
+  } else if (mode === "putaway") {
+    document.getElementById('bullpenMode').style.display = 'block';
+    document.getElementById('liveBPMode').style.display = 'none';
   }
   resetCount();
 }
@@ -36,7 +44,7 @@ document.getElementById('strikeBtn').addEventListener('click', function() {
   actionLog.push(saveCurrentState());
   strikeCount++;
   pitchCount++;
-  if (mode === "bullpen") {
+  if (mode === "bullpen" || mode === "putaway") {
     totalPitchesBullpen++;
     totalStrikesBullpen++;
   } else {
@@ -45,13 +53,17 @@ document.getElementById('strikeBtn').addEventListener('click', function() {
   }
   updateUI();
   updateCurrentCount();
-  checkRaceCondition();
+  if (mode === "putaway" && strikeCount === 2) {
+    showPutawayOptions();
+  } else {
+    checkRaceCondition();
+  }
 });
 
 document.getElementById('ballBtn').addEventListener('click', function() {
   actionLog.push(saveCurrentState());
   pitchCount++;
-  if (mode === "bullpen") {
+  if (mode === "bullpen" || mode === "putaway") {
     totalPitchesBullpen++;
   } else {
     totalPitches++;
@@ -59,6 +71,22 @@ document.getElementById('ballBtn').addEventListener('click', function() {
   updateUI();
   updateCurrentCount();
   checkRaceCondition();
+});
+
+document.getElementById('kBtn').addEventListener('click', function() {
+  actionLog.push(saveCurrentState());
+  raceWins++;
+  logCount(strikeCount, pitchCount - strikeCount);
+  resetCount();
+  updateUI();
+  resetPutawayButtons();
+});
+
+document.getElementById('noKBtn').addEventListener('click', function() {
+  actionLog.push(saveCurrentState());
+  resetCount();
+  updateUI();
+  resetPutawayButtons();
 });
 
 document.getElementById('undoBtn').addEventListener('click', function() {
@@ -70,6 +98,11 @@ document.getElementById('undoBtn').addEventListener('click', function() {
     updateUI();
   }
 });
+
+function resetPutawayButtons() {
+  document.getElementById('putawayButtons').style.display = 'none';
+  document.getElementById('r2kButtons').style.display = 'block';
+}
 
 function saveCurrentState() {
   return {
@@ -166,7 +199,9 @@ function processOutcome(outcome) {
       strikeCount++;
       pitchCount++;
       if (mode === "liveBP") totalStrikesLiveBP++;
-      if (strikeCount === 2 && (pitchCount - strikeCount === 0 || pitchCount - strikeCount === 1)) {
+      if (mode === "putaway" && strikeCount === 2) {
+        showPutawayOptions();
+      } else if (strikeCount === 2 && (pitchCount - strikeCount === 0 || pitchCount - strikeCount === 1)) {
         raceWins++;
         updateRaceWins();
       }
@@ -187,6 +222,15 @@ function processOutcome(outcome) {
     resetForNextPitch(false);
   }
   updateUI();
+}
+
+function showPutawayOptions() {
+  if (mode === "putaway" && strikeCount === 2) {
+    document.getElementById('r2kButtons').style.display = 'none'; // Hide regular strike/ball buttons
+    document.getElementById('putawayButtons').style.display = 'block';
+    document.getElementById('kBtn').style.display = 'inline-block';
+    document.getElementById('noKBtn').style.display = 'inline-block';
+  }
 }
 
 function showInPlaySelection() {
@@ -224,6 +268,10 @@ function showPitchTypeSelection() {
   document.getElementById('pitchTypeSelection').style.display = 'block';
   document.getElementById('outcomeSelection').style.display = 'none';
   document.getElementById('inPlaySelection').style.display = 'none';
+  document.getElementById('kBtn').style.display = 'none';
+  document.getElementById('noKBtn').style.display = 'none';
+  document.getElementById('strikeBtn').style.display = 'inline-block';
+  document.getElementById('ballBtn').style.display = 'inline-block';
 }
 
 function removeLastPitchLogEntry() {
@@ -242,12 +290,12 @@ function removeLastCompletedCount() {
 
 function updateUI() {
   let strikePercentageFromLog = calculateStrikePercentageFromLog();
-  if (mode === "bullpen") {
+  if (mode === "bullpen" || mode === "putaway") {
     strikePercentageFromLog = totalPitchesBullpen > 0 ? (totalStrikesBullpen / totalPitchesBullpen) * 100 : 0;
     document.getElementById('totalPitches').innerText = `Total Pitches: ${totalPitchesBullpen}`;
     let strikeDisplay = strikeCount === 2 ? `${strikeCount}🔥` : strikeCount;
     document.getElementById('currentCount').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeDisplay}`;
-    let raceWinsDisplay = '🔥'.repeat(raceWins);
+    let raceWinsDisplay = mode === "putaway" ? '⚰️'.repeat(raceWins) : '🔥'.repeat(raceWins);
     document.getElementById('raceWins').innerText = `Race Wins: ${raceWinsDisplay}`;
     const strikePercentageElement = document.getElementById('strikePercentage');
     strikePercentageElement.innerText = `Strike %: ${strikePercentageFromLog.toFixed(2)}`;
@@ -276,7 +324,7 @@ function getPercentageColor(percentage) {
 }
 
 function updateCurrentCount() {
-  let currentCountDisplay = mode === "bullpen" ? 'currentCount' : 'currentCountLiveBP';
+  let currentCountDisplay = mode === "bullpen" || mode === "putaway" ? 'currentCount' : 'currentCountLiveBP';
   document.getElementById(currentCountDisplay).innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
 }
 
@@ -288,7 +336,7 @@ function resetCount() {
 
 function checkRaceCondition() {
   let completedCount = false;
-  if (strikeCount == 2) {
+  if (strikeCount == 2 && mode !== "putaway") {
     raceWins++;
     completedCount = true;
     logCount(strikeCount, pitchCount - strikeCount);
@@ -309,8 +357,8 @@ function checkRaceCondition() {
 }
 
 function updateRaceWins() {
-  let raceWinsDisplay = raceWins > 0 ? '🔥'.repeat(raceWins) : '';
-  if (mode === "bullpen") {
+  let raceWinsDisplay = raceWins > 0 ? (mode === "putaway" ? '⚰️' : '🔥').repeat(raceWins) : '';
+  if (mode === "bullpen" || mode === "putaway") {
     document.getElementById('raceWins').innerText = `Race Wins: ${raceWinsDisplay}`;
   } else if (mode === "liveBP") {
     document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplay}`;
