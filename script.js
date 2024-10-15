@@ -66,9 +66,7 @@ document.getElementById('undoBtn').addEventListener('click', function() {
     const previousState = actionLog.pop();
     restoreState(previousState);
     restorePitchLog(previousState.pitchLog);
-    if (previousState.completedCount) {
-      removeLastCompletedCount();
-    }
+    restoreCompletedCountLog(previousState.completedCountLog);
     updateUI();
   }
 });
@@ -85,7 +83,7 @@ function saveCurrentState() {
     foulsAfterTwoStrikes,
     mode,
     pitchLog: document.getElementById('pitchLog').innerHTML, // Save the pitch log state
-    completedCount: document.getElementById('countLog').innerHTML // Save completed count state
+    completedCountLog: document.getElementById('countLog').innerHTML // Save completed count log state
   };
 }
 
@@ -99,11 +97,14 @@ function restoreState(state) {
   totalStrikesLiveBP = state.totalStrikesLiveBP;
   foulsAfterTwoStrikes = state.foulsAfterTwoStrikes;
   mode = state.mode;
-  document.getElementById('countLog').innerHTML = state.completedCount; // Restore completed count state
 }
 
 function restorePitchLog(pitchLogHTML) {
   document.getElementById('pitchLog').innerHTML = pitchLogHTML;
+}
+
+function restoreCompletedCountLog(completedCountLogHTML) {
+  document.getElementById('countLog').innerHTML = completedCountLogHTML;
 }
 
 document.querySelectorAll("#pitchTypeSelection .btn").forEach(button => {
