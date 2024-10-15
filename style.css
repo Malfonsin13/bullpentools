@@ -46,3 +46,18 @@ li {
   background-color: #3c8ddb; /* Lighter Royal Blue */
   color: white;
 }
+
+#r2kButtons {
+  display: block;
+}
+
+#putawayButtons {
+  display: none;
+}
+
+button {
+  margin: 10px;
+  padding: 15px;
+  font-size: 1.2em;
+}
+
