@@ -11,8 +11,9 @@
 
 <body>
   <div id="modeSelection">
-    <button id="bullpenModeBtn">Bullpen Mode</button>
+    <button id="bullpenModeBtn">R2K Mode</button>
     <button id="liveBPModeBtn">Live BP Mode</button>
+    <button id="putawayModeBtn">Putaway Mode</button>
     <button id="undoBtn" style="background-color: red; color: white;">UNDO</button>
   </div>
 
@@ -22,8 +23,19 @@
     <div id="currentCount">Current Count: 0-0</div>
     <div id="strikePercentage">Strike %: 0</div>
     <div id="raceWins">Race Wins: 0</div>
-    <button id="strikeBtn">Strike</button>
-    <button id="ballBtn">Ball</button>
+
+    <!-- Regular buttons for R2K Mode -->
+    <div id="r2kButtons">
+      <button id="strikeBtn">Strike</button>
+      <button id="ballBtn">Ball</button>
+    </div>
+
+    <!-- Putaway Mode buttons: only displayed when in Putaway mode with 2 strikes -->
+    <div id="putawayButtons" style="display: none;">
+      <button id="kBtn">K</button>
+      <button id="noKBtn">NO K</button>
+    </div>
+
     <div id="completedCounts">Completed Counts:</div>
     <ul id="countLog"></ul>
   </div>
@@ -41,7 +53,6 @@
       <button class="btn" id="slider">SL</button>
       <button class="btn" id="changeup">CH</button>
       <button class="btn" id="splitter">SP</button>
-      <!-- Add other pitch types as needed -->
     </div>
 
     <!-- Outcome Selection -->
@@ -61,7 +72,6 @@
       <button class="btn" id="groundball">Groundball</button>
       <button class="btn" id="flyball">FlyBall</button>
       <button class="btn" id="linedrive">LineDrive</button>
-
     </div>
 
     <!-- Pitch Log Summary -->
@@ -71,11 +81,10 @@
       <div id="currentCountLiveBP">Current Count: 0-0</div> 
       <div id="raceWinsLiveBP">Race Wins: </div> 
       <div id="strikePercentageLiveBP">Strike %: 0</div>
-      <ul id="pitchLog"></ul></div>
-      <button id="exportBtn" style="margin-top: 20px;">Export Stats</button>
-    
+      <ul id="pitchLog"></ul>
+    </div>
+    <button id="exportBtn" style="margin-top: 20px;">Export Stats</button>
   </div>
-
 
   <script src="script.js"></script>
 </body>
