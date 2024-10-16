@@ -1,63 +1,78 @@
 body {
-    text-align: center;
-    font-family: 'Permanent Marker', cursive;
-    background-color: #0a2351; /* Brewers' Navy Blue */
-    color: #ffb517; /* Brewers' Gold */
-}
-
-button {
-    margin: 10px;
-    padding: 10px 20px;
-    font-size: 16px;
-    cursor: pointer;
-    background-color: #ffffff;
-    color: #0a2351;
-    border: none;
-    border-radius: 5px;
-    font-family: 'Permanent Marker', cursive;
-}
-
-#currentCount, #raceWins {
-    margin-bottom: 20px;
-}
-
-ul {
-    list-style-type: none;
-}
-
-li {
-    margin: 5px 0;
-}
-
-/* Navy Blue Shades for 4S, 2S, CT */
-#fourSeam, #twoSeam, #cutter {
-  background-color: #274472; /* Lighter Navy Blue */
-  color: white;
-}
-
-/* Metallic Gold Shades for CB, SL */
-#curveBall, #slider {
-  background-color: #d3a625; /* A different shade of gold */
-  color: white;
-}
-
-/* Royal Blue Shades for CH, SP */
-#changeup, #splitter {
-  background-color: #3c8ddb; /* Lighter Royal Blue */
-  color: white;
-}
-
-#r2kButtons {
-  display: block;
-}
-
-#putawayButtons {
-  display: none;
+  text-align: center;
+  font-family: 'Permanent Marker', cursive;
+  background-color: #0a2351; /* Brewers' Navy Blue */
+  color: #ffb517; /* Brewers' Gold */
 }
 
 button {
   margin: 10px;
-  padding: 15px;
-  font-size: 1.2em;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #ffffff;
+  color: #0a2351;
+  border: none;
+  border-radius: 5px;
+  font-family: 'Permanent Marker', cursive;
 }
 
+#currentCount, #raceWins {
+  margin-bottom: 20px;
+}
+
+ul {
+  list-style-type: none;
+}
+
+li {
+  margin: 5px 0;
+}
+
+/* Navy Blue Shades for 4S, 2S, CT */
+#fourSeam, #twoSeam, #cutter {
+background-color: #274472; /* Lighter Navy Blue */
+color: white;
+}
+
+/* Metallic Gold Shades for CB, SL */
+#curveBall, #slider {
+background-color: #d3a625; /* A different shade of gold */
+color: white;
+}
+
+/* Royal Blue Shades for CH, SP */
+#changeup, #splitter {
+background-color: #3c8ddb; /* Lighter Royal Blue */
+color: white;
+}
+
+#r2kButtons {
+display: block;
+}
+
+#putawayButtons {
+display: none;
+}
+
+button {
+margin: 10px;
+padding: 15px;
+font-size: 1.2em;
+}
+
+/* Styles for completed count log */
+#countLog {
+margin-top: 20px;
+padding: 0;
+max-width: 400px;
+margin-left: auto;
+margin-right: auto;
+}
+
+#countLog li {
+background-color: #ffb517;
+color: #0a2351;
+padding: 10px;
+border-radius: 5px;
+}
