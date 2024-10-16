@@ -30,12 +30,14 @@ function toggleMode() {
   if (mode === "bullpen") {
     document.getElementById('bullpenMode').style.display = 'block';
     document.getElementById('liveBPMode').style.display = 'none';
+    document.getElementById('putawayButtons').style.display = 'none';
   } else if (mode === "liveBP") {
     document.getElementById('bullpenMode').style.display = 'none';
     document.getElementById('liveBPMode').style.display = 'block';
   } else if (mode === "putaway") {
     document.getElementById('bullpenMode').style.display = 'block';
     document.getElementById('liveBPMode').style.display = 'none';
+    document.getElementById('putawayButtons').style.display = 'none';
   }
   resetCount();
 }
@@ -53,6 +55,14 @@ document.getElementById('strikeBtn').addEventListener('click', function() {
   }
   updateUI();
   updateCurrentCount();
+
+  if (mode === "bullpen" && strikeCount === 2) {
+    raceWins++;
+    logCount(strikeCount, pitchCount - strikeCount, false);
+    resetCount();
+    updateRaceWins();
+  }
+  
   if (mode === "putaway" && strikeCount === 2) {
     showPutawayOptions();
   } else {
@@ -70,13 +80,32 @@ document.getElementById('ballBtn').addEventListener('click', function() {
   }
   updateUI();
   updateCurrentCount();
+
+  if (mode === "putaway" && (pitchCount - strikeCount) === 2) {
+    logCount(strikeCount, pitchCount - strikeCount, false);
+    resetCount();
+  }
+  
+  if (mode === "bullpen" && (pitchCount - strikeCount) === 2) {
+    logCount(strikeCount, pitchCount - strikeCount, false);
+    resetCount();
+  }
+
   checkRaceCondition();
 });
 
 document.getElementById('kBtn').addEventListener('click', function() {
   actionLog.push(saveCurrentState());
   raceWins++;
-  logCount(strikeCount, pitchCount - strikeCount);
+  pitchCount++;
+  strikeCount++;
+  totalPitchesBullpen++;
+  totalStrikesBullpen++;
+
+  const balls = pitchCount - strikeCount;
+  const strikes = strikeCount;
+  
+  logCount(strikes, balls, true);
   resetCount();
   updateUI();
   resetPutawayButtons();
@@ -84,6 +113,9 @@ document.getElementById('kBtn').addEventListener('click', function() {
 
 document.getElementById('noKBtn').addEventListener('click', function() {
   actionLog.push(saveCurrentState());
+  pitchCount++;
+  totalPitchesBullpen++;
+  logCount(strikeCount, pitchCount - strikeCount, false);
   resetCount();
   updateUI();
   resetPutawayButtons();
@@ -187,7 +219,8 @@ document.querySelectorAll("#outcomeSelection .btn").forEach(button => {
 function processOutcome(outcome) {
   if (outcome === "ball") {
     pitchCount++;
-    if (pitchCount - strikeCount >= 4) {
+    if (mode === "bullpen" && pitchCount - strikeCount === 2) {
+      logCount(strikeCount, pitchCount - strikeCount, false);
       resetCount();
     }
   } else if (["whiff", "calledStrike", "foul"].includes(outcome)) {
@@ -225,12 +258,10 @@ function processOutcome(outcome) {
 }
 
 function showPutawayOptions() {
-  if (mode === "putaway" && strikeCount === 2) {
-    document.getElementById('r2kButtons').style.display = 'none'; // Hide regular strike/ball buttons
-    document.getElementById('putawayButtons').style.display = 'block';
-    document.getElementById('kBtn').style.display = 'inline-block';
-    document.getElementById('noKBtn').style.display = 'inline-block';
-  }
+  document.getElementById('r2kButtons').style.display = 'none'; // Hide regular strike/ball buttons
+  document.getElementById('putawayButtons').style.display = 'block';
+  document.getElementById('kBtn').style.display = 'inline-block';
+  document.getElementById('noKBtn').style.display = 'inline-block';
 }
 
 function showInPlaySelection() {
@@ -339,16 +370,12 @@ function checkRaceCondition() {
   if (strikeCount == 2 && mode !== "putaway") {
     raceWins++;
     completedCount = true;
-    logCount(strikeCount, pitchCount - strikeCount);
+    logCount(strikeCount, pitchCount - strikeCount, false);
     resetCount();
     updateRaceWins();
-  } else if (pitchCount - strikeCount == 2 && strikeCount == 0) {
+  } else if (pitchCount - strikeCount == 2 && strikeCount == 0 && mode === "bullpen") {
     completedCount = true;
-    logCount(strikeCount, pitchCount - strikeCount);
-    resetCount();
-  } else if (pitchCount >= 3) {
-    completedCount = true;
-    logCount(strikeCount, pitchCount - strikeCount);
+    logCount(strikeCount, pitchCount - strikeCount, false);
     resetCount();
   }
   if (completedCount) {
@@ -365,10 +392,13 @@ function updateRaceWins() {
   }
 }
 
-function logCount(strikes, balls) {
+function logCount(strikes, balls, isK) {
   let countLog = document.getElementById('countLog');
   let newEntry = document.createElement('li');
   newEntry.innerText = `Final Count: ${balls}-${strikes}`;
+  if (isK) {
+    newEntry.innerText += ' ⚰️';
+  }
   countLog.appendChild(newEntry);
 }
 
