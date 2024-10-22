@@ -14,6 +14,7 @@
     <button id="bullpenModeBtn">R2K Mode</button>
     <button id="liveBPModeBtn">Live BP Mode</button>
     <button id="putawayModeBtn">Putaway Mode</button>
+    <button id="pointsModeBtn">Points Mode</button>
     <button id="undoBtn" style="background-color: red; color: white;">UNDO</button>
   </div>
 
@@ -41,8 +42,13 @@
   </div>
 
   <div id="liveBPMode" style="display:none;">
-    <h2>Live BP Mode</h2>
-
+    <h2 id="modeTitle">Live BP Mode</h2>
+    <!-- Combo Selection -->
+    <!-- Points Container -->
+    <div id="pointsContainer" style="display: none;">
+      <div id="pointsDisplay">Points: 0</div>
+      <div id="comboPitchTypesDisplay">Combo Pitch Types: None</div>
+    </div>
     <!-- Pitch Type Selection -->
     <div id="pitchTypeSelection">
       <h3>Select Pitch Type</h3>
@@ -53,6 +59,19 @@
       <button class="btn" id="slider">SL</button>
       <button class="btn" id="changeup">CH</button>
       <button class="btn" id="splitter">SP</button>
+    </div>
+
+    <!-- Combo Pitch Type Selection -->
+    <div id="comboPitchTypeSelection" style="display: none;">
+      <h3>Select Combo Pitch Types</h3>
+      <button class="comboPitchTypeBtn" id="combo-fourSeam">4S</button>
+      <button class="comboPitchTypeBtn" id="combo-twoSeam">2S</button>
+      <button class="comboPitchTypeBtn" id="combo-cutter">CT</button>
+      <button class="comboPitchTypeBtn" id="combo-curveBall">CB</button>
+      <button class="comboPitchTypeBtn" id="combo-slider">SL</button>
+      <button class="comboPitchTypeBtn" id="combo-changeup">CH</button>
+      <button class="comboPitchTypeBtn" id="combo-splitter">SP</button>
+      <button id="comboSelectionDoneBtn">Done</button>
     </div>
 
     <!-- Pitch Location Selection -->
