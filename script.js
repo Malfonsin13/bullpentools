@@ -172,7 +172,14 @@ document.querySelectorAll('#pitchLocationSelection .locationBtn').forEach(button
   button.addEventListener('click', function() {
     pitchLocation = parseInt(this.id.replace('location-', ''));  // Capture pitch location
     actionLog.push(saveCurrentState());
-    showOutcomeSelection();  // Transition to outcome selection after selecting a pitch location
+
+    if (mode === 'points') {
+      // In Points Mode, process the outcome directly based on location
+      processOutcomeBasedOnLocation();
+    } else {
+      // For other modes, proceed to outcome selection
+      showOutcomeSelection();
+    }
   });
 });
 
@@ -411,6 +418,26 @@ function processOutcome(outcome) {
   updateUI();
 }
 
+function processOutcomeBasedOnLocation() {
+  // Define strike and ball locations
+  const strikeLocations = [7, 8, 9, 12, 13, 14, 17, 18, 19];
+  const ballLocations = [1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25];
+
+  let outcome = '';
+  if (strikeLocations.includes(pitchLocation)) {
+    outcome = 'calledStrike'; // Assume called strike for simplicity
+  } else if (ballLocations.includes(pitchLocation)) {
+    outcome = 'ball';
+  } else {
+    // Handle unexpected location if necessary
+    outcome = 'unknown';
+  }
+
+  actionLog.push(saveCurrentState());
+  processOutcome(outcome);
+}
+
+
 function showComboPitchTypeSelection() {
   document.getElementById('comboPitchTypeSelection').style.display = 'block';
   document.getElementById('pitchTypeSelection').style.display = 'none';
@@ -505,6 +532,7 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '') {
 
 function resetForNextPitch(resetCounts = true) {
   pitchType = "";  // Clear the pitch type
+  document.getElementById('pitchLocationSelection').style.display = 'none'; // Hide pitch location selection
   document.getElementById('outcomeSelection').style.display = 'none';  // Hide outcome buttons
   document.getElementById('inPlaySelection').style.display = 'none';   // Hide in-play selection if visible
   document.getElementById('pitchTypeSelection').style.display = 'block';  // Show pitch type selection again
@@ -512,6 +540,7 @@ function resetForNextPitch(resetCounts = true) {
     resetCount();
   }
 }
+
 
 function updatePointsDisplay() {
   document.getElementById('pointsDisplay').innerText = `Points: ${points}`;
