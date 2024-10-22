@@ -29,22 +29,44 @@ li {
   margin: 5px 0;
 }
 
-/* Navy Blue Shades for 4S, 2S, CT */
-#fourSeam, #twoSeam, #cutter {
-background-color: #274472; /* Lighter Navy Blue */
-color: white;
+/* Styles for Live BP Pitch Type Buttons */
+#pitchTypeSelection #fourSeam,
+#pitchTypeSelection #twoSeam,
+#pitchTypeSelection #cutter {
+  background-color: #274472;
+  color: white;
 }
 
-/* Metallic Gold Shades for CB, SL */
-#location-7, #location-8, #location-9, #location-12, #location-13, #location-14, #location-17, #location-18, #location-19  {
-background-color: #d3a625; /* A different shade of gold */
-color: white;
+#pitchTypeSelection #curveBall,
+#pitchTypeSelection #slider {
+  background-color: #d3a625;
+  color: white;
 }
 
-/* Metallic Gold Shades for Strikes */
-#curveBall, #slider {
-background-color: #d3a625; /* A different shade of gold */
-color: white;
+#pitchTypeSelection #changeup,
+#pitchTypeSelection #splitter {
+  background-color: #3c8ddb;
+  color: white;
+}
+
+/* Styles for Strike Locations */
+#location-7,
+#location-8,
+#location-9,
+#location-12,
+#location-13,
+#location-14,
+#location-17,
+#location-18,
+#location-19 {
+  background-color: #d3a625; /* Yellow color for strikes */
+  color: white;
+}
+
+/* Styles for Ball Locations */
+.locationBtn {
+  background-color: #0a2351; /* Navy Blue for balls */
+  color: white;
 }
 
 
@@ -107,3 +129,64 @@ color: #0a2351;
 padding: 10px;
 border-radius: 5px;
 }
+
+.comboPitchTypeBtn {
+  background-color: #007bff; /* Initial color */
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  margin: 5px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.comboPitchTypeBtn.selected {
+  background-color: #28a745; /* Color when selected */
+}
+.comboPitchTypeBtn {
+  background-color: #007bff; /* Initial color */
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  margin: 5px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.comboPitchTypeBtn.selected {
+  background-color: #28a745; /* Color when selected */
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#pointsContainer {
+  text-align: center;
+  margin: 20px 0;
+  display: none;
+}
+
+#pointsDisplay {
+  font-size: 36px; /* Increase font size */
+  font-weight: bold;
+  color: #ff5722; /* Bright color */
+}
+
+#comboPitchTypesDisplay {
+  font-size: 18px;
+  color: #555;
+}
+
+@keyframes slideOut {
+  0% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(100px); }
+}
+
+
+
