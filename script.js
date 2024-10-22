@@ -10,6 +10,8 @@ let totalStrikesLiveBP = 0;
 let actionLog = [];
 let foulsAfterTwoStrikes = 0;
 let pitchLocation = 0;
+let points = 0;
+let comboPitchTypes = [];
 
 // Save the pitch log state
 document.getElementById('bullpenModeBtn').addEventListener('click', function() {
@@ -27,21 +29,38 @@ document.getElementById('putawayModeBtn').addEventListener('click', function() {
   toggleMode();
 });
 
+document.getElementById('pointsModeBtn').addEventListener('click', function() {
+  mode = "points";
+  toggleMode();
+});
+
 function toggleMode() {
   if (mode === "bullpen") {
     document.getElementById('bullpenMode').style.display = 'block';
     document.getElementById('liveBPMode').style.display = 'none';
     document.getElementById('putawayButtons').style.display = 'none';
+    document.getElementById('pointsContainer').style.display = 'none';
   } else if (mode === "liveBP") {
     document.getElementById('bullpenMode').style.display = 'none';
     document.getElementById('liveBPMode').style.display = 'block';
+    document.getElementById('modeTitle').innerText = 'Live BP Mode';
+    document.getElementById('pointsContainer').style.display = 'none';
   } else if (mode === "putaway") {
     document.getElementById('bullpenMode').style.display = 'block';
     document.getElementById('liveBPMode').style.display = 'none';
     document.getElementById('putawayButtons').style.display = 'none';
+    document.getElementById('pointsContainer').style.display = 'none';
+  } else if (mode === "points") {
+    document.getElementById('bullpenMode').style.display = 'none';
+    document.getElementById('liveBPMode').style.display = 'block';
+    document.getElementById('modeTitle').innerText = 'Points Mode';
+    document.getElementById('pointsContainer').style.display = 'block';
+    showComboPitchTypeSelection();
   }
   resetCount();
 }
+
+
 
 document.getElementById('strikeBtn').addEventListener('click', function() {
   actionLog.push(saveCurrentState());
@@ -130,6 +149,23 @@ document.getElementById('undoBtn').addEventListener('click', function() {
     restoreCompletedCountLog(previousState.completedCountLog);
     updateUI();
   }
+});
+
+document.querySelectorAll("#comboPitchTypeSelection .comboPitchTypeBtn").forEach(button => {
+  button.addEventListener('click', function() {
+    this.classList.toggle('selected');
+    const pitchTypeId = this.id.replace('combo-', ''); // Remove 'combo-' prefix
+    if (comboPitchTypes.includes(pitchTypeId)) {
+      comboPitchTypes = comboPitchTypes.filter(pt => pt !== pitchTypeId);
+    } else {
+      comboPitchTypes.push(pitchTypeId);
+    }
+  });
+});
+
+
+document.getElementById('comboSelectionDoneBtn').addEventListener('click', function() {
+  showPitchTypeSelection(); // Proceed to regular pitch recording
 });
 
 document.querySelectorAll('#pitchLocationSelection .locationBtn').forEach(button => {
@@ -231,9 +267,13 @@ document.querySelectorAll("#outcomeSelection .btn").forEach(button => {
 
 
 function processOutcome(outcome) {
+  // Capture the count before processing the outcome
+  let previousCount = { balls: pitchCount - strikeCount, strikes: strikeCount };
+  let scenarioEmojis = '';
+
   if (outcome === "ball") {
     pitchCount++;
-    if (mode === "liveBP") {
+    if (mode === "liveBP" || mode === "points") {
       totalPitches++;
     }
     if (mode === "bullpen" && pitchCount - strikeCount === 2) {
@@ -248,11 +288,16 @@ function processOutcome(outcome) {
     if (wasStrike) {
       strikeCount++;
       pitchCount++;
-      if (mode === "liveBP") totalStrikesLiveBP++;
-totalPitches++;
+      if (mode === "liveBP" || mode === "points") {
+        totalStrikesLiveBP++;
+        totalPitches++;
+      }
       if (mode === "putaway" && strikeCount === 2) {
         showPutawayOptions();
-      } else if (strikeCount === 2 && (pitchCount - strikeCount === 0 || pitchCount - strikeCount === 1)) {
+      } else if (
+        strikeCount === 2 &&
+        (pitchCount - strikeCount === 0 || pitchCount - strikeCount === 1)
+      ) {
         raceWins++;
         updateRaceWins();
       }
@@ -268,11 +313,157 @@ totalPitches++;
     resetCount();
     resetForNextPitch();
   }
+
+  // Points Mode logic
+  if (mode === "points") {
+    let pointsToAdd = 0;
+    let pointsToDeduct = 0;
+
+    // Define strike and ball locations
+    const strikeLocations = [7, 8, 9, 12, 13, 14, 17, 18, 19];
+    const ballLocations = [
+      1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25,
+    ];
+
+    // Scenario 1: Strikes in specific locations
+    if (
+      ["whiff", "calledStrike", "foul"].includes(outcome) &&
+      strikeLocations.includes(pitchLocation)
+    ) {
+      pointsToAdd += 10
+      scenarioEmojis += '🎯';
+    }
+
+    // Scenario 2: Balls in specific locations
+    if (outcome === "ball" && ballLocations.includes(pitchLocation)) {
+      pointsToDeduct += 10
+      scenarioEmojis += '💀';
+    }
+
+    // Scenario 3: Getting ahead (0-0 to 0-1)
+    if (
+      previousCount.balls === 0 &&
+      previousCount.strikes === 0 &&
+      strikeCount === 1
+    ) {
+      pointsToAdd += 10
+      scenarioEmojis += '🚀';
+    }
+
+    // Scenario 4: Winning the race (0-2 or 1-2)
+    if (
+      strikeCount === 2 &&
+      (pitchCount - strikeCount === 0 || pitchCount - strikeCount === 1)
+    ) {
+      pointsToAdd += 10
+      scenarioEmojis += '🏁';
+    }
+
+    // Scenario 5: Losing the race (2-0 or 2-1)
+    if (
+      (pitchCount - strikeCount) === 2 &&
+      strikeCount <= 1 &&
+      previousCount.balls < 2
+    ) {
+      pointsToDeduct += 20
+      scenarioEmojis += '💀';
+    }
+
+    // Scenario 6: Putaway (getting a strikeout with a called strike or a whiff)
+    if (
+      strikeCount >= 3 &&
+      ["whiff", "calledStrike"].includes(outcome)
+    ) {
+      pointsToAdd += 10
+      scenarioEmojis += '⚡';
+    }
+
+    // Scenario 7: Walk (getting to 4 balls)
+    if (pitchCount - strikeCount >= 4) {
+      pointsToDeduct += 30
+      scenarioEmojis += '💀';
+      resetCount();
+    }
+
+    // Double points if last pitch type is in comboPitchTypes
+    if (comboPitchTypes.includes(pitchType) && pointsToAdd > 0) {
+      pointsToAdd *= 2
+      scenarioEmojis += '🔥';
+      displayComboNotification();
+    }
+
+    // Update points
+    points += pointsToAdd;
+    points -= pointsToDeduct;
+
+    if (pointsToDeduct > 0) {
+      displayPointsDeduction(pointsToDeduct);
+    }
+  
+    updatePointsDisplay();
+  }
+
   if (!["inPlay", "hbp"].includes(outcome)) {
-    logPitchResult(pitchType, outcome, pitchLocation);
+    logPitchResult(pitchType, outcome, pitchLocation, scenarioEmojis);
     resetForNextPitch(false);
   }
+
   updateUI();
+}
+
+function showComboPitchTypeSelection() {
+  document.getElementById('comboPitchTypeSelection').style.display = 'block';
+  document.getElementById('pitchTypeSelection').style.display = 'none';
+  document.getElementById('pitchLocationSelection').style.display = 'none';
+  document.getElementById('outcomeSelection').style.display = 'none';
+  document.getElementById('inPlaySelection').style.display = 'none';
+}
+
+function displayComboNotification() {
+  let notification = document.createElement('div');
+  notification.innerText = 'COMBO HIT!';
+  notification.style.position = 'fixed';
+  notification.style.top = '50%';
+  notification.style.left = '50%';
+  notification.style.transform = 'translate(-50%, -50%)';
+  notification.style.backgroundColor = 'yellow';
+  notification.style.padding = '20px';
+  notification.style.border = '2px solid black';
+  notification.style.zIndex = '1000';
+  notification.style.fontSize = '32px';
+  notification.style.fontWeight = 'bold';
+  notification.style.borderRadius = '10px';
+  notification.style.animation = 'fadeOut 2s forwards';
+
+  document.body.appendChild(notification);
+
+  // Remove the notification after animation
+  setTimeout(() => {
+    notification.remove();
+  }, 2000);
+}
+
+function displayPointsDeduction(pointsLost) {
+  let deductionNotification = document.createElement('div');
+  deductionNotification.innerText = `-${pointsLost} 💀`;
+  deductionNotification.style.position = 'fixed';
+  deductionNotification.style.top = '10%';
+  deductionNotification.style.right = '10%';
+  deductionNotification.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+  deductionNotification.style.color = 'red';
+  deductionNotification.style.padding = '15px';
+  deductionNotification.style.borderRadius = '10px';
+  deductionNotification.style.fontSize = '24px';
+  deductionNotification.style.fontWeight = 'bold';
+  deductionNotification.style.zIndex = '1000';
+  deductionNotification.style.animation = 'slideOut 2s forwards';
+
+  document.body.appendChild(deductionNotification);
+
+  // Remove the notification after animation
+  setTimeout(() => {
+    deductionNotification.remove();
+  }, 2000);
 }
 
 
@@ -291,12 +482,12 @@ function showInPlaySelection() {
 document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
   button.addEventListener('click', function() {
     let inPlayResult = this.id;
-    logPitchResult(pitchType, "In Play - " + inPlayResult);
+    logPitchResult(pitchType, "In Play - " + inPlayResult, pitchLocation, '');
     resetForNextPitch();
   });
 });
 
-function logPitchResult(pitchType, result, location) {
+function logPitchResult(pitchType, result, location, scenarioEmojis = '') {
   let pitchLog = document.getElementById('pitchLog');
   let newEntry = document.createElement('li');
   let currentCountText = `${pitchCount - strikeCount}-${strikeCount}`;
@@ -304,24 +495,32 @@ function logPitchResult(pitchType, result, location) {
   let pitchTypeText = pitchType ? pitchType.toUpperCase() : 'UNKNOWN';
   let locationText = (location !== undefined && location !== null) ? location : 'UNKNOWN';
 
-  newEntry.innerText = `${pitchTypeText}, Location: ${locationText}, Result: ${result}, Count: ${currentCountText}`;
+  newEntry.innerText = `${pitchTypeText}, Location: ${locationText}, Result: ${result}, Count: ${currentCountText} ${scenarioEmojis}`;
   pitchLog.appendChild(newEntry);
   updateCurrentCount();
   updateUI();
 }
 
 
+
 function resetForNextPitch(resetCounts = true) {
   pitchType = "";  // Clear the pitch type
   document.getElementById('outcomeSelection').style.display = 'none';  // Hide outcome buttons
+  document.getElementById('inPlaySelection').style.display = 'none';   // Hide in-play selection if visible
   document.getElementById('pitchTypeSelection').style.display = 'block';  // Show pitch type selection again
   if (resetCounts) {
     resetCount();
   }
 }
 
+function updatePointsDisplay() {
+  document.getElementById('pointsDisplay').innerText = `Points: ${points}`;
+  const comboPitchTypesText = comboPitchTypes.length > 0 ? comboPitchTypes.join(', ') : 'None';
+  document.getElementById('comboPitchTypesDisplay').innerText = `Combo Pitch Types: ${comboPitchTypesText}`;
+}
 
 function showPitchTypeSelection() {
+  document.getElementById('comboPitchTypeSelection').style.display = 'none';
   document.getElementById('pitchTypeSelection').style.display = 'block';
   document.getElementById('outcomeSelection').style.display = 'none';
   document.getElementById('inPlaySelection').style.display = 'none';
@@ -365,8 +564,16 @@ function updateUI() {
     const strikePercentageElementLiveBP = document.getElementById('strikePercentageLiveBP');
     strikePercentageElementLiveBP.innerText = `Strike %: ${strikePercentageFromLog.toFixed(2)}`;
     strikePercentageElementLiveBP.style.color = getPercentageColor(strikePercentageFromLog);
-  }
-
+    } else if (mode === "points") {
+      document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
+      document.getElementById('currentCountLiveBP').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
+      let raceWinsDisplayLiveBP = '🔥'.repeat(raceWins);
+      document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplayLiveBP}`;
+      const strikePercentageElementLiveBP = document.getElementById('strikePercentageLiveBP');
+      strikePercentageElementLiveBP.innerText = `Strike %: ${strikePercentageFromLog.toFixed(2)}`;
+      strikePercentageElementLiveBP.style.color = getPercentageColor(strikePercentageFromLog);
+    }
+  
   const shouldDisplayUndo = actionLog.length > 0;
   document.getElementById('undoBtn').style.display = shouldDisplayUndo ? 'inline-block' : 'none';
 }
