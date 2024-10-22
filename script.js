@@ -9,6 +9,7 @@ let pitchType = "";
 let totalStrikesLiveBP = 0;
 let actionLog = [];
 let foulsAfterTwoStrikes = 0;
+let pitchLocation = 0;
 
 // Save the pitch log state
 document.getElementById('bullpenModeBtn').addEventListener('click', function() {
@@ -131,6 +132,22 @@ document.getElementById('undoBtn').addEventListener('click', function() {
   }
 });
 
+document.querySelectorAll('#pitchLocationSelection .locationBtn').forEach(button => {
+  button.addEventListener('click', function() {
+    pitchLocation = parseInt(this.id.replace('location-', ''));  // Capture pitch location
+    actionLog.push(saveCurrentState());
+    showOutcomeSelection();  // Transition to outcome selection after selecting a pitch location
+  });
+});
+
+document.querySelectorAll("#pitchTypeSelection .btn").forEach(button => {
+  button.addEventListener('click', function() {
+    pitchType = this.id;
+    actionLog.push(saveCurrentState());
+    showPitchLocationSelection();
+  });
+});
+
 function resetPutawayButtons() {
   document.getElementById('putawayButtons').style.display = 'none';
   document.getElementById('r2kButtons').style.display = 'block';
@@ -172,13 +189,7 @@ function restoreCompletedCountLog(completedCountLogHTML) {
   document.getElementById('countLog').innerHTML = completedCountLogHTML;
 }
 
-document.querySelectorAll("#pitchTypeSelection .btn").forEach(button => {
-  button.addEventListener('click', function() {
-    pitchType = this.id;
-    actionLog.push(saveCurrentState());
-    showOutcomeSelection();
-  });
-});
+
 
 // Calculate strike percentage based on the log
 function calculateStrikePercentageFromLog() {
@@ -199,26 +210,32 @@ function updateStrikePercentageDisplay(strikePercentage) {
   document.getElementById('strikePercentageLiveBP').textContent = 'Strike %: ' + strikePercentage.toFixed(2);
 }
 
+function showPitchLocationSelection() {
+  document.getElementById('pitchTypeSelection').style.display = 'none';
+  document.getElementById('pitchLocationSelection').style.display = 'block';
+}
+
 function showOutcomeSelection() {
   document.getElementById('pitchTypeSelection').style.display = 'none';
+  document.getElementById('pitchLocationSelection').style.display = 'none';
   document.getElementById('outcomeSelection').style.display = 'block';
 }
 
 document.querySelectorAll("#outcomeSelection .btn").forEach(button => {
   button.addEventListener('click', function() {
-    let outcome = this.id;
+    let outcome = this.id;  // Capture outcome selection
     actionLog.push(saveCurrentState());
-    if (mode === "liveBP") {
-      totalPitches++;
-      updateUI();
-    }
-    processOutcome(outcome);
+    processOutcome(outcome);  // Use the function that updates counts and UI
   });
 });
+
 
 function processOutcome(outcome) {
   if (outcome === "ball") {
     pitchCount++;
+    if (mode === "liveBP") {
+      totalPitches++;
+    }
     if (mode === "bullpen" && pitchCount - strikeCount === 2) {
       logCount(strikeCount, pitchCount - strikeCount, false);
       resetCount();
@@ -232,6 +249,7 @@ function processOutcome(outcome) {
       strikeCount++;
       pitchCount++;
       if (mode === "liveBP") totalStrikesLiveBP++;
+totalPitches++;
       if (mode === "putaway" && strikeCount === 2) {
         showPutawayOptions();
       } else if (strikeCount === 2 && (pitchCount - strikeCount === 0 || pitchCount - strikeCount === 1)) {
@@ -246,16 +264,17 @@ function processOutcome(outcome) {
     resetCount();
     showInPlaySelection();
   } else if (outcome === "hbp") {
-    logPitchResult(pitchType, "HBP");
+    logPitchResult(pitchType, "HBP", pitchLocation);
     resetCount();
     resetForNextPitch();
   }
   if (!["inPlay", "hbp"].includes(outcome)) {
-    logPitchResult(pitchType, outcome);
+    logPitchResult(pitchType, outcome, pitchLocation);
     resetForNextPitch(false);
   }
   updateUI();
 }
+
 
 function showPutawayOptions() {
   document.getElementById('r2kButtons').style.display = 'none'; // Hide regular strike/ball buttons
@@ -277,23 +296,30 @@ document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
   });
 });
 
-function logPitchResult(pitchType, result) {
+function logPitchResult(pitchType, result, location) {
   let pitchLog = document.getElementById('pitchLog');
   let newEntry = document.createElement('li');
   let currentCountText = `${pitchCount - strikeCount}-${strikeCount}`;
-  newEntry.innerText = `${pitchType.toUpperCase()}, Result: ${result}, Count: ${currentCountText}`;
+
+  let pitchTypeText = pitchType ? pitchType.toUpperCase() : 'UNKNOWN';
+  let locationText = (location !== undefined && location !== null) ? location : 'UNKNOWN';
+
+  newEntry.innerText = `${pitchTypeText}, Location: ${locationText}, Result: ${result}, Count: ${currentCountText}`;
   pitchLog.appendChild(newEntry);
   updateCurrentCount();
   updateUI();
 }
 
+
 function resetForNextPitch(resetCounts = true) {
-  pitchType = "";
-  showPitchTypeSelection();
+  pitchType = "";  // Clear the pitch type
+  document.getElementById('outcomeSelection').style.display = 'none';  // Hide outcome buttons
+  document.getElementById('pitchTypeSelection').style.display = 'block';  // Show pitch type selection again
   if (resetCounts) {
     resetCount();
   }
 }
+
 
 function showPitchTypeSelection() {
   document.getElementById('pitchTypeSelection').style.display = 'block';
@@ -468,4 +494,8 @@ function exportLiveBPStats() {
 
 document.addEventListener('DOMContentLoaded', function() {
   toggleMode();
+  document.getElementById('pitchLocationSelection').style.display = 'none';
+  document.getElementById('outcomeSelection').style.display = 'none';
+
+document.getElementById('pitchTypeSelection').style.display = 'block';
 });
