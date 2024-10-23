@@ -275,7 +275,11 @@ document.querySelectorAll("#outcomeSelection .btn").forEach(button => {
 
 function processOutcome(outcome) {
   // Capture the count before processing the outcome
-  let previousCount = { balls: pitchCount - strikeCount, strikes: strikeCount };
+  let previousCount = {
+    balls: pitchCount - strikeCount,
+    strikes: strikeCount,
+    pitchCount: pitchCount // Include total pitches thrown before this pitch
+  };
   let scenarioEmojis = '';
 
   if (outcome === "ball") {
@@ -283,27 +287,133 @@ function processOutcome(outcome) {
     if (mode === "liveBP" || mode === "points") {
       totalPitches++;
     }
+
+    // Points Mode logic for 'ball' outcome
+    if (mode === "points") {
+      let pointsToDeduct = 0;
+
+      // Define ball locations
+      const ballLocations = [1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25];
+
+      // Scenario 2: Balls in specific locations
+      if (ballLocations.includes(pitchLocation)) {
+        pointsToDeduct += 10;
+        scenarioEmojis += '💀';
+      }
+
+      // Scenario 5: Losing the race (getting to 2 balls before 2 strikes within first 3 pitches)
+      if (
+        previousCount.balls === 1 &&
+        pitchCount - strikeCount === 2 &&
+        strikeCount < 2 &&
+        pitchCount <= 3
+      ) {
+        pointsToDeduct += 20;
+        scenarioEmojis += '💀';
+      }
+
+      // Scenario 7: Walk (getting to 4 balls)
+      if (pitchCount - strikeCount >= 4) {
+        pointsToDeduct += 30;
+        scenarioEmojis += '💀';
+        resetCount();
+      }
+
+      // Update points
+      points -= pointsToDeduct;
+
+      if (pointsToDeduct > 0) {
+        displayPointsDeduction(pointsToDeduct);
+      }
+
+      updatePointsDisplay();
+    }
+
+    // Handle resets for bullpen mode
     if (mode === "bullpen" && pitchCount - strikeCount === 2) {
       logCount(strikeCount, pitchCount - strikeCount, false);
       resetCount();
     }
+
   } else if (["whiff", "calledStrike", "foul"].includes(outcome)) {
+    // Update counts
     if (outcome === "foul" && strikeCount === 2) {
       foulsAfterTwoStrikes++;
     }
     let wasStrike = (outcome === "foul" && strikeCount < 2) || outcome !== "foul";
     if (wasStrike) {
       strikeCount++;
-      pitchCount++;
-      if (mode === "liveBP" || mode === "points") {
-        totalStrikesLiveBP++;
-        totalPitches++;
+    }
+    pitchCount++;
+    if (mode === "liveBP" || mode === "points") {
+      totalStrikesLiveBP++;
+      totalPitches++;
+    }
+
+    // Points Mode logic for 'strike' outcome
+    if (mode === "points") {
+      let pointsToAdd = 0;
+
+      // Define strike locations
+      const strikeLocations = [7, 8, 9, 12, 13, 14, 17, 18, 19];
+
+      // Scenario 1: Strikes in specific locations
+      if (strikeLocations.includes(pitchLocation)) {
+        pointsToAdd += 10;
+        scenarioEmojis += '🎯';
       }
+
+      // Scenario 3: Getting ahead (0-0 to 0-1)
+      if (
+        previousCount.balls === 0 &&
+        previousCount.strikes === 0 &&
+        strikeCount === 1
+      ) {
+        pointsToAdd += 10;
+        scenarioEmojis += '🚀';
+      }
+
+      // Scenario 4: Winning the race to two strikes within first 3 pitches
+      if (
+        strikeCount === 2 &&
+        previousCount.strikes === 1 &&
+        pitchCount <= 3
+      ) {
+        pointsToAdd += 10;
+        scenarioEmojis += '🏁';
+      }
+
+      // Scenario 6: Putaway (getting a strikeout with a strike immediately after getting to 2 strikes)
+      if (
+        strikeCount >= 3 &&
+        previousCount.strikes === 2 &&
+        pitchCount - previousCount.pitchCount === 1
+      ) {
+        pointsToAdd += 10;
+        scenarioEmojis += '⚡';
+      }
+
+      // Double points if last pitch type is in comboPitchTypes
+      if (comboPitchTypes.includes(pitchType) && pointsToAdd > 0) {
+        pointsToAdd *= 2;
+        scenarioEmojis += '🔥';
+        displayComboNotification();
+      }
+
+      // Update points
+      points += pointsToAdd;
+
+      updatePointsDisplay();
+    }
+
+    // Handle race wins and putaway options
+    if (wasStrike) {
       if (mode === "putaway" && strikeCount === 2) {
         showPutawayOptions();
       } else if (
+        mode !== "putaway" &&
         strikeCount === 2 &&
-        (pitchCount - strikeCount === 0 || pitchCount - strikeCount === 1)
+        pitchCount <= 3
       ) {
         raceWins++;
         updateRaceWins();
@@ -312,111 +422,108 @@ function processOutcome(outcome) {
         resetCount();
       }
     }
+
+  } else if (outcome === "strike") {
+    // This is for Points Mode where we have 'strike' as outcome
+    strikeCount++;
+    pitchCount++;
+    if (mode === "liveBP" || mode === "points") {
+      totalStrikesLiveBP++;
+      totalPitches++;
+    }
+
+    // Points Mode logic for 'strike' outcome
+    if (mode === "points") {
+      let pointsToAdd = 0;
+
+      // Define strike locations
+      const strikeLocations = [7, 8, 9, 12, 13, 14, 17, 18, 19];
+
+      // Scenario 1: Strikes in specific locations
+      if (strikeLocations.includes(pitchLocation)) {
+        pointsToAdd += 10;
+        scenarioEmojis += '🎯';
+      }
+
+      // Scenario 3: Getting ahead (0-0 to 0-1)
+      if (
+        previousCount.balls === 0 &&
+        previousCount.strikes === 0 &&
+        strikeCount === 1
+      ) {
+        pointsToAdd += 10;
+        scenarioEmojis += '🚀';
+      }
+
+      // Scenario 4: Winning the race to two strikes within first 3 pitches
+      if (
+        strikeCount === 2 &&
+        previousCount.strikes === 1 &&
+        pitchCount <= 3
+      ) {
+        pointsToAdd += 10;
+        scenarioEmojis += '🏁';
+      }
+
+      // Scenario 6: Putaway (getting a strikeout with a strike immediately after getting to 2 strikes)
+      if (
+        strikeCount >= 3 &&
+        previousCount.strikes === 2 &&
+        pitchCount - previousCount.pitchCount === 1
+      ) {
+        pointsToAdd += 10;
+        scenarioEmojis += '⚡';
+      }
+
+      // Double points if last pitch type is in comboPitchTypes
+      if (comboPitchTypes.includes(pitchType) && pointsToAdd > 0) {
+        pointsToAdd *= 2;
+        scenarioEmojis += '🔥';
+        displayComboNotification();
+      }
+
+      // Update points
+      points += pointsToAdd;
+
+      updatePointsDisplay();
+    }
+
+    // Handle race wins and putaway options
+    if (mode === "putaway" && strikeCount === 2) {
+      showPutawayOptions();
+    } else if (
+      mode !== "putaway" &&
+      strikeCount === 2 &&
+      pitchCount <= 3
+    ) {
+      raceWins++;
+      updateRaceWins();
+    }
+    if (strikeCount >= 3) {
+      resetCount();
+    }
+
   } else if (outcome === "inPlay") {
     resetCount();
     showInPlaySelection();
+
   } else if (outcome === "hbp") {
     logPitchResult(pitchType, "HBP", pitchLocation);
     resetCount();
     resetForNextPitch();
   }
 
-  // Points Mode logic
-  if (mode === "points") {
-    let pointsToAdd = 0;
-    let pointsToDeduct = 0;
-
-    // Define strike and ball locations
-    const strikeLocations = [7, 8, 9, 12, 13, 14, 17, 18, 19];
-    const ballLocations = [
-      1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25,
-    ];
-
-    // Scenario 1: Strikes in specific locations
-    if (
-      ["whiff", "calledStrike", "foul"].includes(outcome) &&
-      strikeLocations.includes(pitchLocation)
-    ) {
-      pointsToAdd += 10
-      scenarioEmojis += '🎯';
-    }
-
-    // Scenario 2: Balls in specific locations
-    if (outcome === "ball" && ballLocations.includes(pitchLocation)) {
-      pointsToDeduct += 10
-      scenarioEmojis += '💀';
-    }
-
-    // Scenario 3: Getting ahead (0-0 to 0-1)
-    if (
-      previousCount.balls === 0 &&
-      previousCount.strikes === 0 &&
-      strikeCount === 1
-    ) {
-      pointsToAdd += 10
-      scenarioEmojis += '🚀';
-    }
-
-    // Scenario 4: Winning the race (0-2 or 1-2)
-    if (
-      strikeCount === 2 &&
-      (pitchCount - strikeCount === 0 || pitchCount - strikeCount === 1)
-    ) {
-      pointsToAdd += 10
-      scenarioEmojis += '🏁';
-    }
-
-    // Scenario 5: Losing the race (2-0 or 2-1)
-    if (
-      (pitchCount - strikeCount) === 2 &&
-      strikeCount <= 1 &&
-      previousCount.balls < 2
-    ) {
-      pointsToDeduct += 20
-      scenarioEmojis += '💀';
-    }
-
-    // Scenario 6: Putaway (getting a strikeout with a called strike or a whiff)
-    if (
-      strikeCount >= 3 &&
-      ["whiff", "calledStrike"].includes(outcome)
-    ) {
-      pointsToAdd += 10
-      scenarioEmojis += '⚡';
-    }
-
-    // Scenario 7: Walk (getting to 4 balls)
-    if (pitchCount - strikeCount >= 4) {
-      pointsToDeduct += 30
-      scenarioEmojis += '💀';
-      resetCount();
-    }
-
-    // Double points if last pitch type is in comboPitchTypes
-    if (comboPitchTypes.includes(pitchType) && pointsToAdd > 0) {
-      pointsToAdd *= 2
-      scenarioEmojis += '🔥';
-      displayComboNotification();
-    }
-
-    // Update points
-    points += pointsToAdd;
-    points -= pointsToDeduct;
-
-    if (pointsToDeduct > 0) {
-      displayPointsDeduction(pointsToDeduct);
-    }
-  
-    updatePointsDisplay();
-  }
-
+  // Log the pitch result and reset for next pitch if necessary
   if (!["inPlay", "hbp"].includes(outcome)) {
     logPitchResult(pitchType, outcome, pitchLocation, scenarioEmojis);
     resetForNextPitch(false);
   }
 
+  // Update the UI
   updateUI();
 }
+
+
 
 function processOutcomeBasedOnLocation() {
   // Define strike and ball locations
@@ -425,11 +532,10 @@ function processOutcomeBasedOnLocation() {
 
   let outcome = '';
   if (strikeLocations.includes(pitchLocation)) {
-    outcome = 'calledStrike'; // Assume called strike for simplicity
+    outcome = 'strike';
   } else if (ballLocations.includes(pitchLocation)) {
     outcome = 'ball';
   } else {
-    // Handle unexpected location if necessary
     outcome = 'unknown';
   }
 
