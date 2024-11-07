@@ -615,8 +615,16 @@ function showInPlaySelection() {
 document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
   button.addEventListener('click', function() {
     let inPlayResult = this.id;
+    pitchCount++;
+    if (mode === "liveBP" || mode === "points") {
+      totalPitches++;
+    } else if (mode === "bullpen" || mode === "putaway") {
+      totalPitchesBullpen++;
+    }
+
     logPitchResult(pitchType, "In Play - " + inPlayResult, pitchLocation, '');
     resetForNextPitch();
+    updateUI();
   });
 });
 
