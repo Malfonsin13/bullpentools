@@ -740,6 +740,7 @@ function updateCurrentCount() {
 function resetCount() {
   pitchCount = 0;
   strikeCount = 0;
+  foulsAfterTwoStrikes = 0;
   updateUI();
 }
 
@@ -862,6 +863,14 @@ document.getElementById('heatMapBtn').addEventListener('click', function() {
     this.innerText = 'HEAT MAP';
   }
 });
+
+document.getElementById('nextBatterBtn').addEventListener('click', function() {
+  actionLog.push(saveCurrentState()); // Save the current state for undo functionality
+  resetCount(); // Reset the current count to 0-0
+  updateCurrentCount(); // Update the UI to reflect the new count
+  updateUI();
+});
+
 
 
 function exportLiveBPStats() {
