@@ -153,6 +153,13 @@ document.getElementById('undoBtn').addEventListener('click', function() {
   }
 });
 
+document.getElementById('nextBatterBtn').addEventListener('click', function() {
+  actionLog.push(saveCurrentState()); // Save the current state for undo functionality
+  resetCount(); // Reset the current count to 0-0
+  updateCurrentCount(); // Update the UI to reflect the new count
+  updateUI();
+});
+
 document.querySelectorAll("#comboPitchTypeSelection .comboPitchTypeBtn").forEach(button => {
   button.addEventListener('click', function() {
     this.classList.toggle('selected');
@@ -863,14 +870,6 @@ document.getElementById('heatMapBtn').addEventListener('click', function() {
     this.innerText = 'HEAT MAP';
   }
 });
-
-document.getElementById('nextBatterBtn').addEventListener('click', function() {
-  actionLog.push(saveCurrentState()); // Save the current state for undo functionality
-  resetCount(); // Reset the current count to 0-0
-  updateCurrentCount(); // Update the UI to reflect the new count
-  updateUI();
-});
-
 
 
 function exportLiveBPStats() {
