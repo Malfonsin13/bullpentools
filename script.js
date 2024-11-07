@@ -12,6 +12,8 @@ let foulsAfterTwoStrikes = 0;
 let pitchLocation = 0;
 let points = 0;
 let comboPitchTypes = [];
+let isHeatMapMode = false;
+
 
 // Save the pitch log state
 document.getElementById('bullpenModeBtn').addEventListener('click', function() {
@@ -768,6 +770,74 @@ function updateRaceWins() {
   }
 }
 
+function showHeatMap() {
+  // Hide other selections
+  document.getElementById('pitchTypeSelection').style.display = 'none';
+  document.getElementById('pitchLocationSelection').style.display = 'none';
+  document.getElementById('outcomeSelection').style.display = 'none';
+  document.getElementById('inPlaySelection').style.display = 'none';
+  // Show heatmap grid
+  document.getElementById('heatmapGrid').style.display = 'block';
+  // Compute counts and update colors
+  updateHeatMap();
+}
+
+function hideHeatMap() {
+  // Hide heatmap grid
+  document.getElementById('heatmapGrid').style.display = 'none';
+  // Show pitch type selection
+  document.getElementById('pitchTypeSelection').style.display = 'block';
+}
+
+function updateHeatMap() {
+  // Initialize counts
+  let locationCounts = {};
+  for (let i = 1; i <= 25; i++) {
+    locationCounts[i] = 0;
+  }
+  // Get pitch log entries
+  let pitchLogItems = document.querySelectorAll('#pitchLog li');
+  pitchLogItems.forEach(item => {
+    // Extract location from item.innerText
+    // Format: 'PITCHTYPE, Location: LOCATION, Result: RESULT, Count: COUNT'
+    let text = item.innerText;
+    let match = text.match(/Location:\s*(\d+)/);
+    if (match) {
+      let loc = parseInt(match[1]);
+      if (locationCounts.hasOwnProperty(loc)) {
+        locationCounts[loc]++;
+      }
+    }
+  });
+  // Get max count
+  let counts = Object.values(locationCounts);
+  let maxCount = Math.max(...counts);
+  // Update button colors
+  for (let i = 1; i <= 25; i++) {
+    let count = locationCounts[i];
+    let button = document.getElementById('heatmap-' + i);
+    if (button) {
+      let color = getHeatMapColor(count, maxCount);
+      button.style.backgroundColor = color;
+      button.innerText = count; // Show count
+      button.style.pointerEvents = 'none'; // Make button non-clickable
+    }
+  }
+}
+
+function getHeatMapColor(count, maxCount) {
+  if (maxCount === 0) {
+    return '#FFFFFF'; // Return white if maxCount is zero
+  }
+  // Map count to a value between 0 and 1
+  let ratio = count / maxCount;
+  // Compute green and blue components (from white to red)
+  let greenBlue = Math.round(255 - (246 * ratio)); // From 255 to 9
+  let color = `rgb(255, ${greenBlue}, ${greenBlue})`; // From white to red
+  return color;
+}
+
+
 function logCount(strikes, balls, isK) {
   let countLog = document.getElementById('countLog');
   let newEntry = document.createElement('li');
@@ -781,6 +851,18 @@ function logCount(strikes, balls, isK) {
 document.getElementById('exportBtn').addEventListener('click', function() {
   exportLiveBPStats();
 });
+
+document.getElementById('heatMapBtn').addEventListener('click', function() {
+  isHeatMapMode = !isHeatMapMode; // Toggle heatmap mode
+  if (isHeatMapMode) {
+    showHeatMap();
+    this.innerText = 'BACK';
+  } else {
+    hideHeatMap();
+    this.innerText = 'HEAT MAP';
+  }
+});
+
 
 function exportLiveBPStats() {
   let exportedTotalPitches = totalPitches; // Use totalPitches for Live BP mode
@@ -846,6 +928,6 @@ document.addEventListener('DOMContentLoaded', function() {
   toggleMode();
   document.getElementById('pitchLocationSelection').style.display = 'none';
   document.getElementById('outcomeSelection').style.display = 'none';
-
-document.getElementById('pitchTypeSelection').style.display = 'block';
+  document.getElementById('pitchTypeSelection').style.display = 'block';
+  document.getElementById('heatmapGrid').style.display = 'none';
 });
