@@ -749,23 +749,22 @@ function applyTagToSelectedPitches() {
 
     // Store tag and note
     pitchTags[pitchId] = {
-      flag: flagData,
+      emoji: flagData.emoji,
+      description: flagData.description,
       note: note,
     };
 
     // Update pitch log entry
-    // Append the flag emoji to the entry
     if (!pitchEntry.querySelector('.flagEmoji')) {
       let flagSpan = document.createElement('span');
       flagSpan.classList.add('flagEmoji');
       flagSpan.innerText = flagData.emoji;
-      flagSpan.title = flagData.flag.description + (note ? ': ' + note : '');
+      flagSpan.title = flagData.description + (note ? ': ' + note : '');
       pitchEntry.appendChild(flagSpan);
     } else {
-      // Update existing flag
       let flagSpan = pitchEntry.querySelector('.flagEmoji');
       flagSpan.innerText = flagData.emoji;
-      flagSpan.title = flagData.flag.description + (note ? ': ' + note : '');
+      flagSpan.title = flagData.description + (note ? ': ' + note : '');
     }
   });
 
@@ -783,13 +782,13 @@ function updatePitchLogTags() {
       if (!pitchEntry.querySelector('.flagEmoji')) {
         let flagSpan = document.createElement('span');
         flagSpan.classList.add('flagEmoji');
-        flagSpan.innerText = tagData.flag.emoji;
-        flagSpan.title = tagData.flag.description + (tagData.note ? ': ' + tagData.note : '');
+        flagSpan.innerText = tagData.emoji;
+        flagSpan.title = tagData.description + (tagData.note ? ': ' + tagData.note : '');
         pitchEntry.appendChild(flagSpan);
       } else {
         let flagSpan = pitchEntry.querySelector('.flagEmoji');
-        flagSpan.innerText = tagData.flag.emoji;
-        flagSpan.title = tagData.flag.description + (tagData.note ? ': ' + tagData.note : '');
+        flagSpan.innerText = tagData.emoji;
+        flagSpan.title = tagData.description + (tagData.note ? ': ' + tagData.note : '');
       }
     } else {
       // Remove flag emoji if present
@@ -800,6 +799,7 @@ function updatePitchLogTags() {
     }
   });
 }
+
 
 
 function resetForNextPitch(resetCounts = true) {
