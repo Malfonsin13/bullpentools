@@ -192,6 +192,25 @@ border-radius: 5px;
   pointer-events: none;
 }
 
+#pitchLog li.selectable {
+  cursor: pointer;
+}
+
+#pitchLog li.selected {
+  background-color: lightblue;
+}
+
+/* Styling for selected flag buttons */
+.flagBtn.selected {
+  border: 2px solid blue;
+}
+
+/* Styling for flag emoji */
+.flagEmoji {
+  margin-left: 10px;
+  cursor: help;
+}
+
 
 
 
