@@ -13,6 +13,10 @@ let pitchLocation = 0;
 let points = 0;
 let comboPitchTypes = [];
 let isHeatMapMode = false;
+let pitchId = 0; 
+let pitchTags = {}; 
+let isTaggingMode = false; 
+
 
 
 // Save the pitch log state
@@ -200,6 +204,30 @@ document.querySelectorAll("#pitchTypeSelection .btn").forEach(button => {
   });
 });
 
+document.getElementById('tagPitchBtn').addEventListener('click', function() {
+  if (!isTaggingMode) {
+    enterTaggingMode();
+  } else {
+    exitTaggingMode();
+  }
+});
+
+document.querySelectorAll('#flagSelection .flagBtn').forEach(button => {
+  button.addEventListener('click', function() {
+    // Deselect all other flags
+    document.querySelectorAll('#flagSelection .flagBtn').forEach(btn => {
+      btn.classList.remove('selected');
+    });
+    // Select this flag
+    this.classList.add('selected');
+  });
+});
+
+document.getElementById('applyTagBtn').addEventListener('click', function() {
+  applyTagToSelectedPitches();
+});
+
+
 function resetPutawayButtons() {
   document.getElementById('putawayButtons').style.display = 'none';
   document.getElementById('r2kButtons').style.display = 'block';
@@ -216,6 +244,7 @@ function saveCurrentState() {
     totalStrikesLiveBP,
     foulsAfterTwoStrikes,
     mode,
+    pitchTags: JSON.parse(JSON.stringify(pitchTags)),
     pitchLog: document.getElementById('pitchLog').innerHTML, // Save the pitch log state
     completedCountLog: document.getElementById('countLog').innerHTML // Save completed count log state
   };
@@ -231,6 +260,8 @@ function restoreState(state) {
   totalStrikesLiveBP = state.totalStrikesLiveBP;
   foulsAfterTwoStrikes = state.foulsAfterTwoStrikes;
   mode = state.mode;
+  pitchTags = state.pitchTags || {};
+  updatePitchLogTags();
 }
 
 function restorePitchLog(pitchLogHTML) {
@@ -646,11 +677,129 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '') {
   let locationText = (location !== undefined && location !== null) ? location : 'UNKNOWN';
 
   newEntry.innerText = `${pitchTypeText}, Location: ${locationText}, Result: ${result}, Count: ${currentCountText} ${scenarioEmojis}`;
+  newEntry.setAttribute('data-pitch-id', pitchId);
   pitchLog.appendChild(newEntry);
+  pitchId++;
   updateCurrentCount();
   updateUI();
 }
 
+function showTaggingOptions() {
+  document.getElementById('taggingOptions').style.display = 'block';
+}
+
+function hideTaggingOptions() {
+  document.getElementById('taggingOptions').style.display = 'none';
+}
+
+function enterTaggingMode() {
+  isTaggingMode = true;
+  document.getElementById('tagPitchBtn').innerText = 'Cancel Tagging';
+  // Make pitch log entries selectable
+  let pitchLogItems = document.querySelectorAll('#pitchLog li');
+  pitchLogItems.forEach(item => {
+    item.classList.add('selectable');
+    item.addEventListener('click', togglePitchSelection);
+  });
+  // Show tagging options
+  showTaggingOptions();
+}
+
+function exitTaggingMode() {
+  isTaggingMode = false;
+  document.getElementById('tagPitchBtn').innerText = 'Tag Pitch';
+  // Remove selection from pitch log entries
+  let pitchLogItems = document.querySelectorAll('#pitchLog li');
+  pitchLogItems.forEach(item => {
+    item.classList.remove('selectable');
+    item.classList.remove('selected');
+    item.removeEventListener('click', togglePitchSelection);
+  });
+  // Hide tagging options
+  hideTaggingOptions();
+}
+
+function togglePitchSelection() {
+  this.classList.toggle('selected');
+}
+
+function applyTagToSelectedPitches() {
+  let selectedFlagBtn = document.querySelector('#flagSelection .flagBtn.selected');
+  if (!selectedFlagBtn) {
+    alert('Please select a flag.');
+    return;
+  }
+  let flagId = selectedFlagBtn.id; // e.g., 'flag-check-video'
+
+  let flagInfo = {
+    'flag-check-video': { emoji: '🟡', description: 'Check Video' },
+    'flag-breakthrough': { emoji: '🟢', description: 'Breakthrough' },
+    'flag-learning-moment': { emoji: '🔴', description: 'Learning Moment' },
+  };
+
+  let flagData = flagInfo[flagId];
+
+  let note = document.getElementById('tagNote').value;
+
+  // Get selected pitches
+  let selectedPitches = document.querySelectorAll('#pitchLog li.selected');
+
+  selectedPitches.forEach(pitchEntry => {
+    let pitchId = pitchEntry.getAttribute('data-pitch-id');
+
+    // Store tag and note
+    pitchTags[pitchId] = {
+      flag: flagData,
+      note: note,
+    };
+
+    // Update pitch log entry
+    // Append the flag emoji to the entry
+    if (!pitchEntry.querySelector('.flagEmoji')) {
+      let flagSpan = document.createElement('span');
+      flagSpan.classList.add('flagEmoji');
+      flagSpan.innerText = flagData.emoji;
+      flagSpan.title = flagData.flag.description + (note ? ': ' + note : '');
+      pitchEntry.appendChild(flagSpan);
+    } else {
+      // Update existing flag
+      let flagSpan = pitchEntry.querySelector('.flagEmoji');
+      flagSpan.innerText = flagData.emoji;
+      flagSpan.title = flagData.flag.description + (note ? ': ' + note : '');
+    }
+  });
+
+  // Exit tagging mode
+  exitTaggingMode();
+}
+
+function updatePitchLogTags() {
+  let pitchLogItems = document.querySelectorAll('#pitchLog li');
+  pitchLogItems.forEach(pitchEntry => {
+    let pitchId = pitchEntry.getAttribute('data-pitch-id');
+    if (pitchTags[pitchId]) {
+      let tagData = pitchTags[pitchId];
+      // Update or add flag emoji
+      if (!pitchEntry.querySelector('.flagEmoji')) {
+        let flagSpan = document.createElement('span');
+        flagSpan.classList.add('flagEmoji');
+        flagSpan.innerText = tagData.flag.emoji;
+        flagSpan.title = tagData.flag.description + (tagData.note ? ': ' + tagData.note : '');
+        pitchEntry.appendChild(flagSpan);
+      } else {
+        let flagSpan = pitchEntry.querySelector('.flagEmoji');
+        flagSpan.innerText = tagData.flag.emoji;
+        flagSpan.title = tagData.flag.description + (tagData.note ? ': ' + tagData.note : '');
+      }
+    } else {
+      // Remove flag emoji if present
+      let flagSpan = pitchEntry.querySelector('.flagEmoji');
+      if (flagSpan) {
+        flagSpan.remove();
+      }
+    }
+  });
+}
 
 
 function resetForNextPitch(resetCounts = true) {
@@ -938,4 +1087,5 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('outcomeSelection').style.display = 'none';
   document.getElementById('pitchTypeSelection').style.display = 'block';
   document.getElementById('heatmapGrid').style.display = 'none';
+  document.getElementById('taggingOptions').style.display = 'none';
 });
