@@ -16,7 +16,7 @@ let isHeatMapMode = false;
 let pitchId = 0; 
 let pitchTags = {}; 
 let isTaggingMode = false; 
-
+let ballCount = 0;
 
 
 // Save the pitch log state
@@ -84,11 +84,11 @@ document.getElementById('strikeBtn').addEventListener('click', function() {
 
   if (mode === "bullpen" && strikeCount === 2) {
     raceWins++;
-    logCount(strikeCount, pitchCount - strikeCount, false);
+    logCount(strikeCount, ballCount, false); // Use ballCount here
     resetCount();
     updateRaceWins();
   }
-  
+
   if (mode === "putaway" && strikeCount === 2) {
     showPutawayOptions();
   } else {
@@ -96,9 +96,11 @@ document.getElementById('strikeBtn').addEventListener('click', function() {
   }
 });
 
+
 document.getElementById('ballBtn').addEventListener('click', function() {
   actionLog.push(saveCurrentState());
   pitchCount++;
+  ballCount++; // Increment ballCount
   if (mode === "bullpen" || mode === "putaway") {
     totalPitchesBullpen++;
   } else {
@@ -107,18 +109,19 @@ document.getElementById('ballBtn').addEventListener('click', function() {
   updateUI();
   updateCurrentCount();
 
-  if (mode === "putaway" && (pitchCount - strikeCount) === 2) {
-    logCount(strikeCount, pitchCount - strikeCount, false);
+  if (mode === "putaway" && ballCount === 2) {
+    logCount(strikeCount, ballCount, false); // Use ballCount here
     resetCount();
   }
-  
-  if (mode === "bullpen" && (pitchCount - strikeCount) === 2) {
-    logCount(strikeCount, pitchCount - strikeCount, false);
+
+  if (mode === "bullpen" && ballCount === 2) {
+    logCount(strikeCount, ballCount, false); // Use ballCount here
     resetCount();
   }
 
   checkRaceCondition();
 });
+
 
 document.getElementById('kBtn').addEventListener('click', function() {
   actionLog.push(saveCurrentState());
@@ -128,7 +131,7 @@ document.getElementById('kBtn').addEventListener('click', function() {
   totalPitchesBullpen++;
   totalStrikesBullpen++;
 
-  const balls = pitchCount - strikeCount;
+  const balls = ballCount;
   const strikes = strikeCount;
   
   logCount(strikes, balls, true);
@@ -141,7 +144,7 @@ document.getElementById('noKBtn').addEventListener('click', function() {
   actionLog.push(saveCurrentState());
   pitchCount++;
   totalPitchesBullpen++;
-  logCount(strikeCount, pitchCount - strikeCount, false);
+  logCount(strikeCount, ballCount, false);
   resetCount();
   updateUI();
   resetPutawayButtons();
@@ -316,16 +319,22 @@ document.querySelectorAll("#outcomeSelection .btn").forEach(button => {
 function processOutcome(outcome) {
   // Capture the count before processing the outcome
   let previousCount = {
-    balls: pitchCount - strikeCount,
+    balls: ballCount,
     strikes: strikeCount,
-    pitchCount: pitchCount // Include total pitches thrown before this pitch
+    pitchCount: pitchCount // Total pitches thrown before this pitch
   };
   let scenarioEmojis = '';
 
+  // Always increment total pitches
+  pitchCount++;
+
   if (outcome === "ball") {
-    pitchCount++;
+    ballCount++; // Increment ball count
+
     if (mode === "liveBP" || mode === "points") {
       totalPitches++;
+    } else if (mode === "bullpen" || mode === "putaway") {
+      totalPitchesBullpen++;
     }
 
     // Points Mode logic for 'ball' outcome
@@ -344,7 +353,7 @@ function processOutcome(outcome) {
       // Scenario 5: Losing the race (getting to 2 balls before 2 strikes within first 3 pitches)
       if (
         previousCount.balls === 1 &&
-        pitchCount - strikeCount === 2 &&
+        ballCount === 2 &&
         strikeCount < 2 &&
         pitchCount <= 3
       ) {
@@ -353,10 +362,10 @@ function processOutcome(outcome) {
       }
 
       // Scenario 7: Walk (getting to 4 balls)
-      if (pitchCount - strikeCount >= 4) {
+      if (ballCount >= 4) {
         pointsToDeduct += 30;
         scenarioEmojis += '💀';
-        resetCount();
+        // In Points Mode, we reset the count after handling points deduction
       }
 
       // Update points
@@ -367,27 +376,48 @@ function processOutcome(outcome) {
       }
 
       updatePointsDisplay();
-    }
 
-    // Handle resets for bullpen mode
-    if (mode === "bullpen" && pitchCount - strikeCount === 2) {
-      logCount(strikeCount, pitchCount - strikeCount, false);
-      resetCount();
+      // Reset count if walk occurs
+      if (ballCount >= 4) {
+        logCount(strikeCount, ballCount, false, true); // Indicate it's a walk
+        resetCount();
+      }
+    } else {
+      // Handle walks in other modes
+      if (ballCount >= 4) {
+        // Log the count as a walk
+        logCount(strikeCount, ballCount, false, true); // Indicate it's a walk
+        resetCount();
+      }
+
+      // Handle resets for bullpen mode at 2 balls
+      if (mode === "bullpen" && ballCount === 2) {
+        logCount(strikeCount, ballCount, false);
+        resetCount();
+      }
     }
 
   } else if (["whiff", "calledStrike", "foul"].includes(outcome)) {
-    // Update counts
-    if (outcome === "foul" && strikeCount === 2) {
-      foulsAfterTwoStrikes++;
+    // Handle strikes and fouls
+    if (outcome === "foul") {
+      if (strikeCount < 2) {
+        strikeCount++; // Increment strike count if less than 2 strikes
+      } else {
+        // Foul ball with two strikes: counts towards total pitches but doesn't change counts
+        foulsAfterTwoStrikes++;
+        // Do not change strikeCount or ballCount
+      }
+    } else {
+      // "whiff" or "calledStrike"
+      strikeCount++; // Increment strike count
     }
-    let wasStrike = (outcome === "foul" && strikeCount < 2) || outcome !== "foul";
-    if (wasStrike) {
-      strikeCount++;
-    }
-    pitchCount++;
+
     if (mode === "liveBP" || mode === "points") {
       totalStrikesLiveBP++;
       totalPitches++;
+    } else if (mode === "bullpen" || mode === "putaway") {
+      totalStrikesBullpen++;
+      totalPitchesBullpen++;
     }
 
     // Points Mode logic for 'strike' outcome
@@ -447,6 +477,8 @@ function processOutcome(outcome) {
     }
 
     // Handle race wins and putaway options
+    let wasStrike = outcome !== "foul" || (outcome === "foul" && strikeCount < 2);
+
     if (wasStrike) {
       if (mode === "putaway" && strikeCount === 2) {
         showPutawayOptions();
@@ -459,17 +491,21 @@ function processOutcome(outcome) {
         updateRaceWins();
       }
       if (strikeCount >= 3) {
+        // Log strikeout
+        logCount(strikeCount, ballCount, true);
         resetCount();
       }
     }
 
   } else if (outcome === "strike") {
-    // This is for Points Mode where we have 'strike' as outcome
+    // For Points Mode where 'strike' is an outcome
     strikeCount++;
-    pitchCount++;
     if (mode === "liveBP" || mode === "points") {
       totalStrikesLiveBP++;
       totalPitches++;
+    } else if (mode === "bullpen" || mode === "putaway") {
+      totalStrikesBullpen++;
+      totalPitchesBullpen++;
     }
 
     // Points Mode logic for 'strike' outcome
@@ -505,7 +541,7 @@ function processOutcome(outcome) {
         scenarioEmojis += '🏁';
       }
 
-      // Scenario 6: Putaway (getting a strikeout with a strike immediately after getting to 2 strikes)
+      // Scenario 6: Putaway
       if (
         strikeCount >= 3 &&
         previousCount.strikes === 2 &&
@@ -515,7 +551,7 @@ function processOutcome(outcome) {
         scenarioEmojis += '⚡';
       }
 
-      // Double points if last pitch type is in comboPitchTypes
+      // Double points for combo pitch types
       if (comboPitchTypes.includes(pitchType) && pointsToAdd > 0) {
         pointsToAdd *= 2;
         scenarioEmojis += '🔥';
@@ -540,14 +576,18 @@ function processOutcome(outcome) {
       updateRaceWins();
     }
     if (strikeCount >= 3) {
+      // Log strikeout
+      logCount(strikeCount, ballCount, true);
       resetCount();
     }
 
   } else if (outcome === "inPlay") {
+    // Handle 'In Play' outcome
     resetCount();
     showInPlaySelection();
 
   } else if (outcome === "hbp") {
+    // Handle 'Hit By Pitch' outcome
     logPitchResult(pitchType, "HBP", pitchLocation);
     resetCount();
     resetForNextPitch();
@@ -562,6 +602,7 @@ function processOutcome(outcome) {
   // Update the UI
   updateUI();
 }
+
 
 
 
@@ -671,7 +712,7 @@ document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
 function logPitchResult(pitchType, result, location, scenarioEmojis = '') {
   let pitchLog = document.getElementById('pitchLog');
   let newEntry = document.createElement('li');
-  let currentCountText = `${pitchCount - strikeCount}-${strikeCount}`;
+  let currentCountText = `${ballCount}-${strikeCount}`;
 
   let pitchTypeText = pitchType ? pitchType.toUpperCase() : 'UNKNOWN';
   let locationText = (location !== undefined && location !== null) ? location : 'UNKNOWN';
@@ -683,6 +724,7 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '') {
   updateCurrentCount();
   updateUI();
 }
+
 
 function showTaggingOptions() {
   document.getElementById('taggingOptions').style.display = 'block';
@@ -851,30 +893,22 @@ function updateUI() {
     strikePercentageFromLog = totalPitchesBullpen > 0 ? (totalStrikesBullpen / totalPitchesBullpen) * 100 : 0;
     document.getElementById('totalPitches').innerText = `Total Pitches: ${totalPitchesBullpen}`;
     let strikeDisplay = strikeCount === 2 ? `${strikeCount}🔥` : strikeCount;
-    document.getElementById('currentCount').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeDisplay}`;
+    document.getElementById('currentCount').innerText = `Current Count: ${ballCount}-${strikeDisplay}`; // Use ballCount
     let raceWinsDisplay = mode === "putaway" ? '⚰️'.repeat(raceWins) : '🔥'.repeat(raceWins);
     document.getElementById('raceWins').innerText = `Race Wins: ${raceWinsDisplay}`;
     const strikePercentageElement = document.getElementById('strikePercentage');
     strikePercentageElement.innerText = `Strike %: ${strikePercentageFromLog.toFixed(2)}`;
     strikePercentageElement.style.color = getPercentageColor(strikePercentageFromLog);
-  } else if (mode === "liveBP") {
+  } else if (mode === "liveBP" || mode === "points") {
     document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
-    document.getElementById('currentCountLiveBP').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
+    document.getElementById('currentCountLiveBP').innerText = `Current Count: ${ballCount}-${strikeCount}`; // Use ballCount
     let raceWinsDisplayLiveBP = '🔥'.repeat(raceWins);
     document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplayLiveBP}`;
     const strikePercentageElementLiveBP = document.getElementById('strikePercentageLiveBP');
     strikePercentageElementLiveBP.innerText = `Strike %: ${strikePercentageFromLog.toFixed(2)}`;
     strikePercentageElementLiveBP.style.color = getPercentageColor(strikePercentageFromLog);
-    } else if (mode === "points") {
-      document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
-      document.getElementById('currentCountLiveBP').innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
-      let raceWinsDisplayLiveBP = '🔥'.repeat(raceWins);
-      document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplayLiveBP}`;
-      const strikePercentageElementLiveBP = document.getElementById('strikePercentageLiveBP');
-      strikePercentageElementLiveBP.innerText = `Strike %: ${strikePercentageFromLog.toFixed(2)}`;
-      strikePercentageElementLiveBP.style.color = getPercentageColor(strikePercentageFromLog);
-    }
-  
+  }
+
   const shouldDisplayUndo = actionLog.length > 0;
   document.getElementById('undoBtn').style.display = shouldDisplayUndo ? 'inline-block' : 'none';
 }
@@ -890,33 +924,35 @@ function getPercentageColor(percentage) {
 
 function updateCurrentCount() {
   let currentCountDisplay = mode === "bullpen" || mode === "putaway" ? 'currentCount' : 'currentCountLiveBP';
-  document.getElementById(currentCountDisplay).innerText = `Current Count: ${pitchCount - strikeCount}-${strikeCount}`;
+  document.getElementById(currentCountDisplay).innerText = `Current Count: ${ballCount}-${strikeCount}`;
 }
 
 function resetCount() {
-  pitchCount = 0;
+  ballCount = 0;
   strikeCount = 0;
   foulsAfterTwoStrikes = 0;
   updateUI();
 }
 
+
 function checkRaceCondition() {
   let completedCount = false;
-  if (strikeCount == 2 && mode !== "putaway") {
+  if (strikeCount === 2 && mode !== "putaway") {
     raceWins++;
     completedCount = true;
-    logCount(strikeCount, pitchCount - strikeCount, false);
+    logCount(strikeCount, ballCount, false); // Use ballCount
     resetCount();
     updateRaceWins();
-  } else if (pitchCount - strikeCount == 2 && strikeCount == 0 && mode === "bullpen") {
+  } else if (ballCount === 2 && strikeCount === 0 && mode === "bullpen") {
     completedCount = true;
-    logCount(strikeCount, pitchCount - strikeCount, false);
+    logCount(strikeCount, ballCount, false); // Use ballCount
     resetCount();
   }
   if (completedCount) {
     actionLog[actionLog.length - 1].completedCount = true;
   }
 }
+
 
 function updateRaceWins() {
   let raceWinsDisplay = raceWins > 0 ? (mode === "putaway" ? '⚰️' : '🔥').repeat(raceWins) : '';
@@ -995,12 +1031,14 @@ function getHeatMapColor(count, maxCount) {
 }
 
 
-function logCount(strikes, balls, isK) {
+function logCount(strikes, balls, isK, isWalk = false) {
   let countLog = document.getElementById('countLog');
   let newEntry = document.createElement('li');
   newEntry.innerText = `Final Count: ${balls}-${strikes}`;
   if (isK) {
     newEntry.innerText += ' ⚰️';
+  } else if (isWalk) {
+    newEntry.innerText += ' 🏃‍♂️'; // Emoji representing a walk
   }
   countLog.appendChild(newEntry);
 }
