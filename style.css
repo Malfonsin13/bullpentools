@@ -51,7 +51,7 @@ li {
 
 /* Zone Colors for pitch location selection (not heatmap) */
 .locationBtn.strikeZone {
-  background-color: yellow;
+  background-color: #ffb517;
 }
 
 .locationBtn.shadowZone {
