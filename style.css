@@ -49,23 +49,17 @@ li {
   color: white;
 }
 
-/* Styles for Strike Locations */
-#location-7,
-#location-8,
-#location-9,
-#location-12,
-#location-13,
-#location-14,
-#location-17,
-#location-18,
-#location-19 {
-  background-color: #d3a625; /* Yellow color for strikes */
-  color: white;
+/* Zone Colors */
+.locationBtn.strikeZone, .heatmapBtn.strikeZone {
+  background-color: yellow;
 }
 
-/* Styles for Ball Locations */
-.locationBtn {
-  background-color: #0a2351; /* Navy Blue for balls */
+.locationBtn.shadowZone, .heatmapBtn.shadowZone {
+  background-color: lightblue;
+}
+
+.locationBtn.nonCompetitiveZone, .heatmapBtn.nonCompetitiveZone {
+  background-color: navy;
   color: white;
 }
 
