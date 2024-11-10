@@ -427,6 +427,16 @@ function processOutcome(outcome) {
       // Define strike locations
       const strikeLocations = [7, 8, 9, 12, 13, 14, 17, 18, 19];
 
+      const shadowLocations = [];
+      for (let i = 10; i <= 25; i++) {
+      shadowLocations.push(i);
+      }
+
+      const nonCompetitiveLocations = [];
+      for (let i = 26; i <= 49; i++) {
+      nonCompetitiveLocations.push(i);
+      }
+
       // Scenario 1: Strikes in specific locations
       if (strikeLocations.includes(pitchLocation)) {
         pointsToAdd += 10;
@@ -607,15 +617,14 @@ function processOutcome(outcome) {
 
 
 function processOutcomeBasedOnLocation() {
-  // Define strike and ball locations
-  const strikeLocations = [7, 8, 9, 12, 13, 14, 17, 18, 19];
-  const ballLocations = [1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25];
-
   let outcome = '';
+
   if (strikeLocations.includes(pitchLocation)) {
     outcome = 'strike';
-  } else if (ballLocations.includes(pitchLocation)) {
-    outcome = 'ball';
+  } else if (shadowLocations.includes(pitchLocation)) {
+    outcome = 'ball'; // Shadow zone counts as a ball but may have different logic in Points Mode
+  } else if (nonCompetitiveLocations.includes(pitchLocation)) {
+    outcome = 'ball'; // Non-competitive zone is a ball, perhaps with more severe penalties in Points Mode
   } else {
     outcome = 'unknown';
   }
@@ -623,6 +632,7 @@ function processOutcomeBasedOnLocation() {
   actionLog.push(saveCurrentState());
   processOutcome(outcome);
 }
+
 
 
 function showComboPitchTypeSelection() {
