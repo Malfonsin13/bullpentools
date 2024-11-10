@@ -985,19 +985,13 @@ function showHeatMap() {
   updateHeatMap();
 }
 
-function hideHeatMap() {
-  // Hide heatmap grid
-  document.getElementById('heatmapGrid').style.display = 'none';
-  // Show pitch type selection
-  document.getElementById('pitchTypeSelection').style.display = 'block';
-}
-
 function updateHeatMap() {
-  // Initialize counts
+  // Initialize counts for all 49 locations
   let locationCounts = {};
-  for (let i = 1; i <= 25; i++) {
+  for (let i = 1; i <= 49; i++) {
     locationCounts[i] = 0;
   }
+
   // Get pitch log entries
   let pitchLogItems = document.querySelectorAll('#pitchLog li');
   pitchLogItems.forEach(item => {
@@ -1012,21 +1006,24 @@ function updateHeatMap() {
       }
     }
   });
+
   // Get max count
   let counts = Object.values(locationCounts);
   let maxCount = Math.max(...counts);
-  // Update button colors
-  for (let i = 1; i <= 25; i++) {
+
+  // Update button colors for all 49 locations
+  for (let i = 1; i <= 49; i++) {
     let count = locationCounts[i];
     let button = document.getElementById('heatmap-' + i);
     if (button) {
       let color = getHeatMapColor(count, maxCount);
       button.style.backgroundColor = color;
-      button.innerText = count; // Show count
+      button.innerText = count > 0 ? count : ''; // Show count if greater than 0
       button.style.pointerEvents = 'none'; // Make button non-clickable
     }
   }
 }
+
 
 function getHeatMapColor(count, maxCount) {
   if (maxCount === 0) {
