@@ -18,6 +18,19 @@ let pitchTags = {};
 let isTaggingMode = false; 
 let ballCount = 0;
 
+      // Define strike locations
+      const strikeLocations = [7, 8, 9, 12, 13, 14, 17, 18, 19];
+
+      const shadowLocations = [];
+      for (let i = 10; i <= 25; i++) {
+      shadowLocations.push(i);
+      }
+
+      const nonCompetitiveLocations = [];
+      for (let i = 26; i <= 49; i++) {
+      nonCompetitiveLocations.push(i);
+      }
+
 
 // Save the pitch log state
 document.getElementById('bullpenModeBtn').addEventListener('click', function() {
@@ -341,8 +354,6 @@ function processOutcome(outcome) {
     if (mode === "points") {
       let pointsToDeduct = 0;
 
-      // Define ball locations
-      const ballLocations = [1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25];
 
       // Scenario 2: Balls in specific locations
       if (ballLocations.includes(pitchLocation)) {
@@ -423,19 +434,6 @@ function processOutcome(outcome) {
     // Points Mode logic for 'strike' outcome
     if (mode === "points") {
       let pointsToAdd = 0;
-
-      // Define strike locations
-      const strikeLocations = [7, 8, 9, 12, 13, 14, 17, 18, 19];
-
-      const shadowLocations = [];
-      for (let i = 10; i <= 25; i++) {
-      shadowLocations.push(i);
-      }
-
-      const nonCompetitiveLocations = [];
-      for (let i = 26; i <= 49; i++) {
-      nonCompetitiveLocations.push(i);
-      }
 
       // Scenario 1: Strikes in specific locations
       if (strikeLocations.includes(pitchLocation)) {
@@ -521,9 +519,6 @@ function processOutcome(outcome) {
     // Points Mode logic for 'strike' outcome
     if (mode === "points") {
       let pointsToAdd = 0;
-
-      // Define strike locations
-      const strikeLocations = [7, 8, 9, 12, 13, 14, 17, 18, 19];
 
       // Scenario 1: Strikes in specific locations
       if (strikeLocations.includes(pitchLocation)) {
@@ -1018,8 +1013,8 @@ function updateHeatMap() {
     if (button) {
       let color = getHeatMapColor(count, maxCount);
       button.style.backgroundColor = color;
-      button.innerText = count > 0 ? count : ''; // Show count if greater than 0
-      button.style.pointerEvents = 'none'; // Make button non-clickable
+      button.innerText = count;
+      button.style.pointerEvents = 'none'; 
     }
   }
 }
