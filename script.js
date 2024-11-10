@@ -27,10 +27,15 @@ let ballCount = 0;
       }
 
       const nonCompetitiveLocations = [];
+      for (let i = 1; i <= 6; i++) {
+        nonCompetitiveLocations.push(i);
+      }
       for (let i = 26; i <= 49; i++) {
-      nonCompetitiveLocations.push(i);
+        nonCompetitiveLocations.push(i);
       }
 
+      // Define ball locations
+      const ballLocations = [1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25];
 
 // Save the pitch log state
 document.getElementById('bullpenModeBtn').addEventListener('click', function() {
