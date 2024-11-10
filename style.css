@@ -49,18 +49,29 @@ li {
   color: white;
 }
 
-/* Zone Colors */
-.locationBtn.strikeZone, .heatmapBtn.strikeZone {
+/* Zone Colors for pitch location selection (not heatmap) */
+.locationBtn.strikeZone {
   background-color: yellow;
 }
 
-.locationBtn.shadowZone, .heatmapBtn.shadowZone {
+.locationBtn.shadowZone {
   background-color: lightblue;
 }
 
-.locationBtn.nonCompetitiveZone, .heatmapBtn.nonCompetitiveZone {
+.locationBtn.nonCompetitiveZone {
   background-color: navy;
   color: white;
+}
+
+/* Remove background color from heatmap buttons to allow dynamic coloring */
+.heatmapBtn {
+  background-color: transparent; 
+  color: black; 
+}
+
+/* If you have specific styles for .heatmapBtn.nonCompetitiveZone, remove the background-color */
+.heatmapBtn.nonCompetitiveZone {
+    color: white; 
 }
 
 
