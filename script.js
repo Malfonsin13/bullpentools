@@ -18,24 +18,30 @@ let pitchTags = {};
 let isTaggingMode = false; 
 let ballCount = 0;
 
-      // Define strike locations
-      const strikeLocations = [7, 8, 9, 12, 13, 14, 17, 18, 19];
+/** Define strike locations (locations 1-9) **/
+const strikeLocations = [];
+for (let i = 1; i <= 9; i++) {
+  strikeLocations.push(i);
+}
 
-      const shadowLocations = [];
-      for (let i = 10; i <= 25; i++) {
-      shadowLocations.push(i);
-      }
+/** Define shadow locations (locations 10-25) **/
+const shadowLocations = [];
+for (let i = 10; i <= 25; i++) {
+  shadowLocations.push(i);
+}
 
-      const nonCompetitiveLocations = [];
-      for (let i = 1; i <= 6; i++) {
-        nonCompetitiveLocations.push(i);
-      }
-      for (let i = 26; i <= 49; i++) {
-        nonCompetitiveLocations.push(i);
-      }
+/** Define non-competitive locations (locations 26-49) **/
+const nonCompetitiveLocations = [];
+for (let i = 26; i <= 49; i++) {
+  nonCompetitiveLocations.push(i);
+}
 
-      // Define ball locations
-      const ballLocations = [1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25];
+/** Define ball locations (locations 10-49) **/
+const ballLocations = [];
+for (let i = 10; i <= 49; i++) {
+  ballLocations.push(i);
+}
+
 
 // Save the pitch log state
 document.getElementById('bullpenModeBtn').addEventListener('click', function() {
