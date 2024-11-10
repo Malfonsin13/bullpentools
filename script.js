@@ -992,23 +992,10 @@ function showHeatMap() {
 }
 
 function hideHeatMap() {
-  // Hide the heatmap grid
+  // Hide heatmap grid
   document.getElementById('heatmapGrid').style.display = 'none';
-
-  // Show the appropriate UI elements based on the current mode
-  if (mode === 'points') {
-    document.getElementById('pitchTypeSelection').style.display = 'block';
-    document.getElementById('pointsContainer').style.display = 'block';
-    // Show other points mode elements if necessary
-  } else {
-    // For other modes, show the pitch type selection
-    document.getElementById('pitchTypeSelection').style.display = 'block';
-  }
-
-  // Restore any other UI elements as needed
-  document.getElementById('taggingOptions').style.display = 'none';
-  document.getElementById('putawayButtons').style.display = 'none';
-  document.getElementById('r2kButtons').style.display = 'block'; // Adjust as per your app logic
+  // Show pitch type selection
+  document.getElementById('pitchTypeSelection').style.display = 'block';
 }
 
 function updateHeatMap() {
