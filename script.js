@@ -17,6 +17,10 @@ let pitchId = 0;
 let pitchTags = {}; 
 let isTaggingMode = false; 
 let ballCount = 0;
+let pitchData = [];
+let atBatNumber = 1; 
+let isNewAtBat = false; 
+
 
 /** Define strike locations (locations 1-9) **/
 const strikeLocations = [];
@@ -186,6 +190,7 @@ document.getElementById('undoBtn').addEventListener('click', function() {
 
 document.getElementById('nextBatterBtn').addEventListener('click', function() {
   actionLog.push(saveCurrentState()); // Save the current state for undo functionality
+  isNewAtBat = true;
   resetCount(); // Reset the current count to 0-0
   updateCurrentCount(); // Update the UI to reflect the new count
   updateUI();
@@ -401,7 +406,8 @@ function processOutcome(outcome) {
 
       // Reset count if walk occurs
       if (ballCount >= 4) {
-        logCount(strikeCount, ballCount, false, true); // Indicate it's a walk
+        logCount(strikeCount, ballCount, false, true); 
+        isNewAtBat = true;
         resetCount();
       }
     } else {
@@ -512,6 +518,7 @@ function processOutcome(outcome) {
       if (strikeCount >= 3) {
         // Log strikeout
         logCount(strikeCount, ballCount, true);
+        isNewAtBat = true;
         resetCount();
       }
     }
@@ -611,7 +618,8 @@ function processOutcome(outcome) {
 
   // Log the pitch result and reset for next pitch if necessary
   if (!["inPlay", "hbp"].includes(outcome)) {
-    logPitchResult(pitchType, outcome, pitchLocation, scenarioEmojis);
+    logPitchResult(pitchType, outcome, pitchLocation, scenarioEmojis, previousCount, outcome);
+    isNewAtBat = true;
     resetForNextPitch(false);
   }
 
@@ -712,6 +720,10 @@ function showInPlaySelection() {
 document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
   button.addEventListener('click', function() {
     let inPlayResult = this.id;
+    let previousCount = {
+      balls: ballCount,
+      strikes: strikeCount,
+    };
     pitchCount++;
     if (mode === "liveBP" || mode === "points") {
       totalPitches++;
@@ -719,7 +731,8 @@ document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
       totalPitchesBullpen++;
     }
 
-    logPitchResult(pitchType, "In Play - " + inPlayResult, pitchLocation, '');
+    logPitchResult(pitchType, "In Play - " + inPlayResult, pitchLocation, '', previousCount, 'inPlay');
+    isNewAtBat = true;
     resetForNextPitch();
     updateUI();
   });
@@ -739,8 +752,25 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '') {
   pitchId++;
   updateCurrentCount();
   updateUI();
-}
 
+   if (previousCount === null) {
+    // If previousCount is not provided, set it to current counts before the pitch
+    previousCount = { balls: ballCount, strikes: strikeCount };
+  }
+
+  let pitchEntry = {
+    pitchType: pitchType,
+    result: result,
+    location: location,
+    prePitchCount: previousCount,
+    postPitchCount: { balls: ballCount, strikes: strikeCount },
+    pitchNumber: pitchCount,
+    atBatNumber: atBatNumber,
+    outcome: outcome
+  };
+
+  pitchData.push(pitchEntry);
+}
 
 function showTaggingOptions() {
   document.getElementById('taggingOptions').style.display = 'block';
@@ -947,6 +977,10 @@ function resetCount() {
   ballCount = 0;
   strikeCount = 0;
   foulsAfterTwoStrikes = 0;
+  if (isNewAtBat) {
+    atBatNumber++;
+    isNewAtBat = false; 
+  }
   updateUI();
 }
 
@@ -1080,57 +1114,107 @@ document.getElementById('heatMapBtn').addEventListener('click', function() {
 
 
 function exportLiveBPStats() {
-  let exportedTotalPitches = totalPitches; // Use totalPitches for Live BP mode
-  let exportedStrikePercentage = (totalStrikesLiveBP + foulsAfterTwoStrikes) / exportedTotalPitches * 100;
+  let totalPitches = pitchData.length;
+  let totalBattersFaced = atBatNumber - 1; // Since atBatNumber increments after each completed at-bat
+  let totalRaceWins = raceWins;
+  let totalStrikes = 0;
+  let totalStrikeouts = 0;
+  let totalWalks = 0;
+  let nonCompetitiveCount = 0;
+  let shadowCount = 0;
+  let strikeZoneCount = 0;
+  let totalSwings = 0;
 
-  let totalKs = 0; // Initialize totalKs
-  let totalWalks = 0; // Initialize totalWalks
+  let pitchTypeStats = {};
 
-  let pitchTypeStats = {}; // Start with an empty object
+  pitchData.forEach(pitch => {
+    let pitchType = pitch.pitchType || 'unknown';
+    let outcome = pitch.outcome;
+    let location = pitch.location;
+    let result = pitch.result;
 
-  actionLog.forEach(action => {
-    if (action.type === 'outcomeSelection') {
-      const pitchType = action.pitchType || 'unknown';
+    // Initialize pitchTypeStats for this pitchType if not already
+    if (!pitchTypeStats[pitchType]) {
+      pitchTypeStats[pitchType] = {
+        total: 0,
+        strikes: 0,
+        swings: 0,
+        nonCompetitive: 0,
+        shadow: 0,
+        strikeZone: 0,
+      };
+    }
 
-      // Dynamically initialize pitchType if not present
-      if (!pitchTypeStats[pitchType]) {
-        pitchTypeStats[pitchType] = { total: 0, strikes: 0, whiffs: 0, calledStrikes: 0 };
-      }
+    // Increment total pitches for this pitchType
+    pitchTypeStats[pitchType].total++;
 
-      pitchTypeStats[pitchType].total++;
+    // Check if pitch is a strike
+    if (['whiff', 'calledStrike', 'foul', 'strike'].includes(outcome)) {
+      totalStrikes++;
+      pitchTypeStats[pitchType].strikes++;
+    }
 
-      if (['whiff', 'calledStrike', 'foul'].includes(action.outcome)) {
-        pitchTypeStats[pitchType].strikes++;
-        if (action.outcome === 'whiff') {
-          pitchTypeStats[pitchType].whiffs++;
-        } else if (action.outcome === 'calledStrike') {
-          pitchTypeStats[pitchType].calledStrikes++;
-        }
-      }
+    // Check if pitch resulted in a swing
+    if (['whiff', 'foul'].includes(outcome) || result.startsWith('In Play')) {
+      totalSwings++;
+      pitchTypeStats[pitchType].swings++;
+    }
 
-      if (action.prePitchCount.strikes === 2 && ['whiff', 'calledStrike'].includes(action.outcome)) {
-        totalKs++;
-      }
+    // Check location
+    if (nonCompetitiveLocations.includes(location)) {
+      nonCompetitiveCount++;
+      pitchTypeStats[pitchType].nonCompetitive++;
+    } else if (shadowLocations.includes(location)) {
+      shadowCount++;
+      pitchTypeStats[pitchType].shadow++;
+    } else if (strikeLocations.includes(location)) {
+      strikeZoneCount++;
+      pitchTypeStats[pitchType].strikeZone++;
+    }
 
-      if (action.type === 'ball' && action.prePitchCount.balls === 3) {
-        totalWalks++;
-      }
+    // Check for strikeouts
+    if (pitch.prePitchCount.strikes === 2 && ['whiff', 'calledStrike'].includes(outcome)) {
+      totalStrikeouts++;
+    }
+
+    // Check for walks
+    if (pitch.prePitchCount.balls === 3 && outcome === 'ball') {
+      totalWalks++;
     }
   });
 
-  let statsText = `Total Pitches: ${exportedTotalPitches}\n`;
-  statsText += `Total Race Wins: ${raceWins}\n`;
-  statsText += `Strike %: ${exportedStrikePercentage.toFixed(2)}%\n`;
+  let statsText = '';
+
+  statsText += `Total Pitch Count: ${totalPitches}\n`;
+  statsText += `Total Batters Faced: ${totalBattersFaced}\n`;
+  statsText += `Total Race Wins: ${totalRaceWins}\n`;
+  let totalStrikePercentage = (totalStrikes / totalPitches) * 100;
+  statsText += `Total Strike %: ${totalStrikePercentage.toFixed(2)}%\n`;
+  statsText += `Total Strikeouts: ${totalStrikeouts}\n`;
+  statsText += `Total Walks: ${totalWalks}\n`;
+
+  statsText += `Total % Non-Competitive Pitches: ${(nonCompetitiveCount / totalPitches * 100).toFixed(2)}%\n`;
+  statsText += `Total % Shadow Pitches: ${(shadowCount / totalPitches * 100).toFixed(2)}%\n`;
+  statsText += `Total % Strike Zone Pitches: ${(strikeZoneCount / totalPitches * 100).toFixed(2)}%\n`;
+
+  statsText += `Total % Swings: ${(totalSwings / totalPitches * 100).toFixed(2)}%\n`;
 
   Object.entries(pitchTypeStats).forEach(([pitchType, stats]) => {
-    if (stats.total > 0) { // Only include pitch types that were thrown
-      const pitchTypeStrikePercentage = stats.strikes / stats.total * 100;
-      statsText += `${pitchType} Strike %: ${pitchTypeStrikePercentage.toFixed(2)}%, Whiffs: ${stats.whiffs}, Called Strikes: ${stats.calledStrikes}\n`;
-    }
-  });
+    let usagePercentage = (stats.total / totalPitches) * 100;
+    let strikePercentage = (stats.strikes / stats.total) * 100;
+    let swingsPercentage = (stats.swings / stats.total) * 100;
+    let nonCompetitivePercentage = (stats.nonCompetitive / stats.total) * 100;
+    let shadowPercentage = (stats.shadow / stats.total) * 100;
+    let strikeZonePercentage = (stats.strikeZone / stats.total) * 100;
 
-  statsText += `Total Ks: ${totalKs}\n`;
-  statsText += `Total Walks: ${totalWalks}\n`;
+    statsText += `\nPitch Type: ${pitchType}\n`;
+    statsText += `Usage %: ${usagePercentage.toFixed(2)}%\n`;
+    statsText += `Strike %: ${strikePercentage.toFixed(2)}%\n`;
+    statsText += `Swings %: ${swingsPercentage.toFixed(2)}%\n`;
+    statsText += `% Non-Competitive Pitches: ${nonCompetitivePercentage.toFixed(2)}%\n`;
+    statsText += `% Shadow Pitches: ${shadowPercentage.toFixed(2)}%\n`;
+    statsText += `% Strike Zone Pitches: ${strikeZonePercentage.toFixed(2)}%\n`;
+  });
 
   navigator.clipboard.writeText(statsText).then(() => {
     console.log('Live BP stats copied to clipboard.');
