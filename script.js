@@ -738,7 +738,7 @@ document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
   });
 });
 
-function logPitchResult(pitchType, result, location, scenarioEmojis = '') {
+function logPitchResult(pitchType, result, location, scenarioEmojis = '', previousCount = null, outcome = '') {
   let pitchLog = document.getElementById('pitchLog');
   let newEntry = document.createElement('li');
   let currentCountText = `${ballCount}-${strikeCount}`;
