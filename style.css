@@ -63,6 +63,15 @@ li {
   color: white;
 }
 
+/* Styles for the location buttons and heatmap buttons */
+.locationBtn, .heatmapBtn {
+  width: 30px; /* Adjust the width as needed */
+  height: 30px; /* Adjust the height as needed */
+  font-size: 12px; /* Adjust the font size as needed */
+  padding: 0;
+  margin: 0;
+}
+
 /* Remove background color from heatmap buttons to allow dynamic coloring */
 .heatmapBtn {
   background-color: transparent; 
@@ -108,10 +117,10 @@ font-size: 1.2em;
   margin: auto;
 }
 
-#pitchLocationGrid {
+#pitchLocationGrid, #heatmap {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 1px;
+  grid-template-columns: repeat(7, auto);
+  gap: 2px; /* Adjust the gap between buttons */
   justify-items: center;
   width: fit-content;
   margin: auto;
