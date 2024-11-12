@@ -20,6 +20,8 @@ let ballCount = 0;
 let pitchData = [];
 let atBatNumber = 1; 
 let isNewAtBat = false; 
+let pitchCountInAtBat = 0;
+
 
 
 /** Define strike locations (locations 1-9) **/
@@ -356,6 +358,7 @@ function processOutcome(outcome) {
 
   // Always increment total pitches
   pitchCount++;
+  pitchCountInAtBat++;
 
   if (outcome === "ball") {
     ballCount++; // Increment ball count
@@ -510,7 +513,7 @@ function processOutcome(outcome) {
       } else if (
         mode !== "putaway" &&
         strikeCount === 2 &&
-        pitchCount <= 3
+        pitchCountInAtBat <= 3
       ) {
         raceWins++;
         updateRaceWins();
@@ -759,6 +762,7 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '', previo
   }
 
   let pitchEntry = {
+    pitchId: pitchId,
     pitchType: pitchType,
     result: result,
     location: location,
@@ -977,6 +981,7 @@ function resetCount() {
   ballCount = 0;
   strikeCount = 0;
   foulsAfterTwoStrikes = 0;
+  pitchCountInAtBat = 0;
   if (isNewAtBat) {
     atBatNumber++;
     isNewAtBat = false; 
@@ -1214,6 +1219,34 @@ function exportLiveBPStats() {
     statsText += `% Non-Competitive Pitches: ${nonCompetitivePercentage.toFixed(2)}%\n`;
     statsText += `% Shadow Pitches: ${shadowPercentage.toFixed(2)}%\n`;
     statsText += `% Strike Zone Pitches: ${strikeZonePercentage.toFixed(2)}%\n`;
+  });
+
+  // Add tagged pitches information
+  statsText += `\nTagged Pitches:\n`;
+
+  pitchData.forEach(pitch => {
+    let pitchId = pitch.pitchId.toString();
+    if (pitchTags[pitchId]) {
+      let tagData = pitchTags[pitchId];
+      let locationType = '';
+
+      if (strikeLocations.includes(pitch.location)) {
+        locationType = 'Strike Zone';
+      } else if (shadowLocations.includes(pitch.location)) {
+        locationType = 'Shadow Zone';
+      } else if (nonCompetitiveLocations.includes(pitch.location)) {
+        locationType = 'Non-Competitive';
+      } else {
+        locationType = 'Unknown';
+      }
+
+      statsText += `Pitch #${pitch.pitchNumber}, Pitch Type: ${pitch.pitchType.toUpperCase()}, Location: ${locationType}, Tag: ${tagData.description}`;
+      if (tagData.note) {
+        statsText += `, Note: ${tagData.note}\n`;
+      } else {
+        statsText += `\n`;
+      }
+    }
   });
 
   navigator.clipboard.writeText(statsText).then(() => {
