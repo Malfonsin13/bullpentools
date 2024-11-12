@@ -774,6 +774,7 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '', previo
   };
 
   pitchData.push(pitchEntry);
+  pitchId++;
 }
 
 function showTaggingOptions() {
