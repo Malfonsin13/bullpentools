@@ -752,9 +752,7 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '', previo
   newEntry.innerText = `${pitchTypeText}, Location: ${locationText}, Result: ${result}, Count: ${currentCountText} ${scenarioEmojis}`;
   newEntry.setAttribute('data-pitch-id', pitchId);
   pitchLog.appendChild(newEntry);
-  pitchId++;
-  updateCurrentCount();
-  updateUI();
+
 
    if (previousCount === null) {
     // If previousCount is not provided, set it to current counts before the pitch
