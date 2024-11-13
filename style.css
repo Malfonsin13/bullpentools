@@ -65,9 +65,9 @@ li {
 
 /* Styles for the location buttons and heatmap buttons */
 .locationBtn, .heatmapBtn {
-  width: 30px; /* Adjust the width as needed */
-  height: 30px; /* Adjust the height as needed */
-  font-size: 12px; /* Adjust the font size as needed */
+  width: 32px; /* Adjust the width as needed */
+  height: 32px; /* Adjust the height as needed */
+  font-size: 14px; /* Adjust the font size as needed */
   padding: 0;
   margin: 0;
 }
