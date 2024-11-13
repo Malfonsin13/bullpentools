@@ -271,6 +271,8 @@ function saveCurrentState() {
   return {
     pitchCount,
     strikeCount,
+    ballCount,
+    pitchCountInAtBat,
     raceWins,
     totalPitchesBullpen,
     totalStrikesBullpen,
@@ -279,6 +281,8 @@ function saveCurrentState() {
     foulsAfterTwoStrikes,
     mode,
     pitchTags: JSON.parse(JSON.stringify(pitchTags)),
+    pitchData: pitchData.slice(),
+    pitchId,
     pitchLog: document.getElementById('pitchLog').innerHTML, // Save the pitch log state
     completedCountLog: document.getElementById('countLog').innerHTML // Save completed count log state
   };
@@ -287,6 +291,8 @@ function saveCurrentState() {
 function restoreState(state) {
   pitchCount = state.pitchCount;
   strikeCount = state.strikeCount;
+  ballCount = state.ballCount;
+  pitchCountInAtBat = state.pitchCountInAtBat;
   raceWins = state.raceWins;
   totalPitchesBullpen = state.totalPitchesBullpen;
   totalStrikesBullpen = state.totalStrikesBullpen;
@@ -295,6 +301,8 @@ function restoreState(state) {
   foulsAfterTwoStrikes = state.foulsAfterTwoStrikes;
   mode = state.mode;
   pitchTags = state.pitchTags || {};
+  pitchData = state.pitchData.slice();
+  pitchId = state.pitchId;
   updatePitchLogTags();
 }
 
