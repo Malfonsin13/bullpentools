@@ -318,12 +318,11 @@ function restoreCompletedCountLog(completedCountLogHTML) {
 
 // Calculate strike percentage based on the log
 function calculateStrikePercentageFromLog() {
-  const pitchLog = document.querySelectorAll('#pitchLog li');
   let strikes = 0;
-  let totalPitches = pitchLog.length;
+  let totalPitches = pitchData.length;
 
-  pitchLog.forEach(entry => {
-    if (/whiff|calledStrike|foul/i.test(entry.innerText)) {
+  pitchData.forEach(pitch => {
+    if (['whiff', 'calledStrike', 'foul', 'strike'].includes(pitch.outcome)) {
       strikes++;
     }
   });
