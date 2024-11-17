@@ -622,6 +622,7 @@ function processOutcome(outcome) {
   } else if (outcome === "hbp") {
     // Handle 'Hit By Pitch' outcome
     logPitchResult(pitchType, "HBP", pitchLocation);
+    isNewAtBat = true;
     resetCount();
     resetForNextPitch();
   }
@@ -866,7 +867,7 @@ function applyTagToSelectedPitches() {
     }
   });
 
-  // Exit tagging mode
+  document.getElementById('tagNote').value = '';
   exitTaggingMode();
 }
 
@@ -1248,6 +1249,7 @@ function exportLiveBPStats() {
 
       statsText += `Pitch #${pitch.pitchNumber}, Pitch Type: ${pitch.pitchType.toUpperCase()}, Location: ${locationType}, Tag: ${tagData.description}`;
       if (tagData.note) {
+        let noteText = tagData.note.replace(/\r?\n|\r/g, ' ');
         statsText += `, Note: ${tagData.note}\n`;
       } else {
         statsText += `\n`;
