@@ -620,6 +620,12 @@ function processOutcome(outcome) {
     showInPlaySelection();
 
   } else if (outcome === "hbp") {
+
+    if (mode === "liveBP" || mode === "points") {
+    totalPitches++;
+  } else if (mode === "bullpen" || mode === "putaway") {
+    totalPitchesBullpen++;
+  }
     // Handle 'Hit By Pitch' outcome
     logPitchResult(pitchType, "HBP", pitchLocation);
     isNewAtBat = true;
