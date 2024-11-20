@@ -511,24 +511,22 @@ function processOutcome(outcome) {
       updatePointsDisplay();
     }
     
-    if (wasStrike) {
-      if (mode === "putaway" && strikeCount === 2) {
-        showPutawayOptions();
-      } else if (
-        mode !== "putaway" &&
-        strikeCount === 2 &&
-        pitchCountInAtBat <= 3
-      ) {
-        raceWins++;
-        updateRaceWins();
-      }
-      if (strikeCount >= 3) {
-        // Log strikeout
-        logCount(strikeCount, ballCount, true);
-        isNewAtBat = true;
-        resetCount();
-      }
-    }
+// Handle race wins and putaway options
+if (strikeCount === 2 && mode !== "putaway" && pitchCountInAtBat <= 3) {
+  raceWins++;
+  updateRaceWins();
+}
+
+if (mode === "putaway" && strikeCount === 2) {
+  showPutawayOptions();
+}
+
+if (strikeCount >= 3) {
+  // Log strikeout
+  logCount(strikeCount, ballCount, true);
+  isNewAtBat = true;
+  resetCount();
+}
 
   } else if (outcome === "strike") {
     // For Points Mode where 'strike' is an outcome
