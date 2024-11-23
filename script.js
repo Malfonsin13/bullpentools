@@ -512,9 +512,9 @@ function processOutcome(outcome) {
     }
     
 // Handle race wins and putaway options
-if (strikeCount === 2 && mode !== "putaway" && pitchCountInAtBat <= 3) {
-  raceWins++;
-  updateRaceWins();
+if (previousCount.strikes < 2 && strikeCount === 2 && mode !== "putaway" && pitchCountInAtBat <= 3) {
+      raceWins++;
+      updateRaceWins();
 }
 
 if (mode === "putaway" && strikeCount === 2) {
