@@ -150,6 +150,46 @@
   <button id="applyTagBtn">Apply Tag</button>
 </div>
 
+<!-- Live Stats Section -->
+<div id="liveStatsContainer" style="margin-top: 20px; display: none;">
+  <h3>Live Stats</h3>
+
+  <div id="pitchTypeStats">
+    <h4>Pitch Type Stats</h4>
+    <table style="border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th style="border: 1px solid #ccc; padding: 4px;">Pitch Type</th>
+          <th style="border: 1px solid #ccc; padding: 4px;">Total</th>
+          <th style="border: 1px solid #ccc; padding: 4px;">Whiff %</th>
+          <th style="border: 1px solid #ccc; padding: 4px;">Ball %</th>
+        </tr>
+      </thead>
+      <tbody id="pitchTypeStatsBody">
+        <!-- Filled in by JS -->
+      </tbody>
+    </table>
+  </div>
+
+  <div id="countStats" style="margin-top: 20px;">
+    <h4>Swing % by Count</h4>
+    <table style="border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th style="border: 1px solid #ccc; padding: 4px;">Count (Balls-Strikes)</th>
+          <th style="border: 1px solid #ccc; padding: 4px;">Total Pitches</th>
+          <th style="border: 1px solid #ccc; padding: 4px;">Swings</th>
+          <th style="border: 1px solid #ccc; padding: 4px;">Swing %</th>
+        </tr>
+      </thead>
+      <tbody id="countStatsBody">
+        <!-- Filled in by JS -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
 <!-- Heatmap Grid -->
     <div id="heatmapGrid" style="display:none;">
       <h3>Heat Map</h3>
