@@ -11,12 +11,20 @@
 
 <body>
   <div id="modeSelection">
-    <button id="bullpenModeBtn">R2K Mode</button>
-    <button id="liveBPModeBtn">Live BP Mode</button>
-    <button id="putawayModeBtn">Putaway Mode</button>
-    <button id="pointsModeBtn">Points Mode</button>
-    <button id="undoBtn" style="background-color: red; color: white;">UNDO</button>
+  <div class="gamesGroup">
+    <h3>Games</h3>
+    <div class="gameModes">
+      <button id="bullpenModeBtn">R2K Mode</button>
+      <button id="putawayModeBtn">Putaway Mode</button>
+      <button id="pointsModeBtn">Points Mode</button>
+    </div>
   </div>
+  <div class="liveBPGroup">
+    <button id="liveBPModeBtn">Live BP Mode</button>
+  </div>
+  <button id="undoBtn" class="undoBtn">UNDO</button>
+</div>
+
 
   <div id="bullpenMode" style="display:none;">
     <h1>Pitch Tracker</h1>
