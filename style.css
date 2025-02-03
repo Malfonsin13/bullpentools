@@ -225,29 +225,108 @@ border-radius: 5px;
   cursor: help;
 }
 
-/* 1) Center, space out and align items in the modeSelection bar */
+/************************************
+ *  TOP BAR LAYOUT
+ ************************************/
 #modeSelection {
+  /* A single horizontal row with space between each section. */
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  gap: 30px; /* spacing between groups */
-  margin-top: 20px;
+  max-width: 900px;
+  margin: 20px auto; /* centers the whole bar on the page */
+  padding: 0 10px;   /* optional horizontal padding */
 }
 
-/* 2) “Games” label and group layout */
+/* "Games" group: title above the row of game buttons */
 .gamesGroup {
   display: flex;
   flex-direction: column;
-  align-items: center; /* centers <h3> and the buttons below it */
-  gap: 10px;
+  align-items: center; 
 }
 
 .gameModes {
   display: flex;
-  gap: 10px;
+  gap: 10px; /* space between R2K, Putaway, Points */
 }
 
-/* 3) “Games” group buttons – same color (e.g., Brewers’ Gold #ffb517) */
+/* Align the "Live BP" button so it's in the center column. */
+.liveBPGroup button {
+  /* you could adjust width if needed */
+}
+
+/* The red UNDO button far right. */
+.undoBtn {
+  background-color: red; 
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-family: 'Permanent Marker', cursive;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/************************************
+ *  LIVE BP 2-COLUMN LAYOUT
+ ************************************/
+#liveBPMode {
+  /* Let’s use a responsive 2-col grid. */
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* left & right columns share space */
+  gap: 40px;        /* space between columns */
+  max-width: 1200px; 
+  margin: 30px auto; /* center on page */
+  padding: 0 10px;
+}
+
+/* Left column for pitch controls and logs */
+.liveBP-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Right column for stats, heatmap, tagging, etc. */
+.liveBP-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+/************************************
+ *  TABLE & OTHER CLEANUPS
+ ************************************/
+/* Make your stats tables look a bit nicer */
+#pitchTypeStats table,
+#countStats table {
+  border-collapse: collapse;
+  margin: 10px 0;
+  width: 100%;
+  max-width: 300px; /* optional – keep them narrower */
+  color: #0a2351;
+  background-color: #fff;
+}
+
+#pitchTypeStats th,
+#pitchTypeStats td,
+#countStats th,
+#countStats td {
+  border: 1px solid #ccc;
+  padding: 6px;
+  text-align: center;
+}
+
+/* If you want table headers to be distinct: */
+#pitchTypeStats th,
+#countStats th {
+  background-color: #ffb517;
+  color: #0a2351;
+}
+
+/* Example styling for the 'Games' buttons (Brewers Gold) */
 .gameModes button {
   background-color: #ffb517; 
   color: #0a2351; 
@@ -259,25 +338,10 @@ border-radius: 5px;
   cursor: pointer;
 }
 
-/* 4) Live BP button – a different color (e.g., #3c8ddb) */
-.liveBPGroup {
-  /* no special layout needed – just 1 button */
-}
+/* Live BP button in a nice blue */
 .liveBPGroup button {
   background-color: #3c8ddb; 
   color: #ffffff;
-  border: none;
-  border-radius: 5px;
-  font-family: 'Permanent Marker', cursive;
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-/* 5) Undo button – keep red, but style consistently */
-.undoBtn {
-  background-color: red; 
-  color: white;
   border: none;
   border-radius: 5px;
   font-family: 'Permanent Marker', cursive;
