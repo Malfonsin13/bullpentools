@@ -76,21 +76,25 @@ function toggleMode() {
     document.getElementById('liveBPMode').style.display = 'none';
     document.getElementById('putawayButtons').style.display = 'none';
     document.getElementById('pointsContainer').style.display = 'none';
+    document.getElementById('liveStatsContainer').style.display = 'none'; 
   } else if (mode === "liveBP") {
     document.getElementById('bullpenMode').style.display = 'none';
     document.getElementById('liveBPMode').style.display = 'block';
     document.getElementById('modeTitle').innerText = 'Live BP Mode';
     document.getElementById('pointsContainer').style.display = 'none';
+    document.getElementById('liveStatsContainer').style.display = 'block';
   } else if (mode === "putaway") {
     document.getElementById('bullpenMode').style.display = 'block';
     document.getElementById('liveBPMode').style.display = 'none';
     document.getElementById('putawayButtons').style.display = 'none';
     document.getElementById('pointsContainer').style.display = 'none';
+    document.getElementById('liveStatsContainer').style.display = 'none';
   } else if (mode === "points") {
     document.getElementById('bullpenMode').style.display = 'none';
     document.getElementById('liveBPMode').style.display = 'block';
     document.getElementById('modeTitle').innerText = 'Points Mode';
     document.getElementById('pointsContainer').style.display = 'block';
+    document.getElementById('liveStatsContainer').style.display = 'none';
     showComboPitchTypeSelection();
   }
   resetCount();
@@ -635,6 +639,7 @@ if (strikeCount >= 3) {
 
   // Update the UI
   updateUI();
+  updateLiveStats();
 }
 
 
@@ -1122,6 +1127,114 @@ document.getElementById('heatMapBtn').addEventListener('click', function() {
     this.innerText = 'HEAT MAP';
   }
 });
+
+function updateLiveStats() {
+  // Only show stats in Live BP mode
+  if (mode !== "liveBP") return;
+
+  // 1) Setup data structures
+  const pitchTypeTotals = {};   // { pitchType: totalPitches }
+  const pitchTypeSwings = {};   // { pitchType: totalSwings }
+  const pitchTypeWhiffs = {};   // { pitchType: totalWhiffs }
+  const pitchTypeBalls  = {};   // { pitchType: totalBalls }
+
+  // For count-based stats, we build a map keyed by a string like "0-0", "1-1", etc.
+  const countTotals = {}; // { "balls-strikes": totalPitchesAtThatCount }
+  const countSwings = {}; // { "balls-strikes": totalSwingsAtThatCount }
+
+  // 2) Iterate through pitchData to populate these structures
+  pitchData.forEach(p => {
+    const pt = p.pitchType || "unknown";
+    const preCount = `${p.prePitchCount.balls}-${p.prePitchCount.strikes}`; 
+    const outcome = p.outcome;
+
+    // Initialize objects if not present
+    if (!pitchTypeTotals[pt]) {
+      pitchTypeTotals[pt] = 0;
+      pitchTypeSwings[pt] = 0;
+      pitchTypeWhiffs[pt] = 0;
+      pitchTypeBalls[pt]  = 0;
+    }
+    if (!countTotals[preCount]) {
+      countTotals[preCount] = 0;
+      countSwings[preCount] = 0;
+    }
+
+    // Increment pitchTypeTotals
+    pitchTypeTotals[pt] += 1;
+    // Increment countTotals
+    countTotals[preCount] += 1;
+
+    // If the outcome is "ball", increment pitchTypeBalls
+    if (outcome === "ball") {
+      pitchTypeBalls[pt] += 1;
+    }
+
+    // A "swing" includes whiff, foul, or anything "inPlay"
+    // (You could decide if calledStrike is a swing or not, usually it's not.)
+    const isSwing = (
+      outcome === "whiff" ||
+      outcome === "foul"  ||
+      outcome === "inPlay"
+    );
+    if (isSwing) {
+      pitchTypeSwings[pt] += 1;
+      countSwings[preCount] += 1;
+    }
+
+    // A "whiff" is specifically outcome === "whiff"
+    if (outcome === "whiff") {
+      pitchTypeWhiffs[pt] += 1;
+    }
+  });
+
+  // 3) Build HTML for "Pitch Type Stats"
+  const pitchTypeStatsBody = document.getElementById("pitchTypeStatsBody");
+  pitchTypeStatsBody.innerHTML = ""; // Clear it first
+
+  Object.keys(pitchTypeTotals).forEach(pt => {
+    const total = pitchTypeTotals[pt];
+    const swings = pitchTypeSwings[pt];
+    const whiffs = pitchTypeWhiffs[pt];
+    const balls  = pitchTypeBalls[pt];
+
+    // Whiff % is whiffs / swings
+    const whiffPct = swings > 0 ? (whiffs / swings) * 100 : 0;
+    // Ball % is balls / total
+    const ballPct = total > 0 ? (balls / total) * 100 : 0;
+
+    // Create a new row
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td style="border: 1px solid #ccc; padding: 4px;">${pt.toUpperCase()}</td>
+      <td style="border: 1px solid #ccc; padding: 4px;">${total}</td>
+      <td style="border: 1px solid #ccc; padding: 4px;">${whiffPct.toFixed(1)}%</td>
+      <td style="border: 1px solid #ccc; padding: 4px;">${ballPct.toFixed(1)}%</td>
+    `;
+    pitchTypeStatsBody.appendChild(row);
+  });
+
+  // 4) Build HTML for "Swing % by Count"
+  const countStatsBody = document.getElementById("countStatsBody");
+  countStatsBody.innerHTML = ""; // Clear it
+
+  // Sort the counts in a nice order if desired, or just do .forEach
+  Object.keys(countTotals).forEach(cnt => {
+    const totalPitches = countTotals[cnt];
+    const swings = countSwings[cnt];
+    const swingPct = totalPitches > 0 ? (swings / totalPitches) * 100 : 0;
+
+    // Create a new row
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td style="border: 1px solid #ccc; padding: 4px;">${cnt}</td>
+      <td style="border: 1px solid #ccc; padding: 4px;">${totalPitches}</td>
+      <td style="border: 1px solid #ccc; padding: 4px;">${swings}</td>
+      <td style="border: 1px solid #ccc; padding: 4px;">${swingPct.toFixed(1)}%</td>
+    `;
+    countStatsBody.appendChild(row);
+  });
+}
 
 
 function exportLiveBPStats() {
