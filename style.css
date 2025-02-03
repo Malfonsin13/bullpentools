@@ -225,6 +225,67 @@ border-radius: 5px;
   cursor: help;
 }
 
+/* 1) Center, space out and align items in the modeSelection bar */
+#modeSelection {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 30px; /* spacing between groups */
+  margin-top: 20px;
+}
+
+/* 2) “Games” label and group layout */
+.gamesGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* centers <h3> and the buttons below it */
+  gap: 10px;
+}
+
+.gameModes {
+  display: flex;
+  gap: 10px;
+}
+
+/* 3) “Games” group buttons – same color (e.g., Brewers’ Gold #ffb517) */
+.gameModes button {
+  background-color: #ffb517; 
+  color: #0a2351; 
+  border: none;
+  border-radius: 5px;
+  font-family: 'Permanent Marker', cursive;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* 4) Live BP button – a different color (e.g., #3c8ddb) */
+.liveBPGroup {
+  /* no special layout needed – just 1 button */
+}
+.liveBPGroup button {
+  background-color: #3c8ddb; 
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  font-family: 'Permanent Marker', cursive;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* 5) Undo button – keep red, but style consistently */
+.undoBtn {
+  background-color: red; 
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-family: 'Permanent Marker', cursive;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
 
 
 
