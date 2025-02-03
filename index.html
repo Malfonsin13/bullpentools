@@ -1,5 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pitch Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Load Google font if desired -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Load your CSS -->
+  <link rel="stylesheet" href="style.css" />
+</head>
 <body>
-  <!-- Top bar -->
+  <!-- TOP BAR -->
   <div id="modeSelection">
     <div class="gamesGroup">
       <h3>Games</h3>
@@ -15,7 +31,7 @@
     <button id="undoBtn" class="undoBtn">UNDO</button>
   </div>
 
-  <!-- BULLPEN MODE -->
+  <!-- BULLPEN MODE (R2K or Putaway) -->
   <div id="bullpenMode" style="display:none;">
     <h1>Pitch Tracker</h1>
     <div id="totalPitches">Total Pitches: 0</div>
@@ -23,13 +39,13 @@
     <div id="strikePercentage">Strike %: 0</div>
     <div id="raceWins">Race Wins: 0</div>
 
-    <!-- Regular buttons for R2K Mode -->
+    <!-- Regular R2K buttons -->
     <div id="r2kButtons">
       <button id="strikeBtn">Strike</button>
       <button id="ballBtn">Ball</button>
     </div>
 
-    <!-- Putaway Mode buttons -->
+    <!-- Putaway Mode buttons (only if 2 strikes) -->
     <div id="putawayButtons" style="display: none;">
       <button id="kBtn">K</button>
       <button id="noKBtn">NO K</button>
@@ -44,8 +60,8 @@
     <!-- 2-column layout for Live BP -->
     <div class="liveBP-left">
       <h2 id="modeTitle">Live BP Mode</h2>
-      
-      <!-- Points Container -->
+
+      <!-- Points Container (for Points Mode) -->
       <div id="pointsContainer" style="display: none;">
         <div id="pointsDisplay">Points: 0</div>
         <div id="comboPitchTypesDisplay">Combo Pitch Types: None</div>
@@ -63,7 +79,7 @@
         <button class="btn" id="splitter">SP</button>
       </div>
 
-      <!-- Combo Pitch Type Selection -->
+      <!-- Combo Pitch Type Selection (Points Mode) -->
       <div id="comboPitchTypeSelection" style="display: none;">
         <h3>Select Pitch Type Goal</h3>
         <button class="comboPitchTypeBtn" id="combo-fourSeam">4S</button>
@@ -81,7 +97,62 @@
         <h3>Select Pitch Location</h3>
         <div id="pitchLocationContainer">
           <div id="pitchLocationGrid">
-            <!-- ...location buttons... -->
+            <!-- Row 1 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-26">26</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-27">27</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-28">28</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-29">29</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-30">30</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-31">31</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-32">32</button>
+            <!-- Row 2 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-33">33</button>
+            <button class="locationBtn shadowZone" id="location-10">10</button>
+            <button class="locationBtn shadowZone" id="location-11">11</button>
+            <button class="locationBtn shadowZone" id="location-12">12</button>
+            <button class="locationBtn shadowZone" id="location-13">13</button>
+            <button class="locationBtn shadowZone" id="location-14">14</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-34">34</button>
+            <!-- Row 3 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-35">35</button>
+            <button class="locationBtn shadowZone" id="location-15">15</button>
+            <button class="locationBtn strikeZone" id="location-1">1</button>
+            <button class="locationBtn strikeZone" id="location-2">2</button>
+            <button class="locationBtn strikeZone" id="location-3">3</button>
+            <button class="locationBtn shadowZone" id="location-16">16</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-36">36</button>
+            <!-- Row 4 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-37">37</button>
+            <button class="locationBtn shadowZone" id="location-17">17</button>
+            <button class="locationBtn strikeZone" id="location-4">4</button>
+            <button class="locationBtn strikeZone" id="location-5">5</button>
+            <button class="locationBtn strikeZone" id="location-6">6</button>
+            <button class="locationBtn shadowZone" id="location-18">18</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-38">38</button>
+            <!-- Row 5 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-39">39</button>
+            <button class="locationBtn shadowZone" id="location-19">19</button>
+            <button class="locationBtn strikeZone" id="location-7">7</button>
+            <button class="locationBtn strikeZone" id="location-8">8</button>
+            <button class="locationBtn strikeZone" id="location-9">9</button>
+            <button class="locationBtn shadowZone" id="location-20">20</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-40">40</button>
+            <!-- Row 6 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-41">41</button>
+            <button class="locationBtn shadowZone" id="location-21">21</button>
+            <button class="locationBtn shadowZone" id="location-22">22</button>
+            <button class="locationBtn shadowZone" id="location-23">23</button>
+            <button class="locationBtn shadowZone" id="location-24">24</button>
+            <button class="locationBtn shadowZone" id="location-25">25</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-42">42</button>
+            <!-- Row 7 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-43">43</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-44">44</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-45">45</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-46">46</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-47">47</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-48">48</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-49">49</button>
           </div>
         </div>
       </div>
@@ -115,16 +186,16 @@
         <ul id="pitchLog"></ul>
       </div>
 
-      <!-- Some action buttons -->
-      <button id="exportBtn">Export Stats</button>
-      <button id="heatMapBtn">Heat Map</button>
-      <button id="nextBatterBtn">Next Batter</button>
-      <button id="tagPitchBtn">Tag Pitch</button>
+      <!-- Action Buttons -->
+      <button id="exportBtn" style="margin-top: 20px;">Export Stats</button>
+      <button id="heatMapBtn" style="margin-top: 20px;">Heat Map</button>
+      <button id="nextBatterBtn" style="margin-top: 20px;">Next Batter</button>
+      <button id="tagPitchBtn" style="margin-top: 20px;">Tag Pitch</button>
     </div>
 
     <div class="liveBP-right">
       <!-- Live Stats Section -->
-      <div id="liveStatsContainer" style="display: none;">
+      <div id="liveStatsContainer" style="display: none; margin-top: 20px;">
         <h3>Live Stats</h3>
 
         <div id="pitchTypeStats">
@@ -142,7 +213,7 @@
           </table>
         </div>
 
-        <div id="countStats">
+        <div id="countStats" style="margin-top: 20px;">
           <h4>Swing % by Count</h4>
           <table>
             <thead>
@@ -161,9 +232,64 @@
       <!-- Heatmap Grid -->
       <div id="heatmapGrid" style="display:none;">
         <h3>Heat Map</h3>
-        <div id="heatmapContainer">
+        <div id="heatmapContainer" style="display: flex; justify-content: center;">
           <div id="heatmap">
-            <!-- ...heatmap buttons... -->
+            <!-- Row 1 -->
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-26">26</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-27">27</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-28">28</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-29">29</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-30">30</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-31">31</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-32">32</button>
+            <!-- Row 2 -->
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-33">33</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-10">10</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-11">11</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-12">12</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-13">13</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-14">14</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-34">34</button>
+            <!-- Row 3 -->
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-35">35</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-15">15</button>
+            <button class="heatmapBtn strikeZone" id="heatmap-1">1</button>
+            <button class="heatmapBtn strikeZone" id="heatmap-2">2</button>
+            <button class="heatmapBtn strikeZone" id="heatmap-3">3</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-16">16</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-36">36</button>
+            <!-- Row 4 -->
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-37">37</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-17">17</button>
+            <button class="heatmapBtn strikeZone" id="heatmap-4">4</button>
+            <button class="heatmapBtn strikeZone" id="heatmap-5">5</button>
+            <button class="heatmapBtn strikeZone" id="heatmap-6">6</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-18">18</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-38">38</button>
+            <!-- Row 5 -->
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-39">39</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-19">19</button>
+            <button class="heatmapBtn strikeZone" id="heatmap-7">7</button>
+            <button class="heatmapBtn strikeZone" id="heatmap-8">8</button>
+            <button class="heatmapBtn strikeZone" id="heatmap-9">9</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-20">20</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-40">40</button>
+            <!-- Row 6 -->
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-41">41</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-21">21</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-22">22</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-23">23</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-24">24</button>
+            <button class="heatmapBtn shadowZone" id="heatmap-25">25</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-42">42</button>
+            <!-- Row 7 -->
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-43">43</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-44">44</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-45">45</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-46">46</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-47">47</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-48">48</button>
+            <button class="heatmapBtn nonCompetitiveZone" id="heatmap-49">49</button>
           </div>
         </div>
       </div>
@@ -182,6 +308,7 @@
     </div>
   </div>
 
-  <!-- Load your script -->
+  <!-- Load your script at the bottom -->
   <script src="script.js"></script>
 </body>
+</html>
