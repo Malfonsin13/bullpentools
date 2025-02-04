@@ -17,20 +17,6 @@ button {
   font-family: 'Permanent Marker', cursive;
 }
 
-/* R2K Mode, Putaway Mode, Points Mode buttons */
-#bullpenModeBtn,
-#putawayModeBtn,
-#pointsModeBtn {
-  background-color: lightblue;
-  color: #0a2351;
-}
-
-/* Live BP Mode button */
-#liveBPModeBtn {
-  background-color: #ffb517;
-  color: #0a2351;
-}
-
 
 #currentCount, #raceWins {
   margin-bottom: 20px;
@@ -239,6 +225,22 @@ border-radius: 5px;
   margin-left: 10px;
   cursor: help;
 }
+
+/* Override default button styles with IDs */
+#bullpenModeBtn,
+#putawayModeBtn,
+#pointsModeBtn {
+  background-color: lightblue !important;
+  color: #0a2351 !important;
+}
+
+#liveBPModeBtn {
+  background-color: #ffb517 !important;
+  color: #0a2351 !important;
+}
+
+
+
 
 
 
