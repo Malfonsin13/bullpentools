@@ -1,23 +1,24 @@
-/* -----------------------------------------
-   BASIC PAGE STYLES
------------------------------------------- */
 body {
   text-align: center;
   font-family: 'Permanent Marker', cursive;
   background-color: #0a2351; /* Brewers' Navy Blue */
-  color: #ffb517;           /* Brewers' Gold */
+  color: #ffb517; /* Brewers' Gold */
 }
 
 button {
   margin: 10px;
-  padding: 15px;
-  font-size: 1.2em;
+  padding: 10px 20px;
+  font-size: 16px;
   cursor: pointer;
   background-color: #ffffff;
   color: #0a2351;
   border: none;
   border-radius: 5px;
   font-family: 'Permanent Marker', cursive;
+}
+
+#currentCount, #raceWins {
+  margin-bottom: 20px;
 }
 
 ul {
@@ -28,131 +29,29 @@ li {
   margin: 5px 0;
 }
 
-#currentCount,
-#raceWins {
-  margin-bottom: 20px;
-}
-
-/* -----------------------------------------
-   TOP BAR LAYOUT
------------------------------------------- */
-#modeSelection {
-  /* A single horizontal row with space between each section. */
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  max-width: 900px;
-  margin: 20px auto; /* centers the whole bar on the page */
-  padding: 0 10px;   /* optional horizontal padding */
-}
-
-/* "Games" group: title above the row of game buttons */
-.gamesGroup {
-  display: flex;
-  flex-direction: column;
-  align-items: center; 
-}
-.gameModes {
-  display: flex;
-  gap: 10px; /* space between R2K, Putaway, Points */
-}
-
-/* Example styling for the 'Games' buttons (Brewers Gold) */
-.gameModes button {
-  background-color: #ffb517; 
-  color: #0a2351; 
-  border: none;
-  border-radius: 5px;
-  font-family: 'Permanent Marker', cursive;
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-/* Align the "Live BP" button so it's in the center column */
-.liveBPGroup button {
-  background-color: #3c8ddb; 
-  color: #ffffff;
-  border: none;
-  border-radius: 5px;
-  font-family: 'Permanent Marker', cursive;
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-/* The red UNDO button far right. */
-.undoBtn {
-  background-color: red; 
-  color: white;
-  border: none;
-  border-radius: 5px;
-  font-family: 'Permanent Marker', cursive;
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-/* -----------------------------------------
-   LIVE BP 2-COLUMN LAYOUT
------------------------------------------- */
-#liveBPMode {
-  /* Let’s use a responsive 2-col grid. */
-  display: grid;
-  grid-template-columns: 1fr 1fr; /* left & right columns share space */
-  gap: 40px; 
-  max-width: 1200px;
-  margin: 30px auto; /* center on page */
-  padding: 0 10px;
-}
-
-.liveBP-left {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
-
-.liveBP-right {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
-
-/* -----------------------------------------
-   LIVE BP PITCH TYPE BUTTON COLORS
------------------------------------------- */
+/* Styles for Live BP Pitch Type Buttons */
 #pitchTypeSelection #fourSeam,
 #pitchTypeSelection #twoSeam,
 #pitchTypeSelection #cutter {
-  background-color: #274472; /* Darker Blue */
+  background-color: #274472;
   color: white;
 }
 
 #pitchTypeSelection #curveBall,
 #pitchTypeSelection #slider {
-  background-color: #d3a625; /* Gold-ish */
+  background-color: #d3a625;
   color: white;
 }
 
 #pitchTypeSelection #changeup,
 #pitchTypeSelection #splitter {
-  background-color: #3c8ddb; /* Royal Blue */
-  color: white;
-}
-
-/* Royal Blue Shades for CH, SP */
-#changeup, #splitter {
   background-color: #3c8ddb;
   color: white;
 }
 
-/* -----------------------------------------
-   LOCATION & HEATMAP BUTTONS
------------------------------------------- */
+/* Zone Colors for pitch location selection (not heatmap) */
 .locationBtn.strikeZone {
-  background-color: #ffb517; /* Gold */
+  background-color: #ffb517;
 }
 
 .locationBtn.shadowZone {
@@ -164,10 +63,11 @@ li {
   color: white;
 }
 
+/* Styles for the location buttons and heatmap buttons */
 .locationBtn, .heatmapBtn {
-  width: 32px;
-  height: 32px;
-  font-size: 14px;
+  width: 32px; /* Adjust the width as needed */
+  height: 32px; /* Adjust the height as needed */
+  font-size: 14px; /* Adjust the font size as needed */
   padding: 0;
   margin: 0;
 }
@@ -176,11 +76,32 @@ li {
 .heatmapBtn {
   background-color: transparent; 
   color: black; 
-  pointer-events: none; /* Per your script */
 }
 
+/* If you have specific styles for .heatmapBtn.nonCompetitiveZone, remove the background-color */
 .heatmapBtn.nonCompetitiveZone {
-  color: white; 
+    color: white; 
+}
+
+
+/* Royal Blue Shades for CH, SP */
+#changeup, #splitter {
+background-color: #3c8ddb; /* Lighter Royal Blue */
+color: white;
+}
+
+#r2kButtons {
+display: block;
+}
+
+#putawayButtons {
+display: none;
+}
+
+button {
+margin: 10px;
+padding: 15px;
+font-size: 1.2em;
 }
 
 #pitchLocationSelection {
@@ -189,44 +110,55 @@ li {
 
 #pitchLocationContainer {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: center; /* Centers horizontally */
+  align-items: center; /* Centers vertically, optional */
   width: 100%;
   height: 100%;
   margin: auto;
 }
 
-#pitchLocationGrid,
-#heatmap {
+#pitchLocationGrid, #heatmap {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+  gap: 2px; /* Adjust the gap between buttons */
   justify-items: center;
   width: fit-content;
   margin: auto;
 }
 
-/* -----------------------------------------
-   COMPLETED COUNTS (BULLPEN MODE)
------------------------------------------- */
+
+
+/* Styles for completed count log */
 #countLog {
-  margin-top: 20px;
-  padding: 0;
-  max-width: 400px;
-  margin-left: auto;
-  margin-right: auto;
+margin-top: 20px;
+padding: 0;
+max-width: 400px;
+margin-left: auto;
+margin-right: auto;
 }
 
 #countLog li {
-  background-color: #ffb517;
-  color: #0a2351;
-  padding: 10px;
-  border-radius: 5px;
+background-color: #ffb517;
+color: #0a2351;
+padding: 10px;
+border-radius: 5px;
 }
 
-/* -----------------------------------------
-   COMBO PITCH TYPE
------------------------------------------- */
+.comboPitchTypeBtn {
+  background-color: #007bff; /* Initial color */
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  margin: 5px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.comboPitchTypeBtn.selected {
+  background-color: #28a745; /* Color when selected */
+}
 .comboPitchTypeBtn {
   background-color: #007bff; /* Initial color */
   color: white;
@@ -243,9 +175,11 @@ li {
   background-color: #28a745; /* Color when selected */
 }
 
-/* -----------------------------------------
-   POINTS CONTAINER
------------------------------------------- */
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 #pointsContainer {
   text-align: center;
   margin: 20px 0;
@@ -253,9 +187,9 @@ li {
 }
 
 #pointsDisplay {
-  font-size: 36px;
+  font-size: 36px; /* Increase font size */
   font-weight: bold;
-  color: #ff5722;
+  color: #ff5722; /* Bright color */
 }
 
 #comboPitchTypesDisplay {
@@ -263,9 +197,15 @@ li {
   color: #555;
 }
 
-/* -----------------------------------------
-   PITCH LOG SELECTION
------------------------------------------- */
+@keyframes slideOut {
+  0% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(100px); }
+}
+
+.heatmapBtn {
+  pointer-events: none;
+}
+
 #pitchLog li.selectable {
   cursor: pointer;
 }
@@ -274,66 +214,16 @@ li {
   background-color: lightblue;
 }
 
-/* -----------------------------------------
-   FLAG STYLES
------------------------------------------- */
+/* Styling for selected flag buttons */
 .flagBtn.selected {
   border: 2px solid blue;
 }
 
+/* Styling for flag emoji */
 .flagEmoji {
   margin-left: 10px;
   cursor: help;
 }
 
-/* -----------------------------------------
-   ANIMATIONS
------------------------------------------- */
-@keyframes fadeOut {
-  0% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
 
-@keyframes slideOut {
-  0% {
-    opacity: 1;
-    transform: translateX(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(100px);
-  }
-}
 
-/* -----------------------------------------
-   TABLE & OTHER CLEANUPS (STATS TABLES)
------------------------------------------- */
-#pitchTypeStats table,
-#countStats table {
-  border-collapse: collapse;
-  margin: 10px 0;
-  width: 100%;
-  max-width: 300px; /* optional – keep them narrower */
-  color: #0a2351;
-  background-color: #fff;
-}
-
-#pitchTypeStats th,
-#pitchTypeStats td,
-#countStats th,
-#countStats td {
-  border: 1px solid #ccc;
-  padding: 6px;
-  text-align: center;
-}
-
-/* Distinct header style */
-#pitchTypeStats th,
-#countStats th {
-  background-color: #ffb517;
-  color: #0a2351;
-}
