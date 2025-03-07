@@ -21,6 +21,13 @@ let pitchData = [];
 let atBatNumber = 1; 
 let isNewAtBat = false; 
 let pitchCountInAtBat = 0;
+let intendedZoneModePitchCount = 0;
+let intendedZoneTotalExactHits = 0;   
+let intendedZoneAccuracyPoints = 0;    
+let intendedZoneData = [];           
+let currentIntendedPitchType = "";
+let currentIntendedZone = null;
+let currentActualZone = null;
 
 
 
@@ -70,6 +77,11 @@ document.getElementById('pointsModeBtn').addEventListener('click', function() {
   toggleMode();
 });
 
+document.getElementById('intendedZoneModeBtn').addEventListener('click', function() {
+  mode = "intendedZone";
+  toggleMode();
+});
+
 function toggleMode() {
   if (mode === "bullpen") {
     document.getElementById('bullpenMode').style.display = 'block';
@@ -91,9 +103,17 @@ function toggleMode() {
     document.getElementById('liveBPMode').style.display = 'block';
     document.getElementById('modeTitle').innerText = 'Points Mode';
     document.getElementById('pointsContainer').style.display = 'block';
+  } else if (mode === "intendedZone") {
+    document.getElementById('bullpenMode').style.display = 'none';
+    document.getElementById('liveBPMode').style.display = 'none';
+    document.getElementById('modeTitle').innerText = 'Intended Zone';
+    document.getElementById('pointsContainer').style.display = 'none';
+    document.getElementById('intendedZoneMode').style.display = 'block';
+    
     showComboPitchTypeSelection();
   }
   resetCount();
+  resetIntendedZoneMode();
 }
 
 
@@ -210,6 +230,31 @@ document.querySelectorAll("#comboPitchTypeSelection .comboPitchTypeBtn").forEach
   });
 });
 
+document.querySelectorAll("#intendedZonePitchTypeSelection .btn").forEach(button => {
+  button.addEventListener('click', function() {
+    currentIntendedPitchType = this.id.replace("intended-", "");
+    document.getElementById("intendedZonePitchTypeSelection").style.display = "none";
+    document.getElementById("intendedZoneSelection").style.display = "block";
+  });
+});
+
+document.querySelectorAll("#intendedZoneSelection .intendedZoneBtn").forEach(button => {
+  button.addEventListener('click', function() {
+    let zoneId = parseInt(this.id.replace("intendedZone-", ""));
+    currentIntendedZone = zoneId;
+    document.getElementById("intendedZoneSelection").style.display = "none";
+    document.getElementById("actualZoneSelection").style.display = "block";
+  });
+});
+
+document.querySelectorAll("#actualZoneSelection .actualZoneBtn").forEach(button => {
+  button.addEventListener('click', function() {
+    let zoneId = parseInt(this.id.replace("actualZone-", ""));
+    currentActualZone = zoneId;
+    recordIntendedZonePitch();
+  });
+});
+
 
 document.getElementById('comboSelectionDoneBtn').addEventListener('click', function() {
   showPitchTypeSelection(); // Proceed to regular pitch recording
@@ -266,6 +311,196 @@ function resetPutawayButtons() {
   document.getElementById('putawayButtons').style.display = 'none';
   document.getElementById('r2kButtons').style.display = 'block';
 }
+
+function getZoneRowCol(zoneId) {
+
+  const zoneLookup = {
+    26: [0,0], 27: [0,1], 28: [0,2], 29: [0,3], 30: [0,4], 31: [0,5], 32: [0,6],
+    33: [1,0], 10: [1,1], 11: [1,2], 12: [1,3], 13: [1,4], 14: [1,5], 34: [1,6],
+    35: [2,0], 15: [2,1],  1: [2,2],  2: [2,3],  3: [2,4], 16: [2,5], 36: [2,6],
+    37: [3,0], 17: [3,1],  4: [3,2],  5: [3,3],  6: [3,4], 18: [3,5], 38: [3,6],
+    39: [4,0], 19: [4,1],  7: [4,2],  8: [4,3],  9: [4,4], 20: [4,5], 40: [4,6],
+    41: [5,0], 21: [5,1], 22: [5,2], 23: [5,3], 24: [5,4], 25: [5,5], 42: [5,6],
+    43: [6,0], 44: [6,1], 45: [6,2], 46: [6,3], 47: [6,4], 48: [6,5], 49: [6,6]
+  };
+  return zoneLookup[zoneId] || [ -1, -1 ];
+}
+
+function getDistanceBetweenZones(zoneIdA, zoneIdB) {
+  let [rA, cA] = getZoneRowCol(zoneIdA);
+  let [rB, cB] = getZoneRowCol(zoneIdB);
+  // We can use simple Euclidean or Manhattan distance. Let’s pick Euclidean:
+  let rowDiff = rA - rB;
+  let colDiff = cA - cB;
+  let dist = Math.sqrt(rowDiff*rowDiff + colDiff*colDiff);
+  return dist;
+}
+
+function resetIntendedZoneMode() {
+  intendedZoneModePitchCount = 0;
+  intendedZoneTotalExactHits = 0;
+  intendedZoneAccuracyPoints = 0;
+  intendedZoneData = [];
+  updateIntendedZoneUI();
+}
+
+function recordIntendedZonePitch() {
+  intendedZoneModePitchCount++;
+
+  // Calculate the miss distance
+  let dist = getDistanceBetweenZones(currentIntendedZone, currentActualZone);
+
+  let pointsAwarded = 0;
+  if (dist === 0) {
+    pointsAwarded = 5;
+    intendedZoneTotalExactHits++;
+  } else if (dist <= 1) {
+    pointsAwarded = 2;
+  } else if (dist <= 2) {
+    pointsAwarded = 1;
+  } else {
+    pointsAwarded = -1; // or 0, if you want no negative
+  }
+  intendedZoneAccuracyPoints += pointsAwarded;
+
+  // Log it in our array
+  const pitchEntry = {
+    pitchNumber: intendedZoneModePitchCount,
+    pitchType: currentIntendedPitchType,
+    intendedZone: currentIntendedZone,
+    actualZone: currentActualZone,
+    distance: dist,
+    points: pointsAwarded
+  };
+  intendedZoneData.push(pitchEntry);
+
+  // Update UI
+  updateIntendedZoneUI();
+  logIntendedZonePitch(pitchEntry);
+
+  // Reset for next pitch
+  currentIntendedPitchType = "";
+  currentIntendedZone = null;
+  currentActualZone = null;
+
+  // Show pitch type selection again, so user can pick next pitch
+  document.getElementById("actualZoneSelection").style.display = "none";
+  document.getElementById("intendedZonePitchTypeSelection").style.display = "block";
+}
+
+function updateIntendedZoneUI() {
+  document.getElementById("intendedZoneTotalPitches").innerText =
+    "Total Pitches: " + intendedZoneModePitchCount;
+  document.getElementById("intendedZoneAccuracyPoints").innerText =
+    "Accuracy Points: " + intendedZoneAccuracyPoints;
+  document.getElementById("intendedZoneExactHits").innerText =
+    "Exact Hits: " + intendedZoneTotalExactHits;
+
+  let hitPct = 0;
+  if (intendedZoneModePitchCount > 0) {
+    hitPct = (intendedZoneTotalExactHits / intendedZoneModePitchCount) * 100;
+  }
+  document.getElementById("intendedZoneHitPercentage").innerText =
+    "Hit %: " + hitPct.toFixed(2);
+}
+
+
+function logIntendedZonePitch(pitchEntry) {
+  let logUl = document.getElementById("intendedZoneLog");
+  let li = document.createElement("li");
+  li.textContent = `#${pitchEntry.pitchNumber} – ${pitchEntry.pitchType.toUpperCase()}
+    | Intended: ${pitchEntry.intendedZone}
+    | Actual: ${pitchEntry.actualZone}
+    | Dist: ${pitchEntry.distance.toFixed(2)}
+    | Pts: ${pitchEntry.points}`;
+  logUl.appendChild(li);
+}
+
+document.getElementById("exportIntendedZoneBtn").addEventListener("click", exportIntendedZoneStats);
+
+function exportIntendedZoneStats() {
+  if (intendedZoneData.length === 0) {
+    alert("No data to export yet!");
+    return;
+  }
+
+  let totalPitches = intendedZoneData.length;
+  let sumDistance = 0;
+  let pitchTypeMap = {}; // keyed by pitchType => {count, sumDist, exactHits, zoneMap{}}
+  let zoneTargetMap = {}; // keyed by intendedZone => { count, sumDist }
+
+  intendedZoneData.forEach(pitch => {
+    sumDistance += pitch.distance;
+
+    // Tally by pitchType
+    let pt = pitch.pitchType;
+    if (!pitchTypeMap[pt]) {
+      pitchTypeMap[pt] = {
+        count: 0,
+        sumDist: 0,
+        exactHits: 0
+      };
+    }
+    pitchTypeMap[pt].count++;
+    pitchTypeMap[pt].sumDist += pitch.distance;
+    if (pitch.distance === 0) {
+      pitchTypeMap[pt].exactHits = (pitchTypeMap[pt].exactHits || 0) + 1;
+    }
+
+    // Tally by intended zone
+    let iz = pitch.intendedZone;
+    if (!zoneTargetMap[iz]) {
+      zoneTargetMap[iz] = { count: 0, sumDist: 0, exactHits: 0 };
+    }
+    zoneTargetMap[iz].count++;
+    zoneTargetMap[iz].sumDist += pitch.distance;
+    if (pitch.distance === 0) {
+      zoneTargetMap[iz].exactHits++;
+    }
+  });
+
+  let avgDist = sumDistance / totalPitches;
+  let exactHitsCount = intendedZoneData.filter(p => p.distance === 0).length;
+  let exactHitPct = (exactHitsCount / totalPitches) * 100;
+
+  let lines = [];
+  lines.push(`Total Pitches: ${totalPitches}`);
+  lines.push(`Avg Distance Off: ${avgDist.toFixed(2)}`);
+  lines.push(`Exact Hits: ${exactHitsCount} (${exactHitPct.toFixed(2)}%)`);
+  lines.push(`Total Accuracy Points: ${intendedZoneAccuracyPoints}`);
+
+  lines.push("\nBreakdown by Pitch Type:\n");
+  Object.keys(pitchTypeMap).forEach(pt => {
+    let data = pitchTypeMap[pt];
+    let avgDistPT = data.sumDist / data.count;
+    let exactPctPT = (data.exactHits / data.count) * 100;
+    lines.push(`Pitch Type: ${pt.toUpperCase()}`);
+    lines.push(`  Count: ${data.count}`);
+    lines.push(`  Avg Distance: ${avgDistPT.toFixed(2)}`);
+    lines.push(`  Exact Hits: ${data.exactHits} (${exactPctPT.toFixed(2)}%)`);
+  });
+
+  lines.push("\nPerformance by Intended Zone:\n");
+  Object.keys(zoneTargetMap).forEach(z => {
+    let zData = zoneTargetMap[z];
+    let zAvgDist = zData.sumDist / zData.count;
+    let zExactPct = (zData.exactHits / zData.count) * 100;
+    lines.push(`  Intended Zone ${z}: count=${zData.count}, avgDist=${zAvgDist.toFixed(2)}, exactHit%=${zExactPct.toFixed(2)}`);
+  });
+
+  // For convenience, we can copy to clipboard:
+  let exportText = lines.join("\n");
+  navigator.clipboard.writeText(exportText)
+    .then(() => {
+      console.log("Intended Zone stats copied to clipboard.");
+      alert("Intended Zone stats copied to clipboard!");
+    })
+    .catch(err => {
+      console.error("Failed to copy:", err);
+      alert("Failed to copy stats to clipboard.");
+    });
+}
+
 
 function saveCurrentState() {
   return {
