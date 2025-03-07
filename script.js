@@ -106,11 +106,16 @@ function toggleMode() {
   } else if (mode === "intendedZone") {
     document.getElementById('bullpenMode').style.display = 'none';
     document.getElementById('liveBPMode').style.display = 'none';
-    document.getElementById('modeTitle').innerText = 'Intended Zone';
+    // Remove or update modeTitle if necessary. 
+    // document.getElementById('modeTitle').innerText = 'Intended Zone';
     document.getElementById('pointsContainer').style.display = 'none';
     document.getElementById('intendedZoneMode').style.display = 'block';
 
-  }
+    // Ensure that the intended zone mode starts with pitch type selection visible:
+    document.getElementById("intendedZonePitchTypeSelection").style.display = "block";
+    document.getElementById("intendedZoneSelection").style.display = "none";
+    document.getElementById("actualZoneSelection").style.display = "none";
+}
   resetCount();
   resetIntendedZoneMode();
 }
