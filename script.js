@@ -109,8 +109,7 @@ function toggleMode() {
     document.getElementById('modeTitle').innerText = 'Intended Zone';
     document.getElementById('pointsContainer').style.display = 'none';
     document.getElementById('intendedZoneMode').style.display = 'block';
-    
-    showComboPitchTypeSelection();
+
   }
   resetCount();
   resetIntendedZoneMode();
