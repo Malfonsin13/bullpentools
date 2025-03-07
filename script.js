@@ -91,7 +91,7 @@ function toggleMode() {
   } else if (mode === "liveBP") {
     document.getElementById('bullpenMode').style.display = 'none';
     document.getElementById('liveBPMode').style.display = 'block';
-    //document.getElementById('modeTitle').innerText = 'Live BP Mode';
+    document.getElementById('modeTitle').innerText = 'Live BP Mode';
     document.getElementById('pointsContainer').style.display = 'none';
   } else if (mode === "putaway") {
     document.getElementById('bullpenMode').style.display = 'block';
@@ -101,7 +101,7 @@ function toggleMode() {
   } else if (mode === "points") {
     document.getElementById('bullpenMode').style.display = 'none';
     document.getElementById('liveBPMode').style.display = 'block';
-    //document.getElementById('modeTitle').innerText = 'Points Mode';
+    document.getElementById('modeTitle').innerText = 'Points Mode';
     document.getElementById('pointsContainer').style.display = 'block';
   } else if (mode === "intendedZone") {
     // Hide the other modes
@@ -118,7 +118,7 @@ function toggleMode() {
     document.getElementById('actualZoneSelection').style.display = 'none';
 
     // If you have a #modeTitle outside of #intendedZoneMode, either remove or ignore it here
-    // document.getElementById('modeTitle').innerText = 'Intended Zone';
+    document.getElementById('modeTitle').innerText = 'Intended Zone';
   }
   resetCount();
   resetIntendedZoneMode();
