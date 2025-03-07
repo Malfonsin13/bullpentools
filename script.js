@@ -88,21 +88,25 @@ function toggleMode() {
     document.getElementById('liveBPMode').style.display = 'none';
     document.getElementById('putawayButtons').style.display = 'none';
     document.getElementById('pointsContainer').style.display = 'none';
+    document.getElementById('intendedZoneMode').style.display = 'none';
   } else if (mode === "liveBP") {
     document.getElementById('bullpenMode').style.display = 'none';
     document.getElementById('liveBPMode').style.display = 'block';
     document.getElementById('modeTitle').innerText = 'Live BP Mode';
     document.getElementById('pointsContainer').style.display = 'none';
+    document.getElementById('intendedZoneMode').style.display = 'none';
   } else if (mode === "putaway") {
     document.getElementById('bullpenMode').style.display = 'block';
     document.getElementById('liveBPMode').style.display = 'none';
     document.getElementById('putawayButtons').style.display = 'none';
     document.getElementById('pointsContainer').style.display = 'none';
+    document.getElementById('intendedZoneMode').style.display = 'none';
   } else if (mode === "points") {
     document.getElementById('bullpenMode').style.display = 'none';
     document.getElementById('liveBPMode').style.display = 'block';
     document.getElementById('modeTitle').innerText = 'Points Mode';
     document.getElementById('pointsContainer').style.display = 'block';
+    document.getElementById('intendedZoneMode').style.display = 'none';
   } else if (mode === "intendedZone") {
     // Hide the other modes
     document.getElementById('bullpenMode').style.display = 'none';
