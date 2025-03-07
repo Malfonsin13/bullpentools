@@ -104,18 +104,22 @@ function toggleMode() {
     document.getElementById('modeTitle').innerText = 'Points Mode';
     document.getElementById('pointsContainer').style.display = 'block';
   } else if (mode === "intendedZone") {
+    // Hide the other modes
     document.getElementById('bullpenMode').style.display = 'none';
     document.getElementById('liveBPMode').style.display = 'none';
-    // Remove or update modeTitle if necessary. 
-    // document.getElementById('modeTitle').innerText = 'Intended Zone';
-    document.getElementById('pointsContainer').style.display = 'none';
+
+    // Show the intendedZoneMode container
     document.getElementById('intendedZoneMode').style.display = 'block';
 
-    // Ensure that the intended zone mode starts with pitch type selection visible:
-    document.getElementById("intendedZonePitchTypeSelection").style.display = "block";
-    document.getElementById("intendedZoneSelection").style.display = "none";
-    document.getElementById("actualZoneSelection").style.display = "none";
-}
+    // **Important**: show the pitch type selection right away
+    document.getElementById('intendedZonePitchTypeSelection').style.display = 'block';
+    // And hide the other steps
+    document.getElementById('intendedZoneSelection').style.display = 'none';
+    document.getElementById('actualZoneSelection').style.display = 'none';
+
+    // If you have a #modeTitle outside of #intendedZoneMode, either remove or ignore it here
+    // document.getElementById('modeTitle').innerText = 'Intended Zone';
+  }
   resetCount();
   resetIntendedZoneMode();
 }
