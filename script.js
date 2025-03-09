@@ -122,7 +122,7 @@ function toggleMode() {
     document.getElementById('actualZoneSelection').style.display = 'none';
 
     // If you have a #modeTitle outside of #intendedZoneMode, either remove or ignore it here
-    document.getElementById('modeTitle').innerText = 'Intended Zone';
+    document.getElementById('intendedZoneTitle').innerText = 'Intended Zone';
   }
   resetCount();
   resetIntendedZoneMode();
