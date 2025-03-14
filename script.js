@@ -107,6 +107,7 @@ function toggleMode() {
     document.getElementById('modeTitle').innerText = 'Points Mode';
     document.getElementById('pointsContainer').style.display = 'block';
     document.getElementById('intendedZoneMode').style.display = 'none';
+    showComboPitchTypeSelection();
   } else if (mode === "intendedZone") {
     // Hide the other modes
     document.getElementById('bullpenMode').style.display = 'none';
@@ -114,6 +115,18 @@ function toggleMode() {
 
     // Show the intendedZoneMode container
     document.getElementById('intendedZoneMode').style.display = 'block';
+
+    document.querySelectorAll("#intendedZoneSelection .intendedZoneBtn")
+  .forEach(btn => {
+    let zone = parseInt(btn.id.replace("intendedZone-", ""));
+    if (strikeLocations.includes(zone)) {
+      btn.classList.add("strikeZone");
+    } else if (shadowLocations.includes(zone)) {
+      btn.classList.add("shadowZone");
+    } else if (nonCompetitiveLocations.includes(zone)) {
+      btn.classList.add("nonCompetitiveZone");
+    }
+  });
 
     // **Important**: show the pitch type selection right away
     document.getElementById('intendedZonePitchTypeSelection').style.display = 'block';
