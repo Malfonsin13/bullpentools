@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Pitch Tracker</title>
   <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
@@ -19,6 +18,7 @@
     <button id="undoBtn" style="background-color: red; color: white;">UNDO</button>
   </div>
 
+  <!-- BULLPEN MODE -->
   <div id="bullpenMode" style="display:none;">
     <h1>Pitch Tracker</h1>
     <div id="totalPitches">Total Pitches: 0</div>
@@ -42,14 +42,16 @@
     <ul id="countLog"></ul>
   </div>
 
+  <!-- LIVE BP MODE (also used by Points Mode) -->
   <div id="liveBPMode" style="display:none;">
     <h2 id="modeTitle">Live BP Mode</h2>
-    <!-- Combo Selection -->
+
     <!-- Points Container -->
     <div id="pointsContainer" style="display: none;">
       <div id="pointsDisplay">Points: 0</div>
       <div id="comboPitchTypesDisplay">Combo Pitch Types: None</div>
     </div>
+
     <!-- Pitch Type Selection -->
     <div id="pitchTypeSelection">
       <h3>Select Pitch Type</h3>
@@ -139,239 +141,236 @@
         </div>
       </div>
     </div>
-  </div> 
-
-<div id="intendedZoneMode" style="display:none;">
-  <h2 id="intendedZoneTitle">Intended Zone Modes</h2>
-
-  <!-- This will be your scoreboard for the pitcher’s accuracy -->
-  <div id="intendedZoneStats">
-    <div id="intendedZoneTotalPitches">Total Pitches: 0</div>
-    <div id="intendedZoneAccuracyPoints">Accuracy Points: 0</div>
-    <div id="intendedZoneExactHits">Exact Hits: 0</div>
-    <div id="intendedZoneHitPercentage">Hit %: 0</div>
   </div>
 
-  <!-- Step 1: Pitch type selection -->
-  <div id="intendedZonePitchTypeSelection">
-    <h3>Select Pitch Type</h3>
-    <button class="btn" id="intended-fourSeam">4S</button>
-    <button class="btn" id="intended-twoSeam">2S</button>
-    <button class="btn" id="intended-cutter">CT</button>
-    <button class="btn" id="intended-curveBall">CB</button>
-    <button class="btn" id="intended-slider">SL</button>
-    <button class="btn" id="intended-changeup">CH</button>
-    <button class="btn" id="intended-splitter">SP</button>
-  </div>
+  <!-- INTENDED ZONE MODE -->
+  <div id="intendedZoneMode" style="display:none;">
+    <h2 id="intendedZoneTitle">Intended Zone Modes</h2>
 
-  <!-- Step 2: Intended Zone selection -->
-  <div id="intendedZoneSelection" style="display:none;">
-    <h3>Select Intended Zone</h3>
-  <  div id="intendedZoneGridContainer" style="display: flex; justify-content: center;">
-      <div id="intendedZoneGrid">
-        <!-- Row 1 -->
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-26">26</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-27">27</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-28">28</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-29">29</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-30">30</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-31">31</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-32">32</button>
-        <!-- Row 2 -->
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-33">33</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-10">10</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-11">11</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-12">12</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-13">13</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-14">14</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-34">34</button>
-        <!-- Row 3 -->
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-35">35</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-15">15</button>
-        <button class="intendedZoneBtn strikeZone"        id="intendedZone-1">1</button>
-        <button class="intendedZoneBtn strikeZone"        id="intendedZone-2">2</button>
-        <button class="intendedZoneBtn strikeZone"        id="intendedZone-3">3</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-16">16</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-36">36</button>
-        <!-- Row 4 -->
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-37">37</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-17">17</button>
-        <button class="intendedZoneBtn strikeZone"        id="intendedZone-4">4</button>
-        <button class="intendedZoneBtn strikeZone"        id="intendedZone-5">5</button>
-        <button class="intendedZoneBtn strikeZone"        id="intendedZone-6">6</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-18">18</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-38">38</button>
-        <!-- Row 5 -->
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-39">39</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-19">19</button>
-        <button class="intendedZoneBtn strikeZone"        id="intendedZone-7">7</button>
-        <button class="intendedZoneBtn strikeZone"        id="intendedZone-8">8</button>
-        <button class="intendedZoneBtn strikeZone"        id="intendedZone-9">9</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-20">20</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-40">40</button>
-        <!-- Row 6 -->
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-41">41</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-21">21</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-22">22</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-23">23</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-24">24</button>
-        <button class="intendedZoneBtn shadowZone"        id="intendedZone-25">25</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-42">42</button>
-        <!-- Row 7 -->
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-43">43</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-44">44</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-45">45</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-46">46</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-47">47</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-48">48</button>
-        <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-49">49</button>
-      </div>
+    <!-- Scoreboard for the pitcher’s accuracy -->
+    <div id="intendedZoneStats">
+      <div id="intendedZoneTotalPitches">Total Pitches: 0</div>
+      <div id="intendedZoneAccuracyPoints">Accuracy Points: 0</div>
+      <div id="intendedZoneExactHits">Exact Hits: 0</div>
+      <div id="intendedZoneHitPercentage">Hit %: 0</div>
     </div>
-  </div>
 
-  <!-- Step 3: Actual Zone selection -->
-  <div id="actualZoneSelection" style="display:none;">
-    <h3>Select Actual Zone</h3>
-    <div id="actualZoneGridContainer" style="display: flex; justify-content: center;">
-      <div id="actualZoneGrid">
-        <!-- You can literally copy the same 7x7 layout, just different IDs so we know it's the “actual” zone. -->
-        <!-- Row 1 -->
-        <button class="actualZoneBtn" id="actualZone-26">26</button>
-        <button class="actualZoneBtn" id="actualZone-27">27</button>
-        <button class="actualZoneBtn" id="actualZone-28">28</button>
-        <button class="actualZoneBtn" id="actualZone-29">29</button>
-        <button class="actualZoneBtn" id="actualZone-30">30</button>
-        <button class="actualZoneBtn" id="actualZone-31">31</button>
-        <button class="actualZoneBtn" id="actualZone-32">32</button>
-        <!-- etc... replicate rows 2-7 -->
-        <!-- (for brevity, not repeating all buttons here – just keep the same pattern with ID="actualZone-##") -->
-      </div>
+    <!-- Step 1: Pitch type selection -->
+    <div id="intendedZonePitchTypeSelection">
+      <h3>Select Pitch Type</h3>
+      <button class="btn" id="intended-fourSeam">4S</button>
+      <button class="btn" id="intended-twoSeam">2S</button>
+      <button class="btn" id="intended-cutter">CT</button>
+      <button class="btn" id="intended-curveBall">CB</button>
+      <button class="btn" id="intended-slider">SL</button>
+      <button class="btn" id="intended-changeup">CH</button>
+      <button class="btn" id="intended-splitter">SP</button>
     </div>
-  </div>
 
-  <!-- A pitch log if you like, similar to liveBP -->
-  <div id="intendedZonePitchLog">
-    <h3>Intended Zone Pitch Log</h3>
-    <ul id="intendedZoneLog"></ul>
-  </div>
-
-  <button id="exportIntendedZoneBtn" style="margin-top: 20px;">Export Intended Zone Stats</button>
-</div>
-
-
-<div id="taggingOptions" style="display: none;">
-  <h3>Select Tag and Add Note</h3>
-  <div id="flagSelection">
-    <button class="flagBtn" id="flag-check-video">Check Video</button>
-    <button class="flagBtn" id="flag-breakthrough">Breakthrough</button>
-    <button class="flagBtn" id="flag-learning-moment">Learning Moment</button>
-  </div>
-  <textarea id="tagNote" placeholder="Add a note (optional)"></textarea>
-  <button id="applyTagBtn">Apply Tag</button>
-</div>
-
-
-
-<!-- Heatmap Grid -->
-    <div id="heatmapGrid" style="display:none;">
-      <h3>Heat Map</h3>
-      <div id="heatmapContainer" style="display: flex; justify-content: center;">
-        <div id="heatmap">
+    <!-- Step 2: Intended Zone selection -->
+    <div id="intendedZoneSelection" style="display:none;">
+      <h3>Select Intended Zone</h3>
+      <div id="intendedZoneGridContainer" style="display: flex; justify-content: center;">
+        <div id="intendedZoneGrid">
           <!-- Row 1 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-26">26</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-27">27</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-28">28</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-29">29</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-30">30</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-31">31</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-32">32</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-26">26</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-27">27</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-28">28</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-29">29</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-30">30</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-31">31</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-32">32</button>
           <!-- Row 2 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-33">33</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-10">10</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-11">11</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-12">12</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-13">13</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-14">14</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-34">34</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-33">33</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-10">10</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-11">11</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-12">12</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-13">13</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-14">14</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-34">34</button>
           <!-- Row 3 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-35">35</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-15">15</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-1">1</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-2">2</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-3">3</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-16">16</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-36">36</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-35">35</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-15">15</button>
+          <button class="intendedZoneBtn strikeZone"        id="intendedZone-1">1</button>
+          <button class="intendedZoneBtn strikeZone"        id="intendedZone-2">2</button>
+          <button class="intendedZoneBtn strikeZone"        id="intendedZone-3">3</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-16">16</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-36">36</button>
           <!-- Row 4 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-37">37</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-17">17</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-4">4</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-5">5</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-6">6</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-18">18</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-38">38</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-37">37</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-17">17</button>
+          <button class="intendedZoneBtn strikeZone"        id="intendedZone-4">4</button>
+          <button class="intendedZoneBtn strikeZone"        id="intendedZone-5">5</button>
+          <button class="intendedZoneBtn strikeZone"        id="intendedZone-6">6</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-18">18</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-38">38</button>
           <!-- Row 5 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-39">39</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-19">19</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-7">7</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-8">8</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-9">9</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-20">20</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-40">40</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-39">39</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-19">19</button>
+          <button class="intendedZoneBtn strikeZone"        id="intendedZone-7">7</button>
+          <button class="intendedZoneBtn strikeZone"        id="intendedZone-8">8</button>
+          <button class="intendedZoneBtn strikeZone"        id="intendedZone-9">9</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-20">20</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-40">40</button>
           <!-- Row 6 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-41">41</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-21">21</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-22">22</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-23">23</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-24">24</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-25">25</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-42">42</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-41">41</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-21">21</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-22">22</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-23">23</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-24">24</button>
+          <button class="intendedZoneBtn shadowZone"        id="intendedZone-25">25</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-42">42</button>
           <!-- Row 7 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-43">43</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-44">44</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-45">45</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-46">46</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-47">47</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-48">48</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-49">49</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-43">43</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-44">44</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-45">45</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-46">46</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-47">47</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-48">48</button>
+          <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-49">49</button>
         </div>
       </div>
     </div>
 
-    <!-- Outcome Selection -->
-    <div id="outcomeSelection" style="display:none;">
-      <h3>Select Outcome</h3>
-      <button class="btn" id="ball">Ball</button>
-      <button class="btn" id="whiff">Whiff</button>
-      <button class="btn" id="calledStrike">Called Strike</button>
-      <button class="btn" id="foul">Foul</button>
-      <button class="btn" id="inPlay">In Play</button>
-      <button class="btn" id="hbp">HBP</button>
+    <!-- Step 3: Actual Zone selection -->
+    <div id="actualZoneSelection" style="display:none;">
+      <h3>Select Actual Zone</h3>
+      <div id="actualZoneGridContainer" style="display: flex; justify-content: center;">
+        <div id="actualZoneGrid">
+          <!-- Just replicate the 7x7 layout with IDs like "actualZone-##" -->
+          <!-- Row 1 -->
+          <button class="actualZoneBtn" id="actualZone-26">26</button>
+          <button class="actualZoneBtn" id="actualZone-27">27</button>
+          <button class="actualZoneBtn" id="actualZone-28">28</button>
+          <button class="actualZoneBtn" id="actualZone-29">29</button>
+          <button class="actualZoneBtn" id="actualZone-30">30</button>
+          <button class="actualZoneBtn" id="actualZone-31">31</button>
+          <button class="actualZoneBtn" id="actualZone-32">32</button>
+          <!-- etc... for rows 2-7 -->
+        </div>
+      </div>
     </div>
 
-    <!-- In Play Outcome Selection -->
-    <div id="inPlaySelection" style="display:none;">
-      <h3>In Play Result</h3>
-      <button class="btn" id="groundball">Groundball</button>
-      <button class="btn" id="flyball">FlyBall</button>
-      <button class="btn" id="linedrive">LineDrive</button>
+    <!-- Pitch Log for Intended Zone -->
+    <div id="intendedZonePitchLog">
+      <h3>Intended Zone Pitch Log</h3>
+      <ul id="intendedZoneLog"></ul>
     </div>
 
-    <!-- Pitch Log Summary -->
-    <div id="pitchLogSummary">
-      <h3>Pitch Log</h3>
-      <div id="totalPitchesLiveBP">Total Pitches: 0</div> 
-      <div id="currentCountLiveBP">Current Count: 0-0</div> 
-      <div id="raceWinsLiveBP">Race Wins: </div> 
-      <div id="strikePercentageLiveBP">Strike %: 0</div>
-      <ul id="pitchLog"></ul>
-    </div>
-    <button id="exportBtn" style="margin-top: 20px;">Export Stats</button>
-    <button id="heatMapBtn" style="margin-top: 20px;">Heat Map</button>
-    <button id="nextBatterBtn" style="margin-top: 20px;">Next Batter</button>
-    <button id="tagPitchBtn" style="margin-top: 20px;">Tag Pitch</button>
+    <button id="exportIntendedZoneBtn" style="margin-top: 20px;">Export Intended Zone Stats</button>
   </div>
+
+  <!-- TAGGING OPTIONS -->
+  <div id="taggingOptions" style="display: none;">
+    <h3>Select Tag and Add Note</h3>
+    <div id="flagSelection">
+      <button class="flagBtn" id="flag-check-video">Check Video</button>
+      <button class="flagBtn" id="flag-breakthrough">Breakthrough</button>
+      <button class="flagBtn" id="flag-learning-moment">Learning Moment</button>
+    </div>
+    <textarea id="tagNote" placeholder="Add a note (optional)"></textarea>
+    <button id="applyTagBtn">Apply Tag</button>
+  </div>
+
+  <!-- HEATMAP GRID -->
+  <div id="heatmapGrid" style="display:none;">
+    <h3>Heat Map</h3>
+    <div id="heatmapContainer" style="display: flex; justify-content: center;">
+      <div id="heatmap">
+        <!-- Row 1 -->
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-26">26</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-27">27</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-28">28</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-29">29</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-30">30</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-31">31</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-32">32</button>
+        <!-- Row 2 -->
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-33">33</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-10">10</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-11">11</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-12">12</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-13">13</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-14">14</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-34">34</button>
+        <!-- Row 3 -->
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-35">35</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-15">15</button>
+        <button class="heatmapBtn strikeZone" id="heatmap-1">1</button>
+        <button class="heatmapBtn strikeZone" id="heatmap-2">2</button>
+        <button class="heatmapBtn strikeZone" id="heatmap-3">3</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-16">16</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-36">36</button>
+        <!-- Row 4 -->
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-37">37</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-17">17</button>
+        <button class="heatmapBtn strikeZone" id="heatmap-4">4</button>
+        <button class="heatmapBtn strikeZone" id="heatmap-5">5</button>
+        <button class="heatmapBtn strikeZone" id="heatmap-6">6</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-18">18</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-38">38</button>
+        <!-- Row 5 -->
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-39">39</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-19">19</button>
+        <button class="heatmapBtn strikeZone" id="heatmap-7">7</button>
+        <button class="heatmapBtn strikeZone" id="heatmap-8">8</button>
+        <button class="heatmapBtn strikeZone" id="heatmap-9">9</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-20">20</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-40">40</button>
+        <!-- Row 6 -->
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-41">41</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-21">21</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-22">22</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-23">23</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-24">24</button>
+        <button class="heatmapBtn shadowZone" id="heatmap-25">25</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-42">42</button>
+        <!-- Row 7 -->
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-43">43</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-44">44</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-45">45</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-46">46</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-47">47</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-48">48</button>
+        <button class="heatmapBtn nonCompetitiveZone" id="heatmap-49">49</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Outcome Selection -->
+  <div id="outcomeSelection" style="display:none;">
+    <h3>Select Outcome</h3>
+    <button class="btn" id="ball">Ball</button>
+    <button class="btn" id="whiff">Whiff</button>
+    <button class="btn" id="calledStrike">Called Strike</button>
+    <button class="btn" id="foul">Foul</button>
+    <button class="btn" id="inPlay">In Play</button>
+    <button class="btn" id="hbp">HBP</button>
+  </div>
+
+  <!-- In Play Outcome Selection -->
+  <div id="inPlaySelection" style="display:none;">
+    <h3>In Play Result</h3>
+    <button class="btn" id="groundball">Groundball</button>
+    <button class="btn" id="flyball">FlyBall</button>
+    <button class="btn" id="linedrive">LineDrive</button>
+  </div>
+
+  <!-- Pitch Log Summary -->
+  <div id="pitchLogSummary">
+    <h3>Pitch Log</h3>
+    <div id="totalPitchesLiveBP">Total Pitches: 0</div> 
+    <div id="currentCountLiveBP">Current Count: 0-0</div> 
+    <div id="raceWinsLiveBP">Race Wins: </div> 
+    <div id="strikePercentageLiveBP">Strike %: 0</div>
+    <ul id="pitchLog"></ul>
+  </div>
+  
+  <button id="exportBtn" style="margin-top: 20px;">Export Stats</button>
+  <button id="heatMapBtn" style="margin-top: 20px;">Heat Map</button>
+  <button id="nextBatterBtn" style="margin-top: 20px;">Next Batter</button>
+  <button id="tagPitchBtn" style="margin-top: 20px;">Tag Pitch</button>
 
   <script src="script.js"></script>
 </body>
-
 </html>
