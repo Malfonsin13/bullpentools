@@ -17,7 +17,6 @@ button {
   font-family: 'Permanent Marker', cursive;
 }
 
-
 #currentCount, #raceWins {
   margin-bottom: 20px;
 }
@@ -81,28 +80,27 @@ li {
 
 /* If you have specific styles for .heatmapBtn.nonCompetitiveZone, remove the background-color */
 .heatmapBtn.nonCompetitiveZone {
-    color: white; 
+  color: white; 
 }
-
 
 /* Royal Blue Shades for CH, SP */
 #changeup, #splitter {
-background-color: #3c8ddb; /* Lighter Royal Blue */
-color: white;
+  background-color: #3c8ddb; /* Lighter Royal Blue */
+  color: white;
 }
 
 #r2kButtons {
-display: block;
+  display: block;
 }
 
 #putawayButtons {
-display: none;
+  display: none;
 }
 
 button {
-margin: 10px;
-padding: 15px;
-font-size: 1.2em;
+  margin: 10px;
+  padding: 15px;
+  font-size: 1.2em;
 }
 
 #pitchLocationSelection {
@@ -127,39 +125,55 @@ font-size: 1.2em;
   margin: auto;
 }
 
+/* NEW: Styles for the Intended Zone Grid */
+#intendedZoneGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  justify-items: center;
+  width: fit-content;
+  margin: auto;
+}
 
+/* NEW: Styles for the Intended Zone Buttons */
+.intendedZoneBtn {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  padding: 0;
+  margin: 0;
+}
+
+/* NEW: Zone Colors for Intended Zone selection */
+.intendedZoneBtn.strikeZone {
+  background-color: #ffb517;
+}
+
+.intendedZoneBtn.shadowZone {
+  background-color: lightblue;
+}
+
+.intendedZoneBtn.nonCompetitiveZone {
+  background-color: navy;
+  color: white;
+}
 
 /* Styles for completed count log */
 #countLog {
-margin-top: 20px;
-padding: 0;
-max-width: 400px;
-margin-left: auto;
-margin-right: auto;
+  margin-top: 20px;
+  padding: 0;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 #countLog li {
-background-color: #ffb517;
-color: #0a2351;
-padding: 10px;
-border-radius: 5px;
-}
-
-.comboPitchTypeBtn {
-  background-color: #007bff; /* Initial color */
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  margin: 5px;
-  font-size: 16px;
+  background-color: #ffb517;
+  color: #0a2351;
+  padding: 10px;
   border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.3s;
 }
 
-.comboPitchTypeBtn.selected {
-  background-color: #28a745; /* Color when selected */
-}
 .comboPitchTypeBtn {
   background-color: #007bff; /* Initial color */
   color: white;
@@ -238,9 +252,3 @@ border-radius: 5px;
   background-color: #ffb517 !important;
   color: #0a2351 !important;
 }
-
-
-
-
-
-
