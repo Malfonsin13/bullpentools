@@ -1421,7 +1421,7 @@ function exportLiveBPStats() {
     pitchTypeStats[pitchType].total++;
 
     // Check if pitch is a strike
-    if (['whiff', 'calledStrike', 'foul', 'strike'].includes(outcome)) {
+    if (['whiff', 'calledStrike', 'foul', 'strike', 'in play'].includes(outcome)) {
       totalStrikes++;
       pitchTypeStats[pitchType].strikes++;
     }
