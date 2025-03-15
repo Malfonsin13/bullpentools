@@ -158,6 +158,25 @@ button {
   color: white;
 }
 
+/* NEW: Styles for the Actual Zone Grid */
+#actualZoneGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  justify-items: center;
+  width: fit-content;
+  margin: auto;
+}
+
+/* NEW: Styles for the Actual Zone Buttons */
+.actualZoneBtn {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  padding: 0;
+  margin: 0;
+}
+
 /* Styles for completed count log */
 #countLog {
   margin-top: 20px;
