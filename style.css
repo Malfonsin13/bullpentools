@@ -159,16 +159,16 @@ button {
 }
 
 .actualZoneBtn.strikeZone {
-  background-color: #ffb517;
+  background-color: #ffb517 !important;
 }
 
 .actualZoneBtn.shadowZone {
-  background-color: lightblue;
+  background-color: lightblue !important;
 }
 
 .actualZoneBtn.nonCompetitiveZone {
-  background-color: navy;
-  color: white;
+  background-color: navy !important;
+  color: white !important;
 }
 
 
