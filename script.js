@@ -582,13 +582,14 @@ function calculateStrikePercentageFromLog() {
   let totalPitches = pitchData.length;
 
   pitchData.forEach(pitch => {
-    if (['whiff', 'calledStrike', 'foul', 'strike'].includes(pitch.outcome)) {
+    if (['whiff', 'calledStrike', 'foul', 'strike', 'inPlay'].includes(pitch.outcome)) {
       strikes++;
     }
   });
 
   return totalPitches > 0 ? (strikes / totalPitches) * 100 : 0;
 }
+
 
 function updateStrikePercentageDisplay(strikePercentage) {
   document.getElementById('strikePercentageLiveBP').textContent = 'Strike %: ' + strikePercentage.toFixed(2);
