@@ -158,6 +158,20 @@ button {
   color: white;
 }
 
+.actualZoneBtn.strikeZone {
+  background-color: #ffb517;
+}
+
+.actualZoneBtn.shadowZone {
+  background-color: lightblue;
+}
+
+.actualZoneBtn.nonCompetitiveZone {
+  background-color: navy;
+  color: white;
+}
+
+
 /* NEW: Styles for the Actual Zone Grid */
 #actualZoneGrid {
   display: grid;
