@@ -122,9 +122,11 @@ document.getElementById('addBatterBtn').addEventListener('click', () => {
   document.getElementById('newBatterName').value = '';
 });
 
-document.getElementById('batterSelect').addEventListener('change', (e) => {
-  currentBatterId = parseInt(e.target.value, 10);   // may be NaN for no batter
-  updateLiveStats();        // show filtered stats per batter
+document.getElementById('batterSelect').addEventListener('change', e => {
+  const v = e.target.value;
+  currentBatterId = v === '' ? null : Number(v);   // null = show all
+  updateLiveStats();
+  updateHeatMap();
 });
 
 function toggleMode() {
@@ -627,9 +629,17 @@ function addBatter(name, hand){
   currentBatterId = id;
 }
 
-function updateBatterDropdown(){
+/* --- updateBatterDropdown() --- */
+function updateBatterDropdown () {
   const sel = document.getElementById('batterSelect');
   sel.innerHTML = '';
+
+  /* ⇢ NEW: empty option shows every batter */
+  const allOpt = document.createElement('option');
+  allOpt.value = '';                   // empty string → “all”
+  allOpt.textContent = '— All Batters —';
+  sel.appendChild(allOpt);
+
   batters.forEach(b => {
     const opt = document.createElement('option');
     opt.value = b.id;
@@ -637,19 +647,7 @@ function updateBatterDropdown(){
     sel.appendChild(opt);
   });
 
-  /* keep filters list in sync */
-  const fSel = document.getElementById('filterBatter');
-  if (fSel){
-    fSel.querySelectorAll('option:not([value="all"])').forEach(o=>o.remove());
-    batters.forEach(b=>{
-      const opt=document.createElement('option');
-      opt.value=b.id;
-      opt.textContent=b.name;
-      fSel.appendChild(opt);
-    });
-  }
-
-  sel.value = currentBatterId;   // <— NEW
+  sel.value = currentBatterId ?? '';   // keep current selection
 }
 
 // Calculate strike percentage based on the log
@@ -1451,20 +1449,32 @@ function hideHeatMap() {
   document.getElementById('pitchTypeSelection').style.display = 'block';
 }
 
-function updateHeatMap(){
-  // read filters
-  const fCount  = document.getElementById('filterCount').value;   // all | early | late
-  const fPitch  = document.getElementById('filterPitch').value;   // all | pitchType
-  const fBatter = document.getElementById('filterBatter').value;  // all | batterId
+function updateHeatMap () {
+  const fCount   = document.getElementById('filterCount').value;   // all | early | late
+  const fPitch   = document.getElementById('filterPitch').value;   // all | pitchType
+  const fBatter  = document.getElementById('filterBatter').value;  // all | batterId
+  const fResult  = document.getElementById('filterResult').value;  // all | strike | …
 
-  // zero the 49 cells
-  let locationCounts = Array.from({length:50},()=>0);
+  const locationCounts = Array(50).fill(0);
 
-  pitchData.forEach(p=>{
-    if (fPitch!=='all'  && p.pitchType!==fPitch)           return;
-    if (fBatter!=='all' && p.batterId!==parseInt(fBatter)) return;
-    const bucket = (p.postPitchCount.strikes >= 2 ? 'late' : 'early');
-    if (fCount!=='all' && bucket!==fCount)                 return;
+  pitchData.forEach(p => {
+    if (fPitch  !== 'all' && p.pitchType !== fPitch)                 return;
+    if (fBatter !== 'all' && p.batterId !== Number(fBatter))        return;
+
+    const bucket = p.prePitchCount.strikes === 2 ? 'late' : 'early';
+    if (fCount !== 'all' && bucket !== fCount)                      return;
+
+    /* ⇢ NEW: map outcomes to buckets */
+    if (fResult !== 'all') {
+      const m = {
+        strike: ['whiff','calledStrike','foul','strike'],
+        ball  : ['ball'],
+        swing : ['whiff','foul'],
+        inPlay: ['inPlay'],
+        hbp   : ['hbp']
+      };
+      if (!m[fResult].includes(p.outcome)) return;
+    }
 
     locationCounts[p.location]++;
   });
@@ -1493,6 +1503,22 @@ function getHeatMapColor(count, maxCount) {
   return color;
 }
 
+function buildAggregators () {
+  const byPitch  = new Map();   // pitchType → stats object
+  const byBatter = new Map();   // batterId  → stats object
+  const overall  = initStats();
+
+  pitchData.forEach(p => {
+    const pitchKey  = p.pitchType || 'UNK';
+    const batterKey = p.batterId  ?? 'ALL';
+
+    accumulate(overall , p);
+    accumulate(byPitch .get(pitchKey)  ?? initStats(), p, s => byPitch .set(pitchKey, s));
+    accumulate(byBatter.get(batterKey) ?? initStats(), p, s => byBatter.set(batterKey, s));
+  });
+
+  return {overall, byPitch, byBatter};
+}
 
 function logCount(strikes, balls, isK, isWalk = false) {
   let countLog = document.getElementById('countLog');
@@ -1521,10 +1547,8 @@ document.getElementById('heatMapBtn').addEventListener('click', function() {
   }
 });
 
-['filterCount','filterPitch','filterBatter'].forEach(id=>{
-  const el = document.getElementById(id);
-  if (el) el.addEventListener('change', updateHeatMap);
-});
+['filterCount','filterPitch','filterBatter','filterResult']
+  .forEach(id => document.getElementById(id)?.addEventListener('change', updateHeatMap));
 
 
 function exportLiveBPStats() {
