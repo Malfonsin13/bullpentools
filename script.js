@@ -111,6 +111,20 @@ document.getElementById('intendedZoneModeBtn').addEventListener('click', functio
   toggleMode();
 });
 
+/* === BATTER UI handlers === */
+document.getElementById('addBatterBtn').addEventListener('click', () => {
+  const name = document.getElementById('newBatterName').value.trim();
+  const hand = document.getElementById('newBatterHand').value;
+  if (!name) { alert('Enter a name'); return; }
+  addBatter(name, hand);
+  document.getElementById('newBatterName').value = '';
+});
+
+document.getElementById('batterSelect').addEventListener('change', (e) => {
+  currentBatterId = parseInt(e.target.value, 10);   // may be NaN for no batter
+  updateLiveStats();        // show filtered stats per batter
+});
+
 function toggleMode() {
   if (mode === "bullpen") {
     document.getElementById('bullpenMode').style.display = 'block';
@@ -258,6 +272,7 @@ document.getElementById('undoBtn').addEventListener('click', function() {
   if (actionLog.length > 0) {
     const previousState = actionLog.pop();
     restoreState(previousState);
+    updateLiveStats();
     restorePitchLog(previousState.pitchLog);
     restoreCompletedCountLog(previousState.completedCountLog);
     updateUI();
@@ -603,7 +618,35 @@ function restoreCompletedCountLog(completedCountLogHTML) {
   document.getElementById('countLog').innerHTML = completedCountLogHTML;
 }
 
+function addBatter(name, hand){
+  const id = batterAutoId++;
+  batters.push({id,name,hand});
+  updateBatterDropdown();
+  currentBatterId = id;
+}
 
+function updateBatterDropdown(){
+  const sel = document.getElementById('batterSelect');
+  sel.innerHTML = '';               // reset
+  batters.forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b.id;
+    opt.textContent = `${b.name} (${b.hand})`;
+    sel.appendChild(opt);
+  });
+  // keep filters dropdown in sync too
+  const fSel = document.getElementById('filterBatter');
+  if (fSel){
+    // wipe everything except first 'All'
+    fSel.querySelectorAll('option:not([value="all"])').forEach(o=>o.remove());
+    batters.forEach(b=>{
+      const opt=document.createElement('option');
+      opt.value=b.id;
+      opt.textContent=b.name;
+      fSel.appendChild(opt);
+    });
+  }
+}
 
 // Calculate strike percentage based on the log
 function calculateStrikePercentageFromLog() {
@@ -662,6 +705,7 @@ function processOutcome(outcome) {
 
     if (mode === "liveBP" || mode === "points") {
       totalPitches++;
+      updateLiveStats();
     } else if (mode === "bullpen" || mode === "putaway") {
       totalPitchesBullpen++;
     }
@@ -743,6 +787,7 @@ function processOutcome(outcome) {
     if (mode === "liveBP" || mode === "points") {
       totalStrikesLiveBP++;
       totalPitches++;
+      updateLiveStats();
     } else if (mode === "bullpen" || mode === "putaway") {
       totalStrikesBullpen++;
       totalPitchesBullpen++;
@@ -824,6 +869,7 @@ if (strikeCount >= 3) {
     if (mode === "liveBP" || mode === "points") {
       totalStrikesLiveBP++;
       totalPitches++;
+      updateLiveStats();
     } else if (mode === "bullpen" || mode === "putaway") {
       totalStrikesBullpen++;
       totalPitchesBullpen++;
@@ -906,6 +952,7 @@ if (strikeCount >= 3) {
 
     if (mode === "liveBP" || mode === "points") {
     totalPitches++;
+    updateLiveStats();
   } else if (mode === "bullpen" || mode === "putaway") {
     totalPitchesBullpen++;
   }
@@ -923,6 +970,14 @@ if (strikeCount >= 3) {
     resetForNextPitch(false);
   }
 
+    const fpSel = document.getElementById('filterPitch');
+  if (fpSel && [...fpSel.options].every(o => o.value !== pitchType)){
+      const opt = document.createElement('option');
+      opt.value = pitchType;
+      opt.textContent = pitchType.toUpperCase();
+      fpSel.appendChild(opt);
+  }
+  
   // Update the UI
   updateUI();
 }
@@ -947,7 +1002,54 @@ function processOutcomeBasedOnLocation() {
   processOutcome(outcome);
 }
 
+/* ---------- LIVE STATS ---------- */
+/* Categorise counts: early = strikes<2; late = strikes==2. */
+function updateLiveStats(){
+  const filtered = pitchData.filter(p=>{
+    if (currentBatterId && p.batterId !== currentBatterId) return false;
+    return true;
+  });
 
+  const totals = {all:{},early:{},late:{}};
+  ['swing','csw','ipo','iz','ooz','strike'].forEach(k=>{
+    totals.all[k]=0; totals.early[k]=0; totals.late[k]=0;
+  });
+  const denoms ={all:0,early:0,late:0};
+
+  filtered.forEach(p=>{
+    const bucket = (p.prePitchCount.strikes===2 ? 'late' : 'early');
+    denoms.all++; denoms[bucket]++;
+
+    const isSwing = ['whiff','foul'].includes(p.outcome) || p.result.startsWith('In Play');
+    const isStrike = ['whiff','calledStrike','foul','strike','inPlay'].includes(p.outcome);
+    const isWhiffCalled = ['whiff','calledStrike'].includes(p.outcome);
+    const isIPO = p.result === 'In Play - groundball' || p.result === 'In Play - flyball' || p.result === 'In Play - linedrive'; // simpl.
+    const inIZ = strikeLocations.includes(p.location);
+    const inOOZ = nonCompetitiveLocations.includes(p.location) || shadowLocations.includes(p.location);
+
+    if (isSwing){ totals.all.swing++; totals[bucket].swing++; }
+    if (isWhiffCalled){ totals.all.csw++; totals[bucket].csw++; }
+    if (isIPO){ totals.all.ipo++; totals[bucket].ipo++; }
+    if (inIZ){ totals.all.iz++; totals[bucket].iz++; }
+    if (inOOZ){ totals.all.ooz++; totals[bucket].ooz++; }
+    if (isStrike){ totals.all.strike++; totals[bucket].strike++; }
+  });
+
+  function pct(num,den){ return den? (num/den*100).toFixed(1):'0.0'; }
+
+  document.getElementById('stat-swing').textContent   = `Swing%: ${pct(totals.all.swing, denoms.all)}`;
+  document.getElementById('stat-csw').textContent     = `CSW%: ${pct(totals.all.csw, denoms.all)}`;
+  document.getElementById('stat-ipo').textContent     = `IPO%: ${pct(totals.all.ipo, denoms.all)}`;
+  document.getElementById('stat-iz').textContent      = `IZ%: ${pct(totals.all.iz, denoms.all)}`;
+  document.getElementById('stat-ooz').textContent     = `OOZ%: ${pct(totals.all.ooz, denoms.all)}`;
+  document.getElementById('stat-strike').textContent  = `Strike%: ${pct(totals.all.strike, denoms.all)}`;
+
+  document.getElementById('stat-early-csw').textContent  = `CSW% ${pct(totals.early.csw, denoms.early)}`;
+  document.getElementById('stat-early-strike').textContent= `Strike% ${pct(totals.early.strike, denoms.early)}`;
+
+  document.getElementById('stat-late-csw').textContent   = `CSW% ${pct(totals.late.csw, denoms.late)}`;
+  document.getElementById('stat-late-strike').textContent= `Strike% ${pct(totals.late.strike, denoms.late)}`;
+}
 
 function showComboPitchTypeSelection() {
   document.getElementById('comboPitchTypeSelection').style.display = 'block';
@@ -1027,6 +1129,7 @@ document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
     pitchCount++;
     if (mode === "liveBP" || mode === "points") {
       totalPitches++;
+      updateLiveStats();
     } else if (mode === "bullpen" || mode === "putaway") {
       totalPitchesBullpen++;
     }
@@ -1058,6 +1161,7 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '', previo
 
   let pitchEntry = {
     pitchId: pitchId,
+    batterId: currentBatterId,
     pitchType: pitchType,
     result: result,
     location: location,
@@ -1333,42 +1437,32 @@ function hideHeatMap() {
   document.getElementById('pitchTypeSelection').style.display = 'block';
 }
 
-function updateHeatMap() {
-  // Initialize counts for all 49 locations
-  let locationCounts = {};
-  for (let i = 1; i <= 49; i++) {
-    locationCounts[i] = 0;
-  }
+function updateHeatMap(){
+  // read filters
+  const fCount  = document.getElementById('filterCount').value;   // all | early | late
+  const fPitch  = document.getElementById('filterPitch').value;   // all | pitchType
+  const fBatter = document.getElementById('filterBatter').value;  // all | batterId
 
-  // Get pitch log entries
-  let pitchLogItems = document.querySelectorAll('#pitchLog li');
-  pitchLogItems.forEach(item => {
-    // Extract location from item.innerText
-    // Format: 'PITCHTYPE, Location: LOCATION, Result: RESULT, Count: COUNT'
-    let text = item.innerText;
-    let match = text.match(/Location:\s*(\d+)/);
-    if (match) {
-      let loc = parseInt(match[1]);
-      if (locationCounts.hasOwnProperty(loc)) {
-        locationCounts[loc]++;
-      }
-    }
+  // zero the 49 cells
+  let locationCounts = Array.from({length:50},()=>0);
+
+  pitchData.forEach(p=>{
+    if (fPitch!=='all'  && p.pitchType!==fPitch)           return;
+    if (fBatter!=='all' && p.batterId!==parseInt(fBatter)) return;
+    const bucket = (p.prePitchCount.strikes===2 ? 'late' : 'early');
+    if (fCount!=='all' && bucket!==fCount)                 return;
+
+    locationCounts[p.location]++;
   });
 
-  // Get max count
-  let counts = Object.values(locationCounts);
-  let maxCount = Math.max(...counts);
+  const maxCount = Math.max(...locationCounts);
 
-  // Update button colors for all 49 locations
-  for (let i = 1; i <= 49; i++) {
-    let count = locationCounts[i];
-    let button = document.getElementById('heatmap-' + i);
-    if (button) {
-      let color = getHeatMapColor(count, maxCount);
-      button.style.backgroundColor = color;
-      button.innerText = count;
-      button.style.pointerEvents = 'none'; 
-    }
+  for (let loc=1; loc<=49; loc++){
+    const btn = document.getElementById('heatmap-'+loc);
+    if (!btn) continue;
+    const cnt = locationCounts[loc];
+    btn.style.backgroundColor = getHeatMapColor(cnt, maxCount);
+    btn.innerText = cnt;
   }
 }
 
@@ -1411,6 +1505,11 @@ document.getElementById('heatMapBtn').addEventListener('click', function() {
     hideHeatMap();
     this.innerText = 'HEAT MAP';
   }
+});
+
+['filterCount','filterPitch','filterBatter'].forEach(id=>{
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', updateHeatMap);
 });
 
 
