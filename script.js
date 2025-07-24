@@ -1052,21 +1052,22 @@ function updateLiveStats(){
 
   document.getElementById('stat-late-csw').textContent   = `CSW% ${pct(totals.late.csw, denoms.late)}`;
   document.getElementById('stat-late-strike').textContent= `Strike% ${pct(totals.late.strike, denoms.late)}`;
-  renderLiveTables(buildAggregators());
+  const aggFiltered   = buildAggregators(filtered);   // for % line at the top
+  const aggAll        = buildAggregators(pitchData);  // ALWAYS every batter
+
+  renderLiveTables(aggFiltered, aggAll);
 }
 
 /* ▬▬▬ paint the two new live-stats tables ▬▬▬ */
-function renderLiveTables(agg){
+function renderLiveTables(aggFiltered, aggAll){
   /* ---------- per-pitch-type ---------- */
   const tpBody = document.querySelector('#tbl-pitchType tbody');
   tpBody.innerHTML = '';
-  [...agg.byPitch.entries()].forEach(([pt, s])=>{
+  [...aggFiltered.byPitch.entries()].forEach(([pt, s])=>{
     const row = tpBody.insertRow();
-    [
-      pt.toUpperCase(),
-      s.izPct,  s.oozPct,
-      s.cswPct, s.strikePct, s.swingPct
-    ].forEach(v=>{
+  [ pt.toUpperCase(),
+    s.izPct, s.oozPct, s.cswPct, s.strikePct, s.swingPct,
+    s.flyPct, s.gbPct, s.ldPct ].forEach(v=>{
       const cell = row.insertCell();
       cell.textContent = v.toFixed ? v.toFixed(1)+'%' : v;
       if (typeof v==='number'){
@@ -1079,7 +1080,7 @@ function renderLiveTables(agg){
   /* ---------- per-batter ---------- */
   const btBody = document.querySelector('#tbl-batter tbody');
   btBody.innerHTML = '';
-  [...agg.byBatter.entries()].forEach(([id, s])=>{
+  [...aggAll.byBatter.entries()].forEach(([id, s])=>{
     const name = id==='ALL' ? '— All —'
                : (batters.find(b=>b.id===id)?.name || 'B'+id);
     const row = btBody.insertRow();
@@ -1553,10 +1554,17 @@ function getHeatMapColor(count, maxCount) {
 function initStats () {
   return {
     pitches:0, swing:0, csw:0, strike:0,
-    iz:0, ooz:0,
+    iz:0, ooz:0,            // all O-O-Z pitches
+    oozSwing:0,             // swings at O-O-Z pitches
+    fly:0, gb:0, ld:0,
     earlySwing:0, lateSwing:0
   };
 }
+
+/* ---------- pct helper ---------- */
+ const addPcts = s => Object.assign(s,{
+  chasePct      : pct(s.oozSwing , s.ooz)
+});
 
 function accumulate (stats, p) {
   stats.pitches++;
@@ -1577,12 +1585,12 @@ function accumulate (stats, p) {
 
 function pct (num, den) { return den ? (num/den*100) : 0; }
 
-function buildAggregators () {
+function buildAggregators (dataArr) {
   const byPitch  = new Map();   // pitchType → stats object
   const byBatter = new Map();   // batterId  → stats object
   const overall  = initStats();
 
-  pitchData.forEach(p => {
+  dataArr.forEach(p => {
     const pKey = p.pitchType || 'UNK';
     const bKey = p.batterId  ?? 'ALL';
 
@@ -1607,6 +1615,9 @@ function buildAggregators () {
     cswPct        : pct(s.csw       , s.pitches),
     strikePct     : pct(s.strike    , s.pitches),
     swingPct      : pct(s.swing     , s.pitches),
+    flyPct        : pct(s.fly       , s.pitches),
+    gbPct         : pct(s.gb        , s.pitches),
+    ldPct         : pct(s.ld        , s.pitches)
     earlySwingPct : pct(s.earlySwing, s.pitches),
     lateSwingPct  : pct(s.lateSwing , s.pitches),
     chasePct      : pct(s.ooz       , s.swing)   // swings out of zone
