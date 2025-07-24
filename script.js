@@ -627,17 +627,17 @@ function addBatter(name, hand){
 
 function updateBatterDropdown(){
   const sel = document.getElementById('batterSelect');
-  sel.innerHTML = '';               // reset
+  sel.innerHTML = '';
   batters.forEach(b => {
     const opt = document.createElement('option');
     opt.value = b.id;
     opt.textContent = `${b.name} (${b.hand})`;
     sel.appendChild(opt);
   });
-  // keep filters dropdown in sync too
+
+  /* keep filters list in sync */
   const fSel = document.getElementById('filterBatter');
   if (fSel){
-    // wipe everything except first 'All'
     fSel.querySelectorAll('option:not([value="all"])').forEach(o=>o.remove());
     batters.forEach(b=>{
       const opt=document.createElement('option');
@@ -646,6 +646,8 @@ function updateBatterDropdown(){
       fSel.appendChild(opt);
     });
   }
+
+  sel.value = currentBatterId;   // <— NEW
 }
 
 // Calculate strike percentage based on the log
