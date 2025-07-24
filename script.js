@@ -1,33 +1,62 @@
+/* ---------- GLOBAL STATE ---------- */
 let pitchCount = 0;
 let strikeCount = 0;
 let raceWins = 0;
+
 let totalPitchesBullpen = 0;
 let totalStrikesBullpen = 0;
-let totalPitches = 0;
-let mode = "bullpen";
-let pitchType = "";
+
+let totalPitches = 0;          // live-BP / games
 let totalStrikesLiveBP = 0;
-let actionLog = [];
+
+let mode = "bullpen";          // current tool mode
+let pitchType = "";
+
+let actionLog = [];            // for UNDO
 let foulsAfterTwoStrikes = 0;
+
 let pitchLocation = 0;
-let points = 0;
+let pitchId = 0;
+
+let points = 0;                // Points-mode only
 let comboPitchTypes = [];
+
 let isHeatMapMode = false;
-let pitchId = 0; 
-let pitchTags = {}; 
-let isTaggingMode = false; 
-let ballCount = 0;
+let isTaggingMode = false;
+
+/* ---------- NEW – BATTER STATE ---------- */
+let batters = [];              // [{id,name,hand}]
+let currentBatterId = null;    // id of batter selected in dropdown
+let batterAutoId = 1;          // simple incremental id
+
+/* ---------- PER-PITCH STORAGE  ---------- */
+/* All pitches for every batter live here.  */
 let pitchData = [];
-let atBatNumber = 1; 
-let isNewAtBat = false; 
+/* Each entry:
+{
+  pitchId, pitchType, location, result, outcome,
+  prePitchCount:{balls,strikes},
+  postPitchCount:{balls,strikes},
+  pitchNumber, atBatNumber,
+  batterId,              //  <— NEW
+}
+*/
+
+/* ---------- AT-BAT STATE ---------- */
+let atBatNumber = 1;
+let isNewAtBat = false;
+let ballCount = 0;
 let pitchCountInAtBat = 0;
+
+/* ---------- INTENDED-ZONE MODE ---------- */
 let intendedZoneModePitchCount = 0;
-let intendedZoneTotalExactHits = 0;   
-let intendedZoneAccuracyPoints = 0;    
-let intendedZoneData = [];           
+let intendedZoneTotalExactHits = 0;
+let intendedZoneAccuracyPoints = 0;
+let intendedZoneData = [];
 let currentIntendedPitchType = "";
 let currentIntendedZone = null;
 let currentActualZone = null;
+
 
 
 
