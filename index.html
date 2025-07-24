@@ -55,6 +55,44 @@
   <div id="liveBPMode" style="display: none;">
     <h2 id="modeTitle">Live BP Mode</h2>
 
+
+  <!-- ========= BATTER MANAGEMENT ========= -->
+  <div id="batterManagement" style="margin:10px 0;">
+    <input id="newBatterName" type="text" placeholder="Batter name">
+    <select id="newBatterHand">
+      <option value="L">L</option>
+      <option value="R">R</option>
+    </select>
+    <button id="addBatterBtn">Add Batter</button>
+  
+    <!-- dropdown of active batters -->
+    <select id="batterSelect" style="margin-left:8px;"></select>
+  </div>
+
+  <!-- ========= LIVE STATS ========= -->
+  <div id="liveStatsBoard">
+    <h3 style="margin:4px 0;">Live Stats</h3>
+    <div id="stats-overall">
+      <span id="stat-swing">Swing%: 0</span> |
+      <span id="stat-csw">CSW%: 0</span> |
+      <span id="stat-ipo">IPO%: 0</span> |
+      <span id="stat-iz">IZ%: 0</span> |
+      <span id="stat-ooz">OOZ%: 0</span> |
+      <span id="stat-strike">Strike%: 0</span>
+    </div>
+    <div id="stats-early" style="font-size:.9em;">
+      Early (<1 strike) – 
+      <span id="stat-early-csw">CSW% 0</span> •
+      <span id="stat-early-strike">Strike% 0</span>
+    </div>
+    <div id="stats-late" style="font-size:.9em;">
+      Late (2 strikes) – 
+      <span id="stat-late-csw">CSW% 0</span> •
+      <span id="stat-late-strike">Strike% 0</span>
+    </div>
+  </div>
+
+
     <!-- Points Container -->
     <div id="pointsContainer" style="display: none;">
       <div id="pointsDisplay">Points: 0</div>
@@ -352,6 +390,29 @@
 
 <!-- Heatmap Grid -->
     <div id="heatmapGrid" style="display:none;">
+<!-- ========= HEATMAP FILTERS ========= -->
+<div id="heatmapFilters" style="margin-bottom:6px;">
+  <label>Count
+    <select id="filterCount">
+      <option value="all">All</option>
+      <option value="early">Early (&lt;2 strikes)</option>
+      <option value="late">Late (2 strikes)</option>
+    </select>
+  </label>
+  <label style="margin-left:6px;">Pitch
+    <select id="filterPitch">
+      <option value="all">All</option>
+      <!-- JS populates the rest -->
+    </select>
+  </label>
+  <label style="margin-left:6px;">Batter
+    <select id="filterBatter">
+      <option value="all">All</option>
+      <!-- JS populates -->
+    </select>
+  </label>
+</div>
+
       <h3>Heat Map</h3>
       <div id="heatmapContainer" style="display: flex; justify-content: center;">
         <div id="heatmap">
