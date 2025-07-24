@@ -24,6 +24,8 @@ let comboPitchTypes = [];
 let isHeatMapMode = false;
 let isTaggingMode = false;
 
+let pitchTags = {}; 
+
 /* ---------- NEW – BATTER STATE ---------- */
 let batters = [];              // [{id,name,hand}]
 let currentBatterId = null;    // id of batter selected in dropdown
