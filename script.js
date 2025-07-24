@@ -142,6 +142,8 @@ function toggleMode() {
     document.getElementById('modeTitle').innerText = 'Live BP Mode';
     document.getElementById('pointsContainer').style.display = 'none';
     document.getElementById('intendedZoneMode').style.display = 'none';
+    updateLiveStats();   // draw the tables immediately
+    break;
   } else if (mode === "putaway") {
     document.getElementById('bullpenMode').style.display = 'block';
     document.getElementById('liveBPMode').style.display = 'none';
@@ -965,8 +967,8 @@ if (strikeCount >= 3) {
   if (!["inPlay", "hbp"].includes(outcome)) {
     logPitchResult(pitchType, outcome, pitchLocation, scenarioEmojis, previousCount, outcome);
   if (mode === 'liveBP' || mode === 'points') {
-    updateLiveStats();        // run once, now that pitchData is up-to-date
   }
+  updateLiveStats();        // run once, now that pitchData is up-to-date
     isNewAtBat = true;
     resetForNextPitch(false);
   }
