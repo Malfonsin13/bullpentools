@@ -953,7 +953,6 @@ if (strikeCount >= 3) {
 
     if (mode === "liveBP" || mode === "points") {
     totalPitches++;
-    updateLiveStats();
   } else if (mode === "bullpen" || mode === "putaway") {
     totalPitchesBullpen++;
   }
@@ -1133,7 +1132,6 @@ document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
     pitchCount++;
     if (mode === "liveBP" || mode === "points") {
       totalPitches++;
-      updateLiveStats();
     } else if (mode === "bullpen" || mode === "putaway") {
       totalPitchesBullpen++;
     }
