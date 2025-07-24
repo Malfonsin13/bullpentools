@@ -1567,21 +1567,39 @@ function initStats () {
 });
 
 function accumulate (stats, p) {
+function accumulate(stats, p) {
   stats.pitches++;
 
-  const swing   = ['whiff','foul'].includes(p.outcome) || p.result?.startsWith('In Play');
-  const strike  = ['whiff','calledStrike','foul','strike','inPlay'].includes(p.outcome);
+  const swing   = ['whiff','foul'].includes(p.outcome) ||
+                  p.result?.startsWith('In Play');
+  const strike  = ['whiff','calledStrike','foul','strike','inPlay']
+                  .includes(p.outcome);
   const csw     = ['whiff','calledStrike'].includes(p.outcome);
   const bucket  = p.prePitchCount?.strikes === 2 ? 'late' : 'early';
   const inIZ    = strikeLocations.includes(p.location);
-  const inOOZ   = shadowLocations.includes(p.location) || nonCompetitiveLocations.includes(p.location);
+  const inOOZ   = shadowLocations.includes(p.location) ||
+                  nonCompetitiveLocations.includes(p.location);
 
-  if (swing)  { stats.swing++;  bucket==='early' ? stats.earlySwing++ : stats.lateSwing++; }
+  if (swing) {
+    stats.swing++;
+    bucket === 'early' ? stats.earlySwing++ : stats.lateSwing++;
+  }
+
   if (strike) stats.strike++;
   if (csw)    stats.csw++;
   if (inIZ)   stats.iz++;
-  if (inOOZ)  stats.ooz++;
+
+  if (inOOZ) {
+    stats.ooz++;
+    if (swing) stats.oozSwing++;   // ← chase swing increment
+  }
+
+  // batted-ball outcomes
+  if (p.result === 'In Play - flyball')    stats.fly++;
+  if (p.result === 'In Play - groundball') stats.gb++;
+  if (p.result === 'In Play - linedrive')  stats.ld++;
 }
+
 
 function pct (num, den) { return den ? (num/den*100) : 0; }
 
@@ -1617,7 +1635,7 @@ function buildAggregators (dataArr) {
     swingPct      : pct(s.swing     , s.pitches),
     flyPct        : pct(s.fly       , s.pitches),
     gbPct         : pct(s.gb        , s.pitches),
-    ldPct         : pct(s.ld        , s.pitches)
+    ldPct         : pct(s.ld        , s.pitches),
     earlySwingPct : pct(s.earlySwing, s.pitches),
     lateSwingPct  : pct(s.lateSwing , s.pitches),
     chasePct      : pct(s.ooz       , s.swing)   // swings out of zone
