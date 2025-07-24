@@ -709,7 +709,6 @@ function processOutcome(outcome) {
 
     if (mode === "liveBP" || mode === "points") {
       totalPitches++;
-      updateLiveStats();
     } else if (mode === "bullpen" || mode === "putaway") {
       totalPitchesBullpen++;
     }
@@ -791,7 +790,6 @@ function processOutcome(outcome) {
     if (mode === "liveBP" || mode === "points") {
       totalStrikesLiveBP++;
       totalPitches++;
-      updateLiveStats();
     } else if (mode === "bullpen" || mode === "putaway") {
       totalStrikesBullpen++;
       totalPitchesBullpen++;
@@ -873,7 +871,6 @@ if (strikeCount >= 3) {
     if (mode === "liveBP" || mode === "points") {
       totalStrikesLiveBP++;
       totalPitches++;
-      updateLiveStats();
     } else if (mode === "bullpen" || mode === "putaway") {
       totalStrikesBullpen++;
       totalPitchesBullpen++;
@@ -970,6 +967,9 @@ if (strikeCount >= 3) {
   // Log the pitch result and reset for next pitch if necessary
   if (!["inPlay", "hbp"].includes(outcome)) {
     logPitchResult(pitchType, outcome, pitchLocation, scenarioEmojis, previousCount, outcome);
+  if (mode === 'liveBP' || mode === 'points') {
+    updateLiveStats();        // run once, now that pitchData is up-to-date
+  }
     isNewAtBat = true;
     resetForNextPitch(false);
   }
@@ -1173,6 +1173,7 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '', previo
     postPitchCount: { balls: ballCount, strikes: strikeCount },
     pitchNumber: pitchCount,
     atBatNumber: atBatNumber,
+    addPitchTypeToFilter(pitchType);
     outcome: outcome
   };
 
@@ -1199,6 +1200,17 @@ function enterTaggingMode() {
   });
   // Show tagging options
   showTaggingOptions();
+}
+
+function addPitchTypeToFilter(pt) {
+  const fpSel = document.getElementById('filterPitch');
+  if (!fpSel) return;
+  if ([...fpSel.options].some(o => o.value === pt)) return;
+
+  const opt = document.createElement('option');
+  opt.value = pt;
+  opt.textContent = pt.toUpperCase();
+  fpSel.appendChild(opt);
 }
 
 function exitTaggingMode() {
@@ -1453,7 +1465,7 @@ function updateHeatMap(){
   pitchData.forEach(p=>{
     if (fPitch!=='all'  && p.pitchType!==fPitch)           return;
     if (fBatter!=='all' && p.batterId!==parseInt(fBatter)) return;
-    const bucket = (p.prePitchCount.strikes===2 ? 'late' : 'early');
+    const bucket = (p.postPitchCount.strikes >= 2 ? 'late' : 'early');
     if (fCount!=='all' && bucket!==fCount)                 return;
 
     locationCounts[p.location]++;
