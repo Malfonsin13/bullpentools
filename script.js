@@ -1171,12 +1171,12 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '', previo
     postPitchCount: { balls: ballCount, strikes: strikeCount },
     pitchNumber: pitchCount,
     atBatNumber: atBatNumber,
-    addPitchTypeToFilter(pitchType);
     outcome: outcome
   };
 
   pitchData.push(pitchEntry);
   pitchId++;
+  addPitchTypeToFilter(pitchType);
 }
 
 function showTaggingOptions() {
