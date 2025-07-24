@@ -285,3 +285,54 @@ button {
   background-color: #ffb517 !important;
   color: #0a2351 !important;
 }
+
+/* === live-stats tables === */
+#statsTablesWrapper{
+  display:flex;
+  gap:20px;
+  flex-wrap:wrap;
+  justify-content:center;
+  margin-top:8px;
+}
+
+.liveTbl{
+  border-collapse:collapse;
+  font-size:.9em;
+  min-width:220px;
+  background:#fff;
+  color:#0a2351;
+  border-radius:6px;
+  overflow:hidden;
+  box-shadow:0 2px 6px rgba(0,0,0,.15);
+}
+.liveTbl thead{
+  background:#274472;
+  color:#fff;
+  position:sticky;   /* handy when the list grows */
+  top:0;
+}
+.liveTbl th, .liveTbl td{
+  padding:4px 8px;
+  text-align:right;
+}
+.liveTbl th:first-child,
+.liveTbl td:first-child{              /* name column left-aligned */
+  text-align:left;
+}
+
+.liveTbl tbody tr:nth-child(odd){background:#f8f9fa;}
+.liveTbl tbody tr:hover{background:#d3e3ff;}
+
+/* colour bars for % cells (simple gray bg) */
+.liveTbl td[data-pct]{
+  position:relative;
+}
+.liveTbl td[data-pct]::before{
+  content:'';
+  position:absolute; inset:0 0 0 0;
+  background:#99c;
+  opacity:.15;
+  transform-origin:left;
+  transform:scaleX(var(--w,0));
+  z-index:-1;
+}
