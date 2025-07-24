@@ -142,8 +142,8 @@ function toggleMode() {
     document.getElementById('modeTitle').innerText = 'Live BP Mode';
     document.getElementById('pointsContainer').style.display = 'none';
     document.getElementById('intendedZoneMode').style.display = 'none';
-    updateLiveStats();   // draw the tables immediately
-    break;
+    showPitchTypeSelection();   // make the 4S / 2S / CT… buttons appear
+    updateLiveStats();          // draw the new tables immediately
   } else if (mode === "putaway") {
     document.getElementById('bullpenMode').style.display = 'block';
     document.getElementById('liveBPMode').style.display = 'none';
