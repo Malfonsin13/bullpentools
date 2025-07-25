@@ -337,12 +337,4 @@ button {
   z-index:-1;
 }
 
-/* add to style.css */
-td[data-pct]{
-  background-image: linear-gradient(
-    to right,
-    rgba(255,0,0,0.85) calc(var(--w)*1%),
-    transparent 0
-  );
-}
 
