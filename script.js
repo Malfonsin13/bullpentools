@@ -627,8 +627,10 @@ function restoreCompletedCountLog(completedCountLogHTML) {
 function addBatter(name, hand){
   const id = batterAutoId++;
   batters.push({id,name,hand});
+ if (currentBatterId === null) { // only default the *very first* batter
+   currentBatterId = id;
   updateBatterDropdown();
-  currentBatterId = id;
+
 }
 
 /* --- updateBatterDropdown() --- */
