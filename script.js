@@ -693,20 +693,23 @@ function showOutcomeSelection() {
   document.getElementById('outcomeSelection').style.display = 'block';
 }
 
-// ===== revised Outcome Selection handler =====
+// —— unified Outcome Selection handler ——
 document.querySelectorAll("#outcomeSelection .btn").forEach(button => {
   button.addEventListener('click', function() {
     const outcome = this.id;
     actionLog.push(saveCurrentState());
     processOutcome(outcome);
 
-    // make absolutely sure the outcome panel goes away
-    document.getElementById('outcomeSelection').style.display   = 'none';
-    document.getElementById('inPlaySelection').style.display    = 'none';
-    // and bring back the pitch‐type palette
-    document.getElementById('pitchTypeSelection').style.display = 'block';
+    // if it wasn’t an In‑Play sub‑flow, go right back to pitch‑type
+    if (outcome !== 'inPlay' && outcome !== 'hbp') {
+      document.getElementById('outcomeSelection').style.display   = 'none';
+      document.getElementById('inPlaySelection').style.display    = 'none';
+      document.getElementById('pitchTypeSelection').style.display = 'block';
+    }
+    // if it *was* inPlay, let showInPlaySelection() have kept the inPlay panel up
   });
 });
+
 
 function processOutcome(outcome) {
   // Capture the count before processing the outcome
