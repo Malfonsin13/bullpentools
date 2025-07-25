@@ -1381,22 +1381,14 @@ function updatePitchLogTags() {
 
 
 function resetForNextPitch(resetCounts = true) {
-  pitchType = '';                         // clear selection for next pitch
+  // close every sub-panel that might be open
+  ['pitchLocationSelection','outcomeSelection','inPlaySelection']
+    .forEach(id => document.getElementById(id)?.style.display = 'none');
 
-  /* hide every sub-screen that may (or may not) exist */
-  ['pitchLocationSelection', 'outcomeSelection', 'inPlaySelection']
-    .forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = 'none';  // guard against null
-    });
+  showPitchTypeSelection();        // always land on the palette
 
-  /* and show the main palette again */
-  const pt = document.getElementById('pitchTypeSelection');
-  if (pt) pt.style.display = 'block';
-
-  if (resetCounts) resetCount();          // only when caller asks for it
+  if (resetCounts) resetCount();   // zero the count if caller asked
 }
-
 
 function updatePointsDisplay() {
   document.getElementById('pointsDisplay').innerText = `Points: ${points}`;
