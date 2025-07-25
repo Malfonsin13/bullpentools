@@ -26,6 +26,12 @@ let isTaggingMode = false;
 
 let pitchTags = {}; 
 
+// --------- NEW – AT‑BAT SUMMARY ---------
+// This array stores summary information for each completed at‑bat when running
+// in Live BP or Points mode.  Each entry looks like:
+// { atBatNumber, batterId, result, pitchCount }
+let atBats = [];
+
 /* ---------- NEW – BATTER STATE ---------- */
 let batters = [];              // [{id,name,hand}]
 let currentBatterId = null;    // id of batter selected in dropdown
@@ -764,15 +770,27 @@ function processOutcome(outcome) {
 
       // Reset count if walk occurs
       if (ballCount >= 4) {
-        logCount(strikeCount, ballCount, false, true); 
-        isNewAtBat = true;
+        // Record the walk in the count log
+        logCount(strikeCount, ballCount, false, true);
+        // NEW: if we’re in Live BP or Points mode, record an at‑bat summary
+        if (mode === 'liveBP' || mode === 'points') {
+          logAtBatResult('Walk');
+          // ensure atBatNumber will increment on reset
+          isNewAtBat = true;
+        }
         resetCount();
       }
     } else {
       // Handle walks in other modes
       if (ballCount >= 4) {
-        // Log the count as a walk
-        logCount(strikeCount, ballCount, false, true); // Indicate it's a walk
+        // Record the walk in the count log
+        logCount(strikeCount, ballCount, false, true);
+        // NEW: if we’re in Live BP or Points mode, record an at‑bat summary
+        if (mode === 'liveBP' || mode === 'points') {
+          logAtBatResult('Walk');
+          // ensure atBatNumber will increment on reset
+          isNewAtBat = true;
+        }
         resetCount();
       }
 
@@ -872,6 +890,10 @@ if (mode === "putaway" && strikeCount === 2) {
 if (strikeCount >= 3) {
   // Log strikeout
   logCount(strikeCount, ballCount, true);
+  // NEW: record an at‑bat summary in Live BP/Points modes
+  if (mode === 'liveBP' || mode === 'points') {
+    logAtBatResult('Strikeout');
+  }
   isNewAtBat = true;
   resetCount();
 }
@@ -951,6 +973,10 @@ if (strikeCount >= 3) {
     if (strikeCount >= 3) {
       // Log strikeout
       logCount(strikeCount, ballCount, true);
+      // NEW: record an at‑bat summary in Live BP/Points modes
+      if (mode === 'liveBP' || mode === 'points') {
+        logAtBatResult('Strikeout');
+      }
       isNewAtBat = true;
       resetCount();
     }
@@ -968,22 +994,28 @@ if (strikeCount >= 3) {
     totalPitchesBullpen++;
   }
     // Handle 'Hit By Pitch' outcome
-    logPitchResult(pitchType, "HBP", pitchLocation);
+    logPitchResult(pitchType, 'HBP', pitchLocation);
+    // NEW: record the HBP at‑bat in Live BP/Points modes
+    if (mode === 'liveBP' || mode === 'points') {
+      logAtBatResult('HBP');
+    }
     isNewAtBat = true;
     resetCount();
     resetForNextPitch();
-  }
 
   // Log the pitch result and reset for next pitch if necessary
   if (!["inPlay", "hbp"].includes(outcome)) {
-    logPitchResult(pitchType, outcome, pitchLocation, scenarioEmojis, previousCount, outcome);
+  logPitchResult(pitchType, 'In Play - ' + inPlayResult, pitchLocation, '', previousCount, 'inPlay');
+  // NEW: record at‑bat summary for Live BP/Points modes
   if (mode === 'liveBP' || mode === 'points') {
-  }
-  updateLiveStats();        // run once, now that pitchData is up-to-date
+    logAtBatResult('In Play - ' + inPlayResult);
     isNewAtBat = true;
-    resetForNextPitch(false);
-    showPitchTypeSelection();
+  } else {
+    isNewAtBat = true;
   }
+  resetForNextPitch();
+  updateLiveStats();
+  updateUI();
 
     const fpSel = document.getElementById('filterPitch');
   if (fpSel && [...fpSel.options].every(o => o.value !== pitchType)){
@@ -1690,6 +1722,11 @@ document.getElementById('exportBtn').addEventListener('click', function() {
   exportLiveBPStats();
 });
 
+// NEW: export at‑bat summaries
+document.getElementById('exportAtBatBtn').addEventListener('click', function() {
+  exportAtBatSummary();
+});
+
 document.getElementById('heatMapBtn').addEventListener('click', function() {
   isHeatMapMode = !isHeatMapMode; // Toggle heatmap mode
   if (isHeatMapMode) {
@@ -1704,6 +1741,61 @@ document.getElementById('heatMapBtn').addEventListener('click', function() {
 ['filterCount','filterPitch','filterBatter','filterResult']
   .forEach(id => document.getElementById(id)?.addEventListener('change', updateHeatMap));
 
+/**
+ * Append a summary of the current at‑bat to the atBatLog and record it
+ * in the atBats array.  The pitch count is computed by counting
+ * pitchData entries with the same atBatNumber.
+ * @param {string} result – The final result of the at‑bat
+ *   (e.g. "Strikeout", "Walk", "HBP", "In Play – groundball")
+ */
+function logAtBatResult(result) {
+  const summary = {
+    atBatNumber: atBatNumber,
+    batterId: currentBatterId,
+    result: result,
+    pitchCount: pitchData.filter(p => p.atBatNumber === atBatNumber).length
+  };
+  atBats.push(summary);
+
+  const atBatLogEl = document.getElementById('atBatLog');
+  if (atBatLogEl) {
+    const li = document.createElement('li');
+    const batter = batters.find(b => b.id === summary.batterId);
+    const name  = batter ? batter.name : 'Unknown';
+    const hand  = batter ? batter.hand : '';
+    li.innerText =
+      `#${summary.atBatNumber} – ${name}${hand ? ' (' + hand + ')' : ''} – ` +
+      `${summary.result} (${summary.pitchCount} pitches)`;
+    atBatLogEl.appendChild(li);
+  }
+}
+
+/**
+ * Export at‑bat summaries to the clipboard as comma‑separated values.
+ * The first line contains a header row for easy pasting into spreadsheets.
+ */
+function exportAtBatSummary() {
+  if (atBats.length === 0) {
+    alert('No at‑bat data to export!');
+    return;
+  }
+  const lines = [];
+  lines.push('AtBatNumber,BatterName,BatterHand,Result,Pitches');
+  atBats.forEach(ab => {
+    const batter = batters.find(b => b.id === ab.batterId);
+    const name   = batter ? batter.name : '';
+    const hand   = batter ? batter.hand : '';
+    lines.push(`${ab.atBatNumber},${name},${hand},${ab.result},${ab.pitchCount}`);
+  });
+  const exportText = lines.join('\n');
+  navigator.clipboard.writeText(exportText)
+    .then(() => {
+      alert('At‑bat summary copied to clipboard!');
+    })
+    .catch(() => {
+      alert('Failed to copy summary to clipboard.');
+    });
+}
 
 function exportLiveBPStats() {
   let totalPitches = pitchData.length;
@@ -1741,7 +1833,7 @@ function exportLiveBPStats() {
     pitchTypeStats[pitchType].total++;
 
     // Check if pitch is a strike
-    if (['whiff', 'calledStrike', 'foul', 'strike', 'in play'].includes(outcome)) {
+    if (['whiff','calledStrike','foul','strike','inPlay'].includes(outcome)) {
       totalStrikes++;
       pitchTypeStats[pitchType].strikes++;
     }
