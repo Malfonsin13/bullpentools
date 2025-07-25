@@ -1077,10 +1077,10 @@ function renderLiveTables(aggFiltered, aggAll){
     });
   });
 
-  /* ---------- per-batter ---------- */
+  /* ---------- per-batter (respect current filter) ---------- */
   const btBody = document.querySelector('#tbl-batter tbody');
   btBody.innerHTML = '';
-  [...aggAll.byBatter.entries()].forEach(([id, s])=>{
+  [...aggFiltered.byBatter.entries()].forEach(([id, s])=>{
     const name = id==='ALL' ? '— All —'
                : (batters.find(b=>b.id===id)?.name || 'B'+id);
     const row = btBody.insertRow();
