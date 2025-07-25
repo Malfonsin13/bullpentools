@@ -627,12 +627,14 @@ function restoreCompletedCountLog(completedCountLogHTML) {
 function addBatter(name, hand){
   const id = batterAutoId++;
   batters.push({id,name,hand});
-  if (currentBatterId === null){           // only default the very first batter
-    currentBatterId = id;
+
+  if (currentBatterId === null){
+    currentBatterId = id;      // default first batter
   }
 
-  updateBatterDropdown();                  // always refresh the dropdown
-}                                          // ← CLOSES THE **FUNCTION**
+  updateBatterDropdown();      // refresh the select every time
+}                               // ← this brace was missing
+
 
 /* --- updateBatterDropdown() --- */
 function updateBatterDropdown () {
