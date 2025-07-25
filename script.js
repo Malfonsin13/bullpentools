@@ -976,6 +976,7 @@ if (strikeCount >= 3) {
   updateLiveStats();        // run once, now that pitchData is up-to-date
     isNewAtBat = true;
     resetForNextPitch(false);
+    showPitchTypeSelection();
   }
 
     const fpSel = document.getElementById('filterPitch');
