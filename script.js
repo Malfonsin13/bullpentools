@@ -986,8 +986,8 @@ if (strikeCount >= 3) {
       fpSel.appendChild(opt);
   }
   
-  // Update the UI
   updateUI();
+  showPitchTypeSelection();    // <— new line does the swap
 }
 
 
