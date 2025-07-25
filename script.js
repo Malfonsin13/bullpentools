@@ -1380,14 +1380,20 @@ function updatePitchLogTags() {
 
 
 function resetForNextPitch(resetCounts = true) {
-  pitchType = "";  // Clear the pitch type
-  document.getElementById('pitchLocationSelection').style.display = 'none'; // Hide pitch location selection
-  document.getElementById('outcomeSelection').style.display = 'none';  // Hide outcome buttons
-  document.getElementById('inPlaySelection').style.display = 'none';   // Hide in-play selection if visible
-  document.getElementById('pitchTypeSelection').style.display = 'block';  // Show pitch type selection again
-  if (resetCounts) {
-    resetCount();
-  }
+  pitchType = '';                         // clear selection for next pitch
+
+  /* hide every sub-screen that may (or may not) exist */
+  ['pitchLocationSelection', 'outcomeSelection', 'inPlaySelection']
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';  // guard against null
+    });
+
+  /* and show the main palette again */
+  const pt = document.getElementById('pitchTypeSelection');
+  if (pt) pt.style.display = 'block';
+
+  if (resetCounts) resetCount();          // only when caller asks for it
 }
 
 
