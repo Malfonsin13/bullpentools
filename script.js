@@ -1562,11 +1562,8 @@ function initStats () {
 }
 
 /* ---------- pct helper ---------- */
- const addPcts = s => Object.assign(s,{
-  chasePct      : pct(s.oozSwing , s.ooz)
-});
+const addPcts = s => Object.assign(s, { chasePct : pct(s.oozSwing , s.ooz) });
 
-function accumulate (stats, p) {
 function accumulate(stats, p) {
   stats.pitches++;
 
@@ -1591,15 +1588,13 @@ function accumulate(stats, p) {
 
   if (inOOZ) {
     stats.ooz++;
-    if (swing) stats.oozSwing++;   // ← chase swing increment
+    if (swing) stats.oozSwing++;           // chase swing
   }
 
-  // batted-ball outcomes
   if (p.result === 'In Play - flyball')    stats.fly++;
   if (p.result === 'In Play - groundball') stats.gb++;
   if (p.result === 'In Play - linedrive')  stats.ld++;
 }
-
 
 function pct (num, den) { return den ? (num/den*100) : 0; }
 
