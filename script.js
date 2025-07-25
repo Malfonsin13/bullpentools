@@ -1011,54 +1011,74 @@ function processOutcomeBasedOnLocation() {
 }
 
 /* ---------- LIVE STATS ---------- */
-/* Categorise counts: early = strikes<2; late = strikes==2. */
-function updateLiveStats(){
+/*  helper – returns an empty counter object for swing, csw, …  */
+function makeCounters () {
+  const base = {}; ['swing','csw','ipo','iz','ooz','strike'].forEach(k=>base[k]=0);
+  return { all:{...base}, early:{...base}, late:{...base} };
+}
+
+/* early = strikes < 2 | late = strikes == 2
+   ─ The six “headline” numbers (and the early/late rows underneath)
+     are ALWAYS calculated from *every* pitch in pitchData.
+   ─ The two tables underneath still respect the dropdown filter. */
+function updateLiveStats () {
+
+  /* ----- choose the two datasets ----- */
   const filtered = pitchData.filter(p=>{
     if (currentBatterId && p.batterId !== currentBatterId) return false;
-    return true;
+    return true;                                  // honours the dropdown
   });
+  const allData = pitchData;                      // full log, no filter
 
-  const totals = {all:{},early:{},late:{}};
-  ['swing','csw','ipo','iz','ooz','strike'].forEach(k=>{
-    totals.all[k]=0; totals.early[k]=0; totals.late[k]=0;
-  });
-  const denoms ={all:0,early:0,late:0};
+  /* ----- build counters from ALL DATA (for the headline row) ----- */
+  const totals = makeCounters();
+  const denoms = { all:0, early:0, late:0 };
 
-  filtered.forEach(p=>{
-    const bucket = (p.prePitchCount.strikes===2 ? 'late' : 'early');
+  allData.forEach(p=>{
+    const bucket = p.prePitchCount.strikes===2 ? 'late' : 'early';
     denoms.all++; denoms[bucket]++;
 
-    const isSwing = ['whiff','foul'].includes(p.outcome) || p.result.startsWith('In Play');
-    const isStrike = ['whiff','calledStrike','foul','strike','inPlay'].includes(p.outcome);
-    const isWhiffCalled = ['whiff','calledStrike'].includes(p.outcome);
-    const isIPO = p.result === 'In Play - groundball' || p.result === 'In Play - flyball' || p.result === 'In Play - linedrive'; // simpl.
-    const inIZ = strikeLocations.includes(p.location);
-    const inOOZ = nonCompetitiveLocations.includes(p.location) || shadowLocations.includes(p.location);
+    const swing  = ['whiff','foul'].includes(p.outcome) ||
+                   (p.result||'').startsWith('In Play');
+    const strike = ['whiff','calledStrike','foul','strike','inPlay']
+                   .includes(p.outcome);
+    const csw    = ['whiff','calledStrike'].includes(p.outcome);
+    const ipo    = (p.result||'').startsWith('In Play');
+    const inIZ   = strikeLocations.includes(p.location);
+    const inOOZ  = shadowLocations.includes(p.location) ||
+                   nonCompetitiveLocations.includes(p.location);
 
-    if (isSwing){ totals.all.swing++; totals[bucket].swing++; }
-    if (isWhiffCalled){ totals.all.csw++; totals[bucket].csw++; }
-    if (isIPO){ totals.all.ipo++; totals[bucket].ipo++; }
-    if (inIZ){ totals.all.iz++; totals[bucket].iz++; }
-    if (inOOZ){ totals.all.ooz++; totals[bucket].ooz++; }
-    if (isStrike){ totals.all.strike++; totals[bucket].strike++; }
+    if (swing)  { totals.all.swing++;  totals[bucket].swing++; }
+    if (csw)    { totals.all.csw++;    totals[bucket].csw++;   }
+    if (ipo)    { totals.all.ipo++;    totals[bucket].ipo++;   }
+    if (inIZ)   { totals.all.iz++;     totals[bucket].iz++;    }
+    if (inOOZ)  { totals.all.ooz++;    totals[bucket].ooz++;   }
+    if (strike) { totals.all.strike++; totals[bucket].strike++;}
   });
 
-  function pct(num,den){ return den? (num/den*100).toFixed(1):'0.0'; }
+  const pct = (n,d)=> d ? (n/d*100).toFixed(1) : '0.0';
 
-  document.getElementById('stat-swing').textContent   = `Swing%: ${pct(totals.all.swing, denoms.all)}`;
-  document.getElementById('stat-csw').textContent     = `CSW%: ${pct(totals.all.csw, denoms.all)}`;
-  document.getElementById('stat-ipo').textContent     = `IPO%: ${pct(totals.all.ipo, denoms.all)}`;
-  document.getElementById('stat-iz').textContent      = `IZ%: ${pct(totals.all.iz, denoms.all)}`;
-  document.getElementById('stat-ooz').textContent     = `OOZ%: ${pct(totals.all.ooz, denoms.all)}`;
-  document.getElementById('stat-strike').textContent  = `Strike%: ${pct(totals.all.strike, denoms.all)}`;
+  /* ----- write the headline numbers (ALWAYS global) ----- */
+  document.getElementById('stat-swing' ).textContent = `Swing%:  ${pct(totals.all.swing , denoms.all)}`;
+  document.getElementById('stat-csw'   ).textContent = `CSW%:    ${pct(totals.all.csw   , denoms.all)}`;
+  document.getElementById('stat-ipo'   ).textContent = `IPO%:    ${pct(totals.all.ipo   , denoms.all)}`;
+  document.getElementById('stat-iz'    ).textContent = `IZ%:     ${pct(totals.all.iz    , denoms.all)}`;
+  document.getElementById('stat-ooz'   ).textContent = `OOZ%:    ${pct(totals.all.ooz   , denoms.all)}`;
+  document.getElementById('stat-strike').textContent = `Strike%: ${pct(totals.all.strike, denoms.all)}`;
 
-  document.getElementById('stat-early-csw').textContent  = `CSW% ${pct(totals.early.csw, denoms.early)}`;
-  document.getElementById('stat-early-strike').textContent= `Strike% ${pct(totals.early.strike, denoms.early)}`;
+  document.getElementById('stat-early-csw'  ).textContent =
+    `CSW% ${pct(totals.early.csw , denoms.early)}`;
+  document.getElementById('stat-early-strike').textContent =
+    `Strike% ${pct(totals.early.strike , denoms.early)}`;
 
-  document.getElementById('stat-late-csw').textContent   = `CSW% ${pct(totals.late.csw, denoms.late)}`;
-  document.getElementById('stat-late-strike').textContent= `Strike% ${pct(totals.late.strike, denoms.late)}`;
-  const aggFiltered   = buildAggregators(filtered);   // for % line at the top
-  const aggAll        = buildAggregators(pitchData);  // ALWAYS every batter
+  document.getElementById('stat-late-csw'   ).textContent =
+    `CSW% ${pct(totals.late.csw  , denoms.late)}`;
+  document.getElementById('stat-late-strike').textContent =
+    `Strike% ${pct(totals.late.strike, denoms.late)}`;
+
+  /* ----- tables: still respond to the dropdown filter ----- */
+  const aggFiltered = buildAggregators(filtered); // filtered set
+  const aggAll      = buildAggregators(allData);  // reference row
 
   renderLiveTables(aggFiltered, aggAll);
 }
