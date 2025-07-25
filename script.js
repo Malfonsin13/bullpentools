@@ -988,7 +988,6 @@ if (strikeCount >= 3) {
   }
   
   updateUI();
-  showPitchTypeSelection();    // <— new line does the swap
 }
 
 
@@ -1384,7 +1383,6 @@ function resetForNextPitch(resetCounts = true) {
   // close every sub-panel that might be open
   ['pitchLocationSelection','outcomeSelection','inPlaySelection']
     .forEach(id => document.getElementById(id)?.style.display = 'none');
-
   showPitchTypeSelection();        // always land on the palette
 
   if (resetCounts) resetCount();   // zero the count if caller asked
