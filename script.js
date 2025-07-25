@@ -1186,6 +1186,7 @@ document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
     logPitchResult(pitchType, "In Play - " + inPlayResult, pitchLocation, '', previousCount, 'inPlay');
     isNewAtBat = true;
     resetForNextPitch();
+    updateLiveStats();
     updateUI();
   });
 });
@@ -1559,7 +1560,8 @@ function initStats () {
     iz:0, ooz:0,            // all O-O-Z pitches
     oozSwing:0,             // swings at O-O-Z pitches
     fly:0, gb:0, ld:0,
-    earlySwing:0, lateSwing:0
+    earlySwing:0, lateSwing:0,
+    earlyPitches:0, latePitches:0
   };
 }
 
@@ -1575,6 +1577,7 @@ function accumulate(stats, p) {
                   .includes(p.outcome);
   const csw     = ['whiff','calledStrike'].includes(p.outcome);
   const bucket  = p.prePitchCount?.strikes === 2 ? 'late' : 'early';
+  bucket === 'early' ? stats.earlyPitches++ : stats.latePitches++;
   const inIZ    = strikeLocations.includes(p.location);
   const inOOZ   = shadowLocations.includes(p.location) ||
                   nonCompetitiveLocations.includes(p.location);
@@ -1633,9 +1636,9 @@ function buildAggregators (dataArr) {
     flyPct        : pct(s.fly       , s.pitches),
     gbPct         : pct(s.gb        , s.pitches),
     ldPct         : pct(s.ld        , s.pitches),
-    earlySwingPct : pct(s.earlySwing, s.pitches),
-    lateSwingPct  : pct(s.lateSwing , s.pitches),
-    chasePct      : pct(s.ooz       , s.swing)   // swings out of zone
+    earlySwingPct : pct(s.earlySwing, s.earlyPitches),
+    lateSwingPct  : pct(s.lateSwing , s.latePitches),
+    chasePct      : pct(s.oozSwing , s.swing)   // correct – swings / swings
   });
 
   addPcts(overall);
