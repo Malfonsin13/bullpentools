@@ -1598,9 +1598,6 @@ function initStats () {
   };
 }
 
-/* ---------- pct helper ---------- */
-const addPcts = s => Object.assign(s, { chasePct : pct(s.oozSwing , s.ooz) });
-
 function accumulate(stats, p) {
   stats.pitches++;
 
