@@ -990,47 +990,20 @@ if (strikeCount >= 3) {
     showInPlaySelection();
 
   } else if (outcome === "hbp") {
-
+    // Hit-by-pitch handling:
     if (mode === "liveBP" || mode === "points") {
-    totalPitches++;
-  } else if (mode === "bullpen" || mode === "putaway") {
-    totalPitchesBullpen++;
-  }
-    // Handle 'Hit By Pitch' outcome
-    logPitchResult(pitchType, 'HBP', pitchLocation);
-    // NEW: record the HBP at‑bat in Live BP/Points modes
-    if (mode === 'liveBP' || mode === 'points') {
-      logAtBatResult('HBP');
+      totalPitches++;
+    } else {
+      totalPitchesBullpen++;
+    }
+    logPitchResult(pitchType, "HBP", pitchLocation);
+    if (mode === "liveBP" || mode === "points") {
+      logAtBatResult("HBP");
     }
     isNewAtBat = true;
     resetCount();
     resetForNextPitch();
-
-  // Log the pitch result and reset for next pitch if necessary
-  if (!["inPlay", "hbp"].includes(outcome)) {
-  logPitchResult(pitchType, 'In Play - ' + inPlayResult, pitchLocation, '', previousCount, 'inPlay');
-  // NEW: record at‑bat summary for Live BP/Points modes
-  if (mode === 'liveBP' || mode === 'points') {
-    logAtBatResult('In Play - ' + inPlayResult);
-    isNewAtBat = true;
-  } else {
-    isNewAtBat = true;
   }
-  resetForNextPitch();
-  updateLiveStats();
-  updateUI();
-
-    const fpSel = document.getElementById('filterPitch');
-  if (fpSel && [...fpSel.options].every(o => o.value !== pitchType)){
-      const opt = document.createElement('option');
-      opt.value = pitchType;
-      opt.textContent = pitchType.toUpperCase();
-      fpSel.appendChild(opt);
-  }
-  
-  updateUI();
-}
-
 
 
 
