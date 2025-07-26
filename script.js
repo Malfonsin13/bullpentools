@@ -634,10 +634,11 @@ function addBatter(name, hand){
   const id = batterAutoId++;
   batters.push({id,name,hand});
 
-  if (currentBatterId === null){
-    currentBatterId = id;      // default first batter
-  updateBatterDropdown();      // refresh the select every time
-}                              
+  if (currentBatterId === null) { // only default the *very first* batter
+    currentBatterId = id;
+  }
+  updateBatterDropdown();
+}                             
 
 
 /* --- updateBatterDropdown() --- */
