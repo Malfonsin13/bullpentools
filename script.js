@@ -1394,11 +1394,14 @@ function updatePitchLogTags() {
 function resetForNextPitch(resetCounts = true) {
   // close every sub-panel that might be open
   ['pitchLocationSelection','outcomeSelection','inPlaySelection']
-    .forEach(id => document.getElementById(id)?.style.display = 'none');
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
   showPitchTypeSelection();        // always land on the palette
-
   if (resetCounts) resetCount();   // zero the count if caller asked
 }
+
 
 function updatePointsDisplay() {
   document.getElementById('pointsDisplay').innerText = `Points: ${points}`;
