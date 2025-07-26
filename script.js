@@ -1004,8 +1004,7 @@ if (strikeCount >= 3) {
     resetCount();
     resetForNextPitch();
   }
-
-
+}
 
 function processOutcomeBasedOnLocation() {
   let outcome = '';
