@@ -636,10 +636,8 @@ function addBatter(name, hand){
 
   if (currentBatterId === null){
     currentBatterId = id;      // default first batter
-  }
-
   updateBatterDropdown();      // refresh the select every time
-}                               // ← this brace was missing
+}                              
 
 
 /* --- updateBatterDropdown() --- */
