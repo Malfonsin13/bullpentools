@@ -1458,23 +1458,16 @@ function resetCount() {
 
 
 function checkRaceCondition() {
-  let completedCount = false;
-  if (strikeCount === 2 && mode !== "putaway") {
-    raceWins++;
-    completedCount = true;
-    logCount(strikeCount, ballCount, false); // Use ballCount
+  // LiveBP/Points race wins handled inside processOutcome() when the pitch *reaches* 2 strikes.
+  // Bullpen race win on 2 strikes handled in the strikeBtn handler.
+  // Putaway awards only on K button.
+  // → Only auto-complete the bullpen “2 balls, 0 strikes” case here.
+  if (mode === "bullpen" && ballCount === 2 && strikeCount === 0) {
+    logCount(strikeCount, ballCount, false);
     resetCount();
-    updateRaceWins();
-  } else if (ballCount === 2 && strikeCount === 0 && mode === "bullpen") {
-    completedCount = true;
-    logCount(strikeCount, ballCount, false); // Use ballCount
-    resetCount();
-  }
-  if (completedCount) {
-    actionLog[actionLog.length - 1].completedCount = true;
+    if (actionLog.length) actionLog[actionLog.length - 1].completedCount = true;
   }
 }
-
 
 function updateRaceWins() {
   let raceWinsDisplay = raceWins > 0 ? (mode === "putaway" ? '⚰️' : '🔥').repeat(raceWins) : '';
