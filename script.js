@@ -898,8 +898,8 @@ function processOutcome(outcome) {
 
   /* ---------------- IN PLAY ---------------- */
   if (outcome === 'inPlay') {
-    // Do NOT log here; the in‑play button click logs with the specific result.
-    resetCount();
+    // Do NOT reset counts here. Let the inPlaySelection click finish the at-bat,
+    // log, then reset.
     showInPlaySelection();
     return;
   }
@@ -1518,29 +1518,52 @@ function initStats () {
 function accumulate(stats, p) {
   stats.pitches++;
 
-  const swing   = ['whiff','foul'].includes(p.outcome) ||
-                  p.result?.startsWith('In Play');
-  const strike  = ['whiff','calledStrike','foul','strike','inPlay']
-                  .includes(p.outcome);
-  const csw     = ['whiff','calledStrike'].includes(p.outcome);
-  const bucket  = p.prePitchCount?.strikes === 2 ? 'late' : 'early';
-  bucket === 'early' ? stats.earlyPitches++ : stats.latePitches++;
-  const inIZ    = strikeLocations.includes(p.location);
-  const inOOZ   = shadowLocations.includes(p.location) ||
-                  nonCompetitiveLocations.includes(p.location);
+  const swung = ['whiff','foul'].includes(p.outcome) ||
+                (p.result?.startsWith('In Play'));
+  const isStrike = ['whiff','calledStrike','foul','strike','inPlay']
+                   .includes(p.outcome);
+  const isCSW = ['whiff','calledStrike'].includes(p.outcome);
 
-  if (swing) {
-    stats.swing++;
-    bucket === 'early' ? stats.earlySwing++ : stats.lateSwing++;
+  // Robust pre‑pitch strikes:
+  // Prefer prePitchCount.strikes. If missing, infer from postPitchCount and outcome.
+  let preStrikes;
+  if (p.prePitchCount && typeof p.prePitchCount.strikes === 'number') {
+    preStrikes = p.prePitchCount.strikes;
+  } else if (p.postPitchCount && typeof p.postPitchCount.strikes === 'number') {
+    // If the pitch produced a strike, post = pre+1 (except 2‑strike fouls keep post=2).
+    const madeStrike = isStrike;
+    if (!madeStrike) {
+      preStrikes = p.postPitchCount.strikes; // ball/HBP/inPlay-without strike counted
+    } else {
+      // If post is 3, pre was 2. If post is 2, pre could be 1 (or 2 on foul with two).
+      // Heuristic: if outcome is 'foul' and post===2, assume pre===2; else pre=post-1.
+      if (p.postPitchCount.strikes === 3) preStrikes = 2;
+      else if (p.postPitchCount.strikes === 2 && p.outcome === 'foul') preStrikes = 2;
+      else preStrikes = Math.max(0, p.postPitchCount.strikes - 1);
+    }
+  } else {
+    preStrikes = 0; // last resort
   }
 
-  if (strike) stats.strike++;
-  if (csw)    stats.csw++;
-  if (inIZ)   stats.iz++;
+  const bucket = preStrikes === 2 ? 'late' : 'early';
+  if (bucket === 'early') stats.earlyPitches++; else stats.latePitches++;
+
+  const inIZ  = strikeLocations.includes(p.location);
+  const inOOZ = shadowLocations.includes(p.location) ||
+                nonCompetitiveLocations.includes(p.location);
+
+  if (swung) {
+    stats.swing++;
+    if (bucket === 'early') stats.earlySwing++; else stats.lateSwing++;
+  }
+
+  if (isStrike) stats.strike++;
+  if (isCSW)    stats.csw++;
+  if (inIZ)     stats.iz++;
 
   if (inOOZ) {
     stats.ooz++;
-    if (swing) stats.oozSwing++;           // chase swing
+    if (swung) stats.oozSwing++;      // chase swing
   }
 
   if (p.result === 'In Play - flyball')    stats.fly++;
