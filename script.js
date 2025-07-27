@@ -582,6 +582,60 @@ function exportIntendedZoneStats() {
     });
 }
 
+function updateHeatMap () {
+  const fCount   = document.getElementById('filterCount').value;   // all | early | late
+  const fPitch   = document.getElementById('filterPitch').value;   // all | pitchType
+  const fBatter  = document.getElementById('filterBatter').value;  // all | LH | RH | id:<n>
+  const fResult  = document.getElementById('filterResult').value;  // all | strike | …
+
+  const locationCounts = Array(50).fill(0);
+
+  pitchData.forEach(p => {
+    if (fPitch !== 'all' && p.pitchType !== fPitch) return;
+
+    // Batter filter
+    if (fBatter !== 'all') {
+      if (fBatter === 'LH' || fBatter === 'RH') {
+        const hand = batters.find(b => b.id === p.batterId)?.hand;
+        if (hand !== fBatter) return;
+      } else if (fBatter.startsWith('id:')) {
+        const wantId = Number(fBatter.slice(3));
+        if (p.batterId !== wantId) return;
+      }
+    }
+
+    // Count bucket filter
+    const preStrikes = (p.prePitchCount && typeof p.prePitchCount.strikes === 'number')
+      ? p.prePitchCount.strikes
+      : 0;
+    const bucket = preStrikes === 2 ? 'late' : 'early';
+    if (fCount !== 'all' && bucket !== fCount) return;
+
+    // Result/outcome filter
+    if (fResult !== 'all') {
+      const m = {
+        strike: ['whiff','calledStrike','foul','strike'],
+        ball  : ['ball'],
+        swing : ['whiff','foul','inPlay'],   // treat inPlay as swing
+        inPlay: ['inPlay'],
+        hbp   : ['hbp']
+      };
+      if (!m[fResult].includes(p.outcome)) return;
+    }
+
+    locationCounts[p.location]++;
+  });
+
+  const maxCount = Math.max(...locationCounts);
+
+  for (let loc = 1; loc <= 49; loc++) {
+    const btn = document.getElementById('heatmap-' + loc);
+    if (!btn) continue;
+    const cnt = locationCounts[loc];
+    btn.style.backgroundColor = getHeatMapColor(cnt, maxCount);
+    btn.innerText = cnt;
+  }
+}
 
 function saveCurrentState() {
   return {
@@ -638,6 +692,7 @@ function addBatter(name, hand){
     currentBatterId = id;
   }
   updateBatterDropdown();
+  updateHeatmapBatterFilter(); 
 }                             
 
 
@@ -1855,4 +1910,5 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('pitchTypeSelection').style.display = 'block';
   document.getElementById('heatmapGrid').style.display = 'none';
   document.getElementById('taggingOptions').style.display = 'none';
+  updateHeatmapBatterFilter();
 });
