@@ -1551,6 +1551,28 @@ function getHeatMapColor(count, maxCount) {
   return color;
 }
 
+function updateHeatmapBatterFilter () {
+  const sel = document.getElementById('filterBatter');
+  if (!sel) return;
+
+  const prev = sel.value;           // try to preserve current selection
+  sel.innerHTML = '';
+
+  sel.appendChild(new Option('All', 'all'));
+  sel.appendChild(new Option('LH only', 'LH'));
+  sel.appendChild(new Option('RH only', 'RH'));
+
+  batters.forEach(b => {
+    const label = `${b.name} (${b.hand})`;
+    sel.appendChild(new Option(label, `id:${b.id}`));
+  });
+
+  // restore previous selection if still present
+  const hasPrev = [...sel.options].some(o => o.value === prev);
+  sel.value = hasPrev ? prev : 'all';
+}
+
+
 /* ========== helpers for the per-pitch / per-batter tables ========== */
 function initStats () {
   return {
