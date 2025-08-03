@@ -1497,48 +1497,6 @@ function hideHeatMap() {
   document.getElementById('pitchTypeSelection').style.display = 'block';
 }
 
-function updateHeatMap () {
-  const fCount   = document.getElementById('filterCount').value;   // all | early | late
-  const fPitch   = document.getElementById('filterPitch').value;   // all | pitchType
-  const fBatter  = document.getElementById('filterBatter').value;  // all | batterId
-  const fResult  = document.getElementById('filterResult').value;  // all | strike | …
-
-  const locationCounts = Array(50).fill(0);
-
-  pitchData.forEach(p => {
-    if (fPitch  !== 'all' && p.pitchType !== fPitch)                 return;
-    if (fBatter !== 'all' && p.batterId !== Number(fBatter))        return;
-
-    const bucket = p.prePitchCount.strikes === 2 ? 'late' : 'early';
-    if (fCount !== 'all' && bucket !== fCount)                      return;
-
-    /* ⇢ NEW: map outcomes to buckets */
-    if (fResult !== 'all') {
-      const m = {
-        strike: ['whiff','calledStrike','foul','strike'],
-        ball  : ['ball'],
-        swing : ['whiff','foul'],
-        inPlay: ['inPlay'],
-        hbp   : ['hbp']
-      };
-      if (!m[fResult].includes(p.outcome)) return;
-    }
-
-    locationCounts[p.location]++;
-  });
-
-  const maxCount = Math.max(...locationCounts);
-
-  for (let loc=1; loc<=49; loc++){
-    const btn = document.getElementById('heatmap-'+loc);
-    if (!btn) continue;
-    const cnt = locationCounts[loc];
-    btn.style.backgroundColor = getHeatMapColor(cnt, maxCount);
-    btn.innerText = cnt;
-  }
-}
-
-
 function getHeatMapColor(count, maxCount) {
   if (maxCount === 0) {
     return '#FFFFFF'; // Return white if maxCount is zero
