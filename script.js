@@ -37,6 +37,11 @@ let batters = [];              // [{id,name,hand}]
 let currentBatterId = null;    // id of batter selected in dropdown
 let batterAutoId = 1;          // simple incremental id
 
+/* ---------- NEW – PITCHER STATE ---------- */
+let pitchers          = [];        // [{id,name,hand}]
+let currentPitcherId  = null;      // id of pitcher currently on the mound
+let pitcherAutoId     = 1;         // simple incremental id
+
 /* ---------- PER-PITCH STORAGE  ---------- */
 /* All pitches for every batter live here.  */
 let pitchData = [];
@@ -133,6 +138,20 @@ document.getElementById('batterSelect').addEventListener('change', e => {
   currentBatterId = v === '' ? null : Number(v);   // null = show all
   updateLiveStats();
   updateHeatMap();
+});
+
+/* === PITCHER UI handlers === */
+document.getElementById('addPitcherBtn').addEventListener('click', () => {
+  const name = document.getElementById('newPitcherName').value.trim();
+  const hand = document.getElementById('newPitcherHand').value;   // 'LH' | 'RH'
+  if (!name) { alert('Enter a pitcher name'); return; }
+  addPitcher(name, hand);
+  document.getElementById('newPitcherName').value = '';
+});
+
+document.getElementById('pitcherSelect').addEventListener('change', e => {
+  const v = e.target.value;
+  currentPitcherId = v === '' ? null : Number(v);   // null = no filter
 });
 
 function toggleMode() {
@@ -695,7 +714,6 @@ function addBatter(name, hand){
   updateHeatmapBatterFilter(); 
 }                             
 
-
 /* --- updateBatterDropdown() --- */
 function updateBatterDropdown () {
   const sel = document.getElementById('batterSelect');
@@ -715,6 +733,35 @@ function updateBatterDropdown () {
   });
 
   sel.value = currentBatterId ?? '';   // keep current selection
+}
+
+
+function addPitcher (name, hand) {
+  const id = pitcherAutoId++;
+  pitchers.push({ id, name, hand });
+
+  // default the very first pitcher we add
+  if (currentPitcherId === null) currentPitcherId = id;
+
+  updatePitcherDropdown();
+}
+
+function updatePitcherDropdown () {
+  const sel = document.getElementById('pitcherSelect');
+  sel.innerHTML = '';
+
+  const optAll = document.createElement('option');
+  optAll.value = ''; optAll.textContent = '— Select Pitcher —';
+  sel.appendChild(optAll);
+
+  pitchers.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = `${p.name} (${p.hand})`;
+    sel.appendChild(opt);
+  });
+
+  sel.value = currentPitcherId ?? '';
 }
 
 // Calculate strike percentage based on the log
@@ -1003,6 +1050,7 @@ function makeCounters () {
    ─ The six “headline” numbers (and the early/late rows underneath)
      are ALWAYS calculated from *every* pitch in pitchData.
    ─ The two tables underneath still respect the dropdown filter. */
+
 function updateLiveStats () {
 
   /* ----- choose the two datasets ----- */
@@ -1063,6 +1111,22 @@ function updateLiveStats () {
   const aggAll      = buildAggregators(allData);  // reference row
 
   renderLiveTables(aggFiltered, aggAll);
+}
+
+function advanceToNextBatter () {
+  if (!batters.length || currentBatterId === null) return;
+
+  const idx      = batters.findIndex(b => b.id === currentBatterId);
+  const nextIdx  = (idx + 1) % batters.length;
+  currentBatterId = batters[nextIdx].id;
+
+  // reflect it in the dropdown
+  const sel = document.getElementById('batterSelect');
+  if (sel) sel.value = currentBatterId;
+
+  // update any UI that depends on the selection
+  updateLiveStats();
+  updateHeatMap();
 }
 
 /* ▬▬▬ paint the two new live-stats tables ▬▬▬ */
@@ -1217,6 +1281,7 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '', previo
   let pitchEntry = {
     pitchId: pitchId,
     batterId: currentBatterId,
+    pitcherId: currentPitcherId,
     pitchType: pitchType,
     result: result,
     location: location,
@@ -1696,6 +1761,7 @@ function logAtBatResult(result) {
     pitchCount: pitchData.filter(p => p.atBatNumber === atBatNumber).length
   };
   atBats.push(summary);
+  advanceToNextBatter();
 
   const atBatLogEl = document.getElementById('atBatLog');
   if (atBatLogEl) {
@@ -1885,3 +1951,4 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('taggingOptions').style.display = 'none';
   updateHeatmapBatterFilter();
 });
+
