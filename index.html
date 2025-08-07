@@ -51,9 +51,100 @@
     <ul id="countLog"></ul>
   </div>
 
-  <!-- LIVE BP MODE (also used by Points Mode) -->
-  <div id="liveBPMode" style="display: none;">
-    <h2 id="modeTitle">Live BP Mode</h2>
+<!-- LIVE BP MODE -->
+<div id="liveBPMode" style="display: none;">
+  <div id="liveBPWrapper" class="wrapper">
+
+    <!-- LEFT PANEL: per-pitch summary -->
+    <div id="sideLeft" class="side-panel">
+      <h3>By Pitch Type</h3>
+      <table class="liveTbl" id="tbl-pitchType">
+        <thead>
+          <tr>
+            <th>Pitch</th><th>IZ%</th><th>OOZ%</th><th>CSW%</th>
+            <th>Strike%</th><th>Swing%</th>
+            <!-- NEW columns -->
+            <th>Fly%</th><th>GB%</th><th>LD%</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    
+        <thead>
+          <tr>
+            <th>Pitch</th><th>IZ%</th><th>OOZ%</th><th>CSW%</th>
+            <th>Strike%</th><th>Swing%</th><th>Fly%</th><th>GB%</th><th>LD%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- rows still rendered by script.js -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- MAIN PANEL: everything else -->
+    <div id="mainPanel" class="main-panel">
+      <h2 id="modeTitle">Live BP Mode</h2>
+
+      <!-- batter + pitcher controls -->
+      <div id="batterManagement">…</div>
+      <div id="pitcherControls">…</div>
+
+      <!-- overall headline stats -->
+      <div id="liveStatsBoard">
+        <div id="stats-overall">…</div>
+        <div id="stats-early">…</div>
+        <div id="stats-late">…</div>
+      </div>
+
+      <!-- pitch-type / location / outcome UI, point mode, heatmap, etc. -->
+      <div id="pointsContainer">…</div>
+      <div id="pitchTypeSelection">…</div>
+      <div id="comboPitchTypeSelection">…</div>
+      <div id="pitchLocationSelection">…</div>
+      <div id="outcomeSelection">…</div>
+      <div id="inPlaySelection">…</div>
+      <div id="heatmapGrid">…</div>
+
+      <!-- pitch log summary -->
+      <div id="pitchLogSummary">…</div>
+
+      <!-- at-bat summary export -->
+      <div id="atBatSummary">…</div>
+      <button id="exportAtBatBtn">Export At-Bat Summary</button>
+
+      <!-- other buttons (export, heatmap toggle, next batter, tag) -->
+      <button id="exportBtn">Export Stats</button>
+      <button id="heatMapBtn">Heat Map</button>
+      <button id="nextBatterBtn">Next Batter</button>
+      <button id="tagPitchBtn">Tag Pitch</button>
+    </div>
+
+    <!-- RIGHT PANEL: per-batter summary -->
+    <div id="sideRight" class="side-panel">
+      <h3>By Batter</h3>
+      <table class="liveTbl" id="tbl-batter">
+        <thead><tr>
+          <th>Batter</th><th>Early Swing%</th><th>Late Swing%</th>
+          <th>Chase%</th><th>CSW%</th><th>Strike%</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+        <thead>
+          <tr>
+            <th>Batter</th><th>Early Swing%</th><th>Late Swing%</th>
+            <th>Chase%</th><th>CSW%</th><th>Strike%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- rows still rendered by script.js -->
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
 
 
   <!-- ========= BATTER MANAGEMENT ========= -->
@@ -104,30 +195,7 @@
     </div>
     <!-- ▾▾▾ NEW live-stats tables ▾▾▾ -->
     <div id="statsTablesWrapper">
-    
-      <!-- per-pitch-type -->
-      <table class="liveTbl" id="tbl-pitchType">
-        <thead>
-          <tr>
-            <th>Pitch</th><th>IZ%</th><th>OOZ%</th><th>CSW%</th>
-            <th>Strike%</th><th>Swing%</th>
-            <!-- NEW columns -->
-            <th>Fly%</th><th>GB%</th><th>LD%</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-
-    
-      <!-- per-batter -->
-      <table class="liveTbl" id="tbl-batter">
-        <thead><tr>
-          <th>Batter</th><th>Early Swing%</th><th>Late Swing%</th>
-          <th>Chase%</th><th>CSW%</th><th>Strike%</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table>
-    
+        
     </div>
     <!-- ▴▴▴ NEW ▴▴▴ -->
   </div>
@@ -571,3 +639,4 @@
   <script src="script.js"></script>
 </body>
 </html>
+
