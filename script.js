@@ -1053,6 +1053,13 @@ function makeCounters () {
    ─ The two tables underneath still respect the dropdown filter. */
 
 function updateLiveStats () {
+  const swingEl = document.getElementById('stat-swing');
+  const tpBody  = document.querySelector('#tbl-pitchType tbody');
+  const btBody  = document.querySelector('#tbl-batter tbody');
+  if (!swingEl || !tpBody || !btBody) {
+    console.warn('Live BP DOM not present; skipping updateLiveStats');
+    return;
+  }
 
   /* ----- choose the two datasets ----- */
   const filtered = pitchData.filter(p=>{
@@ -1958,6 +1965,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('taggingOptions').style.display = 'none';
   updateHeatmapBatterFilter();
 });
+
 
 
 
