@@ -1264,6 +1264,7 @@ document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
     resetForNextPitch();
     updateLiveStats();
     updateUI();
+    });
   });
 
 function logPitchResult(pitchType, result, location, scenarioEmojis = '', previousCount = null, outcome = '') {
@@ -1957,5 +1958,6 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('taggingOptions').style.display = 'none';
   updateHeatmapBatterFilter();
 });
+
 
 
