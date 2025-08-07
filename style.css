@@ -337,4 +337,27 @@ button {
   z-index:-1;
 }
 
+/* Live BP 3-col layout */
+.wrapper {
+  display: grid;
+  grid-template-columns: 1fr 3fr 1fr;
+  gap: 16px;
+  padding: 16px;
+}
+
+.side-panel {
+  background: rgba(255,255,255,0.05);
+  border: 1px dashed rgba(255,255,255,0.2);
+  padding: 12px;
+  overflow-y: auto;
+  min-height: 400px;
+}
+
+.main-panel {
+  overflow-x: auto;
+  padding: 0 8px;
+}
+
+
+
 
