@@ -233,6 +233,139 @@
     </div>
   </div>
 
+    <!-- Outcome Selection -->
+  <div id="outcomeSelection" style="display:none;">
+    <h3>Select Outcome</h3>
+    <button class="btn" id="ball">Ball</button>
+    <button class="btn" id="whiff">Whiff</button>
+    <button class="btn" id="calledStrike">Called Strike</button>
+    <button class="btn" id="foul">Foul</button>
+    <button class="btn" id="inPlay">In Play</button>
+    <button class="btn" id="hbp">HBP</button>
+  </div>
+
+  <!-- In Play Outcome Selection -->
+  <div id="inPlaySelection" style="display:none;">
+    <h3>In Play Result</h3>
+    <button class="btn" id="groundball">Groundball</button>
+    <button class="btn" id="flyball">FlyBall</button>
+    <button class="btn" id="linedrive">LineDrive</button>
+  </div>
+
+<!-- Heatmap Grid -->
+    <div id="heatmapGrid" style="display:none;">
+<!-- ========= HEATMAP FILTERS ========= -->
+<div id="heatmapFilters" style="margin-bottom:6px;">
+  <label>Count
+    <select id="filterCount">
+      <option value="all">All</option>
+      <option value="early">Early (&lt;2 strikes)</option>
+      <option value="late">Late (2 strikes)</option>
+    </select>
+  </label>
+  <label style="margin-left:6px;">Pitch
+    <select id="filterPitch">
+      <option value="all">All</option>
+      <!-- JS populates the rest -->
+    </select>
+  </label>
+  <label style="margin-left:6px;">Result
+    <select id="filterResult">
+      <option value="all">All results</option>
+      <option value="strike">Strike</option>
+      <option value="ball">Ball</option>
+      <option value="swing">Swing</option>
+      <option value="inPlay">In Play</option>
+      <option value="hbp">HBP</option>
+    </select>
+  </label>
+  <label style="margin-left:6px;">Batter
+    <select id="filterBatter">
+      <option value="all">All</option>
+      <!-- JS populates -->
+    </select>
+  </label>
+</div>
+
+      <h3>Heat Map</h3>
+      <div id="heatmapContainer" style="display: flex; justify-content: center;">
+        <div id="heatmap">
+          <!-- Row 1 -->
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-26">26</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-27">27</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-28">28</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-29">29</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-30">30</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-31">31</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-32">32</button>
+          <!-- Row 2 -->
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-33">33</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-10">10</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-11">11</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-12">12</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-13">13</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-14">14</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-34">34</button>
+          <!-- Row 3 -->
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-35">35</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-15">15</button>
+          <button class="heatmapBtn strikeZone" id="heatmap-1">1</button>
+          <button class="heatmapBtn strikeZone" id="heatmap-2">2</button>
+          <button class="heatmapBtn strikeZone" id="heatmap-3">3</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-16">16</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-36">36</button>
+          <!-- Row 4 -->
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-37">37</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-17">17</button>
+          <button class="heatmapBtn strikeZone" id="heatmap-4">4</button>
+          <button class="heatmapBtn strikeZone" id="heatmap-5">5</button>
+          <button class="heatmapBtn strikeZone" id="heatmap-6">6</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-18">18</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-38">38</button>
+          <!-- Row 5 -->
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-39">39</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-19">19</button>
+          <button class="heatmapBtn strikeZone" id="heatmap-7">7</button>
+          <button class="heatmapBtn strikeZone" id="heatmap-8">8</button>
+          <button class="heatmapBtn strikeZone" id="heatmap-9">9</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-20">20</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-40">40</button>
+          <!-- Row 6 -->
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-41">41</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-21">21</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-22">22</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-23">23</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-24">24</button>
+          <button class="heatmapBtn shadowZone" id="heatmap-25">25</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-42">42</button>
+          <!-- Row 7 -->
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-43">43</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-44">44</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-45">45</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-46">46</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-47">47</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-48">48</button>
+          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-49">49</button>
+        </div>
+      </div>
+    </div>
+
+  <!-- Pitch Log Summary -->
+  <div id="pitchLogSummary">
+    <h3>Pitch Log</h3>
+    <div id="totalPitchesLiveBP">Total Pitches: 0</div>
+    <div id="currentCountLiveBP">Current Count: 0-0</div>
+    <div id="raceWinsLiveBP">Race Wins:</div>
+    <div id="strikePercentageLiveBP">Strike %: 0</div>
+    <ul id="pitchLog"></ul>
+  </div>
+
+  <!-- NEW: At‑Bat Summary -->
+  <div id="atBatSummary">
+    <h3>At‑Bat Summary</h3>
+    <ul id="atBatLog"></ul>
+  </div>
+
   <!-- INTENDED ZONE MODE -->
   <div id="intendedZoneMode" style="display:none;">
     <h2 id="intendedZoneTitle">Intended Zone</h2>
@@ -423,146 +556,6 @@
     <textarea id="tagNote" placeholder="Add a note (optional)"></textarea>
     <button id="applyTagBtn">Apply Tag</button>
   </div>
-
-<!-- Heatmap Grid -->
-    <div id="heatmapGrid" style="display:none;">
-<!-- ========= HEATMAP FILTERS ========= -->
-<div id="heatmapFilters" style="margin-bottom:6px;">
-  <label>Count
-    <select id="filterCount">
-      <option value="all">All</option>
-      <option value="early">Early (&lt;2 strikes)</option>
-      <option value="late">Late (2 strikes)</option>
-    </select>
-  </label>
-  <label style="margin-left:6px;">Pitch
-    <select id="filterPitch">
-      <option value="all">All</option>
-      <!-- JS populates the rest -->
-    </select>
-  </label>
-  <label style="margin-left:6px;">Result
-    <select id="filterResult">
-      <option value="all">All results</option>
-      <option value="strike">Strike</option>
-      <option value="ball">Ball</option>
-      <option value="swing">Swing</option>
-      <option value="inPlay">In Play</option>
-      <option value="hbp">HBP</option>
-    </select>
-  </label>
-  <label style="margin-left:6px;">Batter
-    <select id="filterBatter">
-      <option value="all">All</option>
-      <!-- JS populates -->
-    </select>
-  </label>
-</div>
-
-      <h3>Heat Map</h3>
-      <div id="heatmapContainer" style="display: flex; justify-content: center;">
-        <div id="heatmap">
-          <!-- Row 1 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-26">26</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-27">27</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-28">28</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-29">29</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-30">30</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-31">31</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-32">32</button>
-          <!-- Row 2 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-33">33</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-10">10</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-11">11</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-12">12</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-13">13</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-14">14</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-34">34</button>
-          <!-- Row 3 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-35">35</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-15">15</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-1">1</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-2">2</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-3">3</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-16">16</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-36">36</button>
-          <!-- Row 4 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-37">37</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-17">17</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-4">4</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-5">5</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-6">6</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-18">18</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-38">38</button>
-          <!-- Row 5 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-39">39</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-19">19</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-7">7</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-8">8</button>
-          <button class="heatmapBtn strikeZone" id="heatmap-9">9</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-20">20</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-40">40</button>
-          <!-- Row 6 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-41">41</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-21">21</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-22">22</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-23">23</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-24">24</button>
-          <button class="heatmapBtn shadowZone" id="heatmap-25">25</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-42">42</button>
-          <!-- Row 7 -->
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-43">43</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-44">44</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-45">45</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-46">46</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-47">47</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-48">48</button>
-          <button class="heatmapBtn nonCompetitiveZone" id="heatmap-49">49</button>
-        </div>
-      </div>
-    </div>
-
-  <!-- Outcome Selection -->
-  <div id="outcomeSelection" style="display:none;">
-    <h3>Select Outcome</h3>
-    <button class="btn" id="ball">Ball</button>
-    <button class="btn" id="whiff">Whiff</button>
-    <button class="btn" id="calledStrike">Called Strike</button>
-    <button class="btn" id="foul">Foul</button>
-    <button class="btn" id="inPlay">In Play</button>
-    <button class="btn" id="hbp">HBP</button>
-  </div>
-
-  <!-- In Play Outcome Selection -->
-  <div id="inPlaySelection" style="display:none;">
-    <h3>In Play Result</h3>
-    <button class="btn" id="groundball">Groundball</button>
-    <button class="btn" id="flyball">FlyBall</button>
-    <button class="btn" id="linedrive">LineDrive</button>
-  </div>
-
-  <!-- Pitch Log Summary -->
-  <div id="pitchLogSummary">
-    <h3>Pitch Log</h3>
-    <div id="totalPitchesLiveBP">Total Pitches: 0</div>
-    <div id="currentCountLiveBP">Current Count: 0-0</div>
-    <div id="raceWinsLiveBP">Race Wins:</div>
-    <div id="strikePercentageLiveBP">Strike %: 0</div>
-    <ul id="pitchLog"></ul>
-  </div>
-
-  <!-- NEW: At‑Bat Summary -->
-  <div id="atBatSummary">
-    <h3>At‑Bat Summary</h3>
-    <ul id="atBatLog"></ul>
-  </div>
-  <!-- Button to export the at‑bat summary to clipboard -->
-  <button id="exportAtBatBtn" style="margin-top: 20px;">Export At‑Bat Summary</button>
-
-  <button id="exportBtn" style="margin-top: 20px;">Export Stats</button>
-  <button id="heatMapBtn" style="margin-top: 20px;">Heat Map</button>
-  <button id="nextBatterBtn" style="margin-top: 20px;">Next Batter</button>
-  <button id="tagPitchBtn" style="margin-top: 20px;">Tag Pitch</button>
 </div> <!-- /#mainPanel -->  
 
 
@@ -580,8 +573,19 @@
   </div> <!-- closes #liveBPWrapper -->
 </div>   <!-- closes #liveBPMode -->
 
+
+<!-- 4) export buttons row, underneath all three columns -->
+<div id="liveBPActions" style="display:flex; gap:1em; margin-top:1em;">
+  <button id="exportAtBatBtn" style="margin-top: 20px;">Export At‑Bat Summary</button>
+  <button id="exportBtn" style="margin-top: 20px;">Export Stats</button>
+  <button id="heatMapBtn" style="margin-top: 20px;">Heat Map</button>
+  <button id="nextBatterBtn" style="margin-top: 20px;">Next Batter</button>
+  <button id="tagPitchBtn" style="margin-top: 20px;">Tag Pitch</button>
+</div>
+
   <script src="script.js"></script>
 </body>
 </html>
+
 
 
