@@ -315,6 +315,7 @@ document.getElementById('nextBatterBtn').addEventListener('click', function() {
   isNewAtBat = true;
   resetCount(); // Reset the current count to 0-0
   updateCurrentCount(); // Update the UI to reflect the new count
+  advanceToNextBatter();
   updateUI();
 });
 
@@ -1240,25 +1241,30 @@ function showInPlaySelection() {
 
 document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
   button.addEventListener('click', function() {
-    let inPlayResult = this.id;
-    let previousCount = {
-      balls: ballCount,
-      strikes: strikeCount,
-    };
+    const inPlayResult = this.id; 
+    // capture previous count
+    const prev = { balls: ballCount, strikes: strikeCount };
+  
+    // record the pitch
     pitchCount++;
-    if (mode === "liveBP" || mode === "points") {
-      totalPitches++;
-    } else if (mode === "bullpen" || mode === "putaway") {
-      totalPitchesBullpen++;
-    }
-
-    logPitchResult(pitchType, "In Play - " + inPlayResult, pitchLocation, '', previousCount, 'inPlay');
+    if (mode==="liveBP"||mode==="points") totalPitches++; 
+    else totalPitchesBullpen++;
+  
+    // log it as an at-bat finisher:
+    logPitchResult(pitchType, "In Play – " + inPlayResult, pitchLocation, '', prev, 'inPlay');
+  
+    // *** NEW: record the at-bat summary ***
+    logAtBatResult("In Play – " + inPlayResult);
+  
+    // *** NEW: advance to next batter right away ***
+    advanceToNextBatter();
+  
+    // and reset for the next pitch sequence
     isNewAtBat = true;
     resetForNextPitch();
     updateLiveStats();
     updateUI();
   });
-});
 
 function logPitchResult(pitchType, result, location, scenarioEmojis = '', previousCount = null, outcome = '') {
   let pitchLog = document.getElementById('pitchLog');
@@ -1951,4 +1957,5 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('taggingOptions').style.display = 'none';
   updateHeatmapBatterFilter();
 });
+
 
