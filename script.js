@@ -1718,7 +1718,8 @@ function accumulate(stats, p) {
    else if (p.result.includes('groundball')) stats.gb++;
    else if (p.result.includes('linedrive'))   stats.ld++;
  }
-
+}
+  
 function pct (num, den) { return den ? (num/den*100) : 0; }
 
 function buildAggregators (dataArr) {
@@ -2006,6 +2007,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('taggingOptions').style.display = 'none';
   updateHeatmapBatterFilter();
 });
+
 
 
 
