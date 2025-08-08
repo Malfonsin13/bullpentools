@@ -1137,17 +1137,21 @@ function advanceToNextBatter () {
   updateHeatMap();
 }
 
-// Make a total row at index 0 with proper % + raw counts
-function insertTotalRow(tbody, label, stats, columns, columnMaxes) {
+// Insert a TOTAL row at index 0 with no heat coloring
+function insertTotalRow(tbody, label, stats, columns) {
   const tr = tbody.insertRow(0);
   tr.classList.add('total-row');
-  tr.insertCell().textContent = label;
+
+  const first = tr.insertCell();
+  first.textContent = label;
+  first.classList.add('total-cell');
+
   columns.forEach(metric => {
     const pctVal   = Number(stats[metric]) || 0;
-    const rawCount = metricCount(stats, metric);   // shows the numerator in ( )
+    const rawCount = metricCount(stats, metric);
     const td = tr.insertCell();
     td.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
-    shadeCellByColumn(td, pctVal, columnMaxes[metric]); // same heat coloring
+    td.classList.add('total-cell');   // <- no heatmap here
   });
 }
 
@@ -1161,7 +1165,7 @@ function renderLiveTables(aggFiltered, aggAll) {
   const pitchMax  = computeColumnMax(aggFiltered.byPitch, pitchCols);
 
   // ⬆️ TOTAL row first (for the *filtered* set)
-  insertTotalRow(tpBody, '— All —', aggFiltered.overall, pitchCols, pitchMax);
+  insertTotalRow(tpBody, '— All —', aggFiltered.overall, pitchCols);
 
   // then each pitch type
   aggFiltered.byPitch.forEach((stats, pt) => {
@@ -1185,7 +1189,7 @@ function renderLiveTables(aggFiltered, aggAll) {
 
   // ⬆️ TOTAL row first (for the *filtered* set)
   // earlySwing% & lateSwing% use early/late denominators; chase% = OOZ-swings / swings
-  insertTotalRow(btBody, '— All —', aggFiltered.overall, batterCols, batterMax);
+  insertTotalRow(btBody, '— All —', aggFiltered.overall, batterCols);
 
   // then each batter (skip any stray aggregate key)
   aggFiltered.byBatter.forEach((stats, id) => {
@@ -2037,6 +2041,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('taggingOptions').style.display = 'none';
   updateHeatmapBatterFilter();
 });
+
 
 
 
