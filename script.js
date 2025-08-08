@@ -1137,43 +1137,59 @@ function advanceToNextBatter () {
   updateHeatMap();
 }
 
-/* ▬▬▬ paint the two new live-stats tables ▬▬▬ */
-function renderLiveTables(aggFiltered, aggAll){
-  /* ---------- per-pitch-type ---------- */
+/* ▬▬ paint the two live-stats tables with heat-colors ▬▬ */
+function renderLiveTables(aggFiltered, aggAll) {
+
+  /* ---------- BY PITCH TYPE ---------- */
   const tpBody = document.querySelector('#tbl-pitchType tbody');
   tpBody.innerHTML = '';
-  [...aggFiltered.byPitch.entries()].forEach(([pt, s])=>{
+
+  aggFiltered.byPitch.forEach((stats, pt) => {
     const row = tpBody.insertRow();
-  [ pt.toUpperCase(),
-    s.izPct, s.oozPct, s.cswPct, s.strikePct, s.swingPct,
-    s.flyPct, s.gbPct, s.ldPct ].forEach(v=>{
-      const cell = row.insertCell();
-      cell.textContent = v.toFixed ? v.toFixed(1)+'%' : v;
-      if (typeof v==='number'){
-        cell.style.setProperty('--w', v/100);
-        cell.dataset.pct = v;
-      }
+
+    // first cell = pitch-type label (no coloring)
+    row.insertCell().textContent = pt.toUpperCase();
+
+    // metrics to display, in order
+    const cols = [
+      'izPct', 'oozPct', 'cswPct', 'strikePct', 'swingPct',
+      'flyPct', 'gbPct', 'ldPct'
+    ];
+
+    cols.forEach(metric => {
+      const pctVal   = stats[metric];
+      const rawCount = metricCount(stats, metric);
+      const cell     = row.insertCell();
+
+      cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
+      shadeCell(cell, pctVal);
     });
   });
 
-  /* ---------- per-batter (respect current filter) ---------- */
+  /* ---------- BY BATTER (respects current filter) ---------- */
   const btBody = document.querySelector('#tbl-batter tbody');
   btBody.innerHTML = '';
-  [...aggFiltered.byBatter.entries()].forEach(([id, s])=>{
-    const name = id==='ALL' ? '— All —'
-               : (batters.find(b=>b.id===id)?.name || 'B'+id);
+
+  aggFiltered.byBatter.forEach((stats, id) => {
+    const name = id === 'ALL'
+      ? '— All —'
+      : (batters.find(b => b.id === id)?.name || `B${id}`);
+
     const row = btBody.insertRow();
-    [
-      name,
-      s.earlySwingPct, s.lateSwingPct, s.chasePct,
-      s.cswPct, s.strikePct
-    ].forEach(v=>{
-      const cell = row.insertCell();
-      cell.textContent = v.toFixed ? v.toFixed(1)+'%' : v;
-      if (typeof v==='number'){
-        cell.style.setProperty('--w', v/100);
-        cell.dataset.pct = v;
-      }
+    row.insertCell().textContent = name;
+
+    const cols = [
+      'earlySwingPct', 'lateSwingPct', 'chasePct',
+      'cswPct', 'strikePct'
+    ];
+
+    cols.forEach(metric => {
+      const pctVal   = stats[metric];
+      const rawCount = metricCount(stats, metric);
+      const cell     = row.insertCell();
+
+      cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
+      shadeCell(cell, pctVal);
     });
   });
 }
@@ -1588,6 +1604,30 @@ function getHeatMapColor(count, maxCount) {
   return color;
 }
 
+/* --- use the same white-to-red heat-scale for table cells -------- */
+function shadeCell(el, pct) {
+  el.style.backgroundColor = getHeatMapColor(pct, 100);   // 0-100 range
+  el.style.color = pct > 60 ? '#fff' : '#000';            // readability
+}
+
+/* --- map %-metric → its raw count so we can show “(n)” ----------- */
+function metricCount(stats, metric) {
+  switch (metric) {
+    case 'izPct'        : return stats.iz;
+    case 'oozPct'       : return stats.ooz;
+    case 'cswPct'       : return stats.csw;
+    case 'strikePct'    : return stats.strike;
+    case 'swingPct'     : return stats.swing;
+    case 'flyPct'       : return stats.fly;
+    case 'gbPct'        : return stats.gb;
+    case 'ldPct'        : return stats.ld;
+    case 'earlySwingPct': return stats.earlySwing;
+    case 'lateSwingPct' : return stats.lateSwing;
+    case 'chasePct'     : return stats.oozSwing;
+    default             : return stats.pitches;
+  }
+}
+
 function updateHeatmapBatterFilter () {
   const sel = document.getElementById('filterBatter');
   if (!sel) return;
@@ -1965,6 +2005,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('taggingOptions').style.display = 'none';
   updateHeatmapBatterFilter();
 });
+
 
 
 
