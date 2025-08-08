@@ -1144,31 +1144,31 @@ function renderLiveTables(aggFiltered, aggAll) {
   const tpBody = document.querySelector('#tbl-pitchType tbody');
   tpBody.innerHTML = '';
 
+  const pitchCols = ['izPct','oozPct','cswPct','strikePct','swingPct','flyPct','gbPct','ldPct'];
+  const pitchMax  = computeColumnMax(aggFiltered.byPitch, pitchCols);
+
   aggFiltered.byPitch.forEach((stats, pt) => {
     const row = tpBody.insertRow();
 
     // first cell = pitch-type label (no coloring)
     row.insertCell().textContent = pt.toUpperCase();
 
-    // metrics to display, in order
-    const cols = [
-      'izPct', 'oozPct', 'cswPct', 'strikePct', 'swingPct',
-      'flyPct', 'gbPct', 'ldPct'
-    ];
-
-    cols.forEach(metric => {
+    pitchCols.forEach(metric => {
       const pctVal   = stats[metric];
       const rawCount = metricCount(stats, metric);
       const cell     = row.insertCell();
 
       cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
-      shadeCell(cell, pctVal);
+      shadeCellByColumn(cell, pctVal, pitchMax[metric]);
     });
   });
 
   /* ---------- BY BATTER (respects current filter) ---------- */
   const btBody = document.querySelector('#tbl-batter tbody');
   btBody.innerHTML = '';
+
+  const batterCols = ['earlySwingPct','lateSwingPct','chasePct','cswPct','strikePct'];
+  const batterMax  = computeColumnMax(aggFiltered.byBatter, batterCols);
 
   aggFiltered.byBatter.forEach((stats, id) => {
     const name = id === 'ALL'
@@ -1178,18 +1178,13 @@ function renderLiveTables(aggFiltered, aggAll) {
     const row = btBody.insertRow();
     row.insertCell().textContent = name;
 
-    const cols = [
-      'earlySwingPct', 'lateSwingPct', 'chasePct',
-      'cswPct', 'strikePct'
-    ];
-
-    cols.forEach(metric => {
+    batterCols.forEach(metric => {
       const pctVal   = stats[metric];
       const rawCount = metricCount(stats, metric);
       const cell     = row.insertCell();
 
       cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
-      shadeCell(cell, pctVal);
+      shadeCellByColumn(cell, pctVal, batterMax[metric]);
     });
   });
 }
@@ -1610,6 +1605,27 @@ function shadeCell(el, pct) {
   el.style.color = pct > 60 ? '#fff' : '#000';            // readability
 }
 
+function shadeCellByColumn(el, value, colMax) {
+  const max = colMax || 0;
+  el.style.backgroundColor = getHeatMapColor(value, max);
+  const ratio = max ? (value / max) : 0;
+  el.style.color = ratio > 0.6 ? '#fff' : '#000';
+}
+
+function computeColumnMax(map, columns) {
+  const maxes = {};
+  columns.forEach(c => maxes[c] = 0);
+  map.forEach((stats, key) => {
+    if (key === 'ALL') return; // ignore any aggregate bucket if present
+    columns.forEach(c => {
+      const v = Number(stats[c]) || 0;
+      if (v > maxes[c]) maxes[c] = v;
+    });
+  });
+  return maxes;
+}
+
+
 /* --- map %-metric → its raw count so we can show “(n)” ----------- */
 function metricCount(stats, metric) {
   switch (metric) {
@@ -2007,6 +2023,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('taggingOptions').style.display = 'none';
   updateHeatmapBatterFilter();
 });
+
 
 
 
