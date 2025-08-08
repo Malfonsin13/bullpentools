@@ -361,6 +361,12 @@ button {
 #tbl-batter .total-row td:first-child,
 #tbl-pitchType .total-row td:first-child { font-weight: 700; }
 
+.total-row .total-cell {
+  font-weight: 700;
+  background: #f5f7fb;   /* or transparent */
+  color: #000;
+}
+
 
 
 
