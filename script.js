@@ -1274,7 +1274,7 @@ document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
     else totalPitchesBullpen++;
   
     // log it as an at-bat finisher:
-    logPitchResult(pitchType, "In Play – " + inPlayResult, pitchLocation, '', prev, 'inPlay');
+    logPitchResult(pitchType, `In Play - ${inPlayResult}`, pitchLocation, '', prev, 'inPlay');
   
     // *** NEW: record the at-bat summary ***
     logAtBatResult("In Play – " + inPlayResult);
@@ -1713,10 +1713,11 @@ function accumulate(stats, p) {
     if (swung) stats.oozSwing++;      // chase swing
   }
 
-  if (p.result === 'In Play - flyball')    stats.fly++;
-  if (p.result === 'In Play - groundball') stats.gb++;
-  if (p.result === 'In Play - linedrive')  stats.ld++;
-}
+ if (p.result && p.result.startsWith('In Play')) {
+   if (p.result.includes('flyball'))     stats.fly++;
+   else if (p.result.includes('groundball')) stats.gb++;
+   else if (p.result.includes('linedrive'))   stats.ld++;
+ }
 
 function pct (num, den) { return den ? (num/den*100) : 0; }
 
@@ -2005,6 +2006,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('taggingOptions').style.display = 'none';
   updateHeatmapBatterFilter();
 });
+
 
 
 
