@@ -1137,9 +1137,22 @@ function advanceToNextBatter () {
   updateHeatMap();
 }
 
+// Make a total row at index 0 with proper % + raw counts
+function insertTotalRow(tbody, label, stats, columns, columnMaxes) {
+  const tr = tbody.insertRow(0);
+  tr.classList.add('total-row');
+  tr.insertCell().textContent = label;
+  columns.forEach(metric => {
+    const pctVal   = Number(stats[metric]) || 0;
+    const rawCount = metricCount(stats, metric);   // shows the numerator in ( )
+    const td = tr.insertCell();
+    td.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
+    shadeCellByColumn(td, pctVal, columnMaxes[metric]); // same heat coloring
+  });
+}
+
 /* ▬▬ paint the two live-stats tables with heat-colors ▬▬ */
 function renderLiveTables(aggFiltered, aggAll) {
-
   /* ---------- BY PITCH TYPE ---------- */
   const tpBody = document.querySelector('#tbl-pitchType tbody');
   tpBody.innerHTML = '';
@@ -1147,17 +1160,17 @@ function renderLiveTables(aggFiltered, aggAll) {
   const pitchCols = ['izPct','oozPct','cswPct','strikePct','swingPct','flyPct','gbPct','ldPct'];
   const pitchMax  = computeColumnMax(aggFiltered.byPitch, pitchCols);
 
+  // ⬆️ TOTAL row first (for the *filtered* set)
+  insertTotalRow(tpBody, '— All —', aggFiltered.overall, pitchCols, pitchMax);
+
+  // then each pitch type
   aggFiltered.byPitch.forEach((stats, pt) => {
     const row = tpBody.insertRow();
-
-    // first cell = pitch-type label (no coloring)
     row.insertCell().textContent = pt.toUpperCase();
-
     pitchCols.forEach(metric => {
       const pctVal   = stats[metric];
       const rawCount = metricCount(stats, metric);
       const cell     = row.insertCell();
-
       cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
       shadeCellByColumn(cell, pctVal, pitchMax[metric]);
     });
@@ -1170,19 +1183,20 @@ function renderLiveTables(aggFiltered, aggAll) {
   const batterCols = ['earlySwingPct','lateSwingPct','chasePct','cswPct','strikePct'];
   const batterMax  = computeColumnMax(aggFiltered.byBatter, batterCols);
 
-  aggFiltered.byBatter.forEach((stats, id) => {
-    const name = id === 'ALL'
-      ? '— All —'
-      : (batters.find(b => b.id === id)?.name || `B${id}`);
+  // ⬆️ TOTAL row first (for the *filtered* set)
+  // earlySwing% & lateSwing% use early/late denominators; chase% = OOZ-swings / swings
+  insertTotalRow(btBody, '— All —', aggFiltered.overall, batterCols, batterMax);
 
+  // then each batter (skip any stray aggregate key)
+  aggFiltered.byBatter.forEach((stats, id) => {
+    if (id === 'ALL') return;  // avoid duplicate/bogus aggregate rows
+    const name = (batters.find(b => b.id === id)?.name) || `B${id}`;
     const row = btBody.insertRow();
     row.insertCell().textContent = name;
-
     batterCols.forEach(metric => {
       const pctVal   = stats[metric];
       const rawCount = metricCount(stats, metric);
       const cell     = row.insertCell();
-
       cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
       shadeCellByColumn(cell, pctVal, batterMax[metric]);
     });
@@ -2023,6 +2037,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('taggingOptions').style.display = 'none';
   updateHeatmapBatterFilter();
 });
+
 
 
 
