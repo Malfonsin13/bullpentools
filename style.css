@@ -358,6 +358,9 @@ button {
   padding: 0 8px;
 }
 
+#tbl-batter .total-row td:first-child,
+#tbl-pitchType .total-row td:first-child { font-weight: 700; }
+
 
 
 
