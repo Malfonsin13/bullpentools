@@ -72,7 +72,6 @@ let currentActualZone = null;
 
 
 
-
 /** Define strike locations (locations 1-9) **/
 const strikeLocations = [];
 for (let i = 1; i <= 9; i++) {
@@ -133,11 +132,14 @@ document.getElementById('addBatterBtn').addEventListener('click', () => {
   document.getElementById('newBatterName').value = '';
 });
 
+// Update batter selection: call render functions for pitch log and at-bat log
 document.getElementById('batterSelect').addEventListener('change', e => {
   const v = e.target.value;
   currentBatterId = v === '' ? null : Number(v);   // null = show all
   updateLiveStats();
   updateHeatMap();
+  renderPitchLog();   // NEW: re-render pitch log according to selected batter
+  renderAtBatLog();   // NEW: re-render at-bat summary according to selected batter
 });
 
 /* === PITCHER UI handlers === */
@@ -169,6 +171,9 @@ function toggleMode() {
     document.getElementById('intendedZoneMode').style.display = 'none';
     showPitchTypeSelection();   // make the 4S / 2S / CT… buttons appear
     updateLiveStats();          // draw the new tables immediately
+    // NEW: ensure the logs reflect the current filter when entering Live BP
+    renderPitchLog();
+    renderAtBatLog();
   } else if (mode === "putaway") {
     document.getElementById('bullpenMode').style.display = 'block';
     document.getElementById('liveBPMode').style.display = 'none';
@@ -182,6 +187,9 @@ function toggleMode() {
     document.getElementById('pointsContainer').style.display = 'block';
     document.getElementById('intendedZoneMode').style.display = 'none';
     showComboPitchTypeSelection();
+    // When switching to points, also refresh logs
+    renderPitchLog();
+    renderAtBatLog();
   } else if (mode === "intendedZone") {
     // Hide the other modes
     document.getElementById('bullpenMode').style.display = 'none';
@@ -306,6 +314,9 @@ document.getElementById('undoBtn').addEventListener('click', function() {
     updateLiveStats();
     restorePitchLog(previousState.pitchLog);
     restoreCompletedCountLog(previousState.completedCountLog);
+    // NEW: re-render logs to honor current batter filter
+    renderPitchLog();
+    renderAtBatLog();
     updateUI();
   }
 });
@@ -1300,20 +1311,81 @@ document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
     });
   });
 
+// ======== NEW RENDER HELPERS ========
+/**
+ * Render the pitch log based on pitchData and the current batter filter.
+ * If currentBatterId is null, show all pitches; otherwise only the selected batter.
+ */
+function renderPitchLog() {
+  const ul = document.getElementById('pitchLog');
+  if (!ul) return;
+  ul.innerHTML = '';
+
+  // null → “All batters”
+  const wantId = currentBatterId;
+
+  pitchData.forEach(p => {
+    if (wantId && p.batterId !== wantId) return;
+
+    const li = document.createElement('li');
+    const pt = (p.pitchType || 'UNKNOWN').toUpperCase();
+    const loc = (p.location ?? 'UNKNOWN');
+    const res = p.result || 'UNKNOWN';
+
+    // Prefer the *post* count we stored with the pitch
+    const postBalls   = (p.postPitchCount && typeof p.postPitchCount.balls === 'number')   ? p.postPitchCount.balls   : 0;
+    const postStrikes = (p.postPitchCount && typeof p.postPitchCount.strikes === 'number') ? p.postPitchCount.strikes : 0;
+
+    li.textContent = `${pt}, Location: ${loc}, Result: ${res}, Count: ${postBalls}-${postStrikes}`;
+    li.setAttribute('data-pitch-id', p.pitchId);
+
+    // If pitch was tagged, re-apply the emoji
+    const tag = pitchTags[p.pitchId];
+    if (tag) {
+      const flagSpan = document.createElement('span');
+      flagSpan.classList.add('flagEmoji');
+      flagSpan.innerText = tag.emoji;
+      flagSpan.title = tag.description + (tag.note ? ': ' + tag.note : '');
+      li.appendChild(flagSpan);
+    }
+
+    ul.appendChild(li);
+  });
+
+  // If we’re currently in tagging mode, keep items selectable
+  if (isTaggingMode) {
+    document.querySelectorAll('#pitchLog li').forEach(item => {
+      item.classList.add('selectable');
+      item.addEventListener('click', togglePitchSelection);
+    });
+  }
+}
+
+/**
+ * Render the at-bat summary log based on atBats and the current batter filter.
+ * If currentBatterId is null, show all at-bats; otherwise only those for the selected batter.
+ */
+function renderAtBatLog() {
+  const list = document.getElementById('atBatLog');
+  if (!list) return;
+  list.innerHTML = '';
+
+  const wantId = currentBatterId; // null → all
+  atBats.forEach(ab => {
+    if (wantId && ab.batterId !== wantId) return;
+
+    const li = document.createElement('li');
+    const batter = batters.find(b => b.id === ab.batterId);
+    const name  = batter ? batter.name : 'Unknown';
+    const hand  = batter ? batter.hand : '';
+    li.innerText = `#${ab.atBatNumber} – ${name}${hand ? ' (' + hand + ')' : ''} – ${ab.result} (${ab.pitchCount} pitches)`;
+    list.appendChild(li);
+  });
+}
+
 function logPitchResult(pitchType, result, location, scenarioEmojis = '', previousCount = null, outcome = '') {
-  let pitchLog = document.getElementById('pitchLog');
-  let newEntry = document.createElement('li');
-  let currentCountText = `${ballCount}-${strikeCount}`;
-
-  let pitchTypeText = pitchType ? pitchType.toUpperCase() : 'UNKNOWN';
-  let locationText = (location !== undefined && location !== null) ? location : 'UNKNOWN';
-
-  newEntry.innerText = `${pitchTypeText}, Location: ${locationText}, Result: ${result}, Count: ${currentCountText} ${scenarioEmojis}`;
-  newEntry.setAttribute('data-pitch-id', pitchId);
-  pitchLog.appendChild(newEntry);
-
-
-   if (previousCount === null) {
+  // only push data; rendering is handled elsewhere
+  if (previousCount === null) {
     // If previousCount is not provided, set it to current counts before the pitch
     previousCount = { balls: ballCount, strikes: strikeCount };
   }
@@ -1335,6 +1407,8 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '', previo
   pitchData.push(pitchEntry);
   pitchId++;
   addPitchTypeToFilter(pitchType);
+  // re-render after adding pitch
+  renderPitchLog();
 }
 
 function showTaggingOptions() {
@@ -1850,17 +1924,8 @@ function logAtBatResult(result) {
   atBats.push(summary);
   advanceToNextBatter();
 
-  const atBatLogEl = document.getElementById('atBatLog');
-  if (atBatLogEl) {
-    const li = document.createElement('li');
-    const batter = batters.find(b => b.id === summary.batterId);
-    const name  = batter ? batter.name : 'Unknown';
-    const hand  = batter ? batter.hand : '';
-    li.innerText =
-      `#${summary.atBatNumber} – ${name}${hand ? ' (' + hand + ')' : ''} – ` +
-      `${summary.result} (${summary.pitchCount} pitches)`;
-    atBatLogEl.appendChild(li);
-  }
+  // Repaint list based on current batter filter
+  renderAtBatLog();
 }
 
 /**
@@ -2037,15 +2102,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('heatmapGrid').style.display = 'none';
   document.getElementById('taggingOptions').style.display = 'none';
   updateHeatmapBatterFilter();
+  // NEW: render logs on page load based on current data (initially empty)
+  renderPitchLog();
+  renderAtBatLog();
 });
-
-
-
-
-
-
-
-
-
-
-
