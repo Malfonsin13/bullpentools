@@ -1292,9 +1292,6 @@ document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
     // *** NEW: record the at-bat summary ***
     logAtBatResult("In Play – " + inPlayResult);
   
-    // *** NEW: advance to next batter right away ***
-    advanceToNextBatter();
-  
     // and reset for the next pitch sequence
     isNewAtBat = true;
     resetForNextPitch();
@@ -2041,6 +2038,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('taggingOptions').style.display = 'none';
   updateHeatmapBatterFilter();
 });
+
 
 
 
