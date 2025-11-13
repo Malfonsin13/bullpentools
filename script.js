@@ -192,7 +192,7 @@ function toggleMode() {
     document.getElementById('pointsContainer').style.display = 'none';
     document.getElementById('intendedZoneMode').style.display = 'none';
 
-    // Show Live BP extras (batter/pitcher UI, live stats, side tables)
+    // show Live BP extras (batter/pitcher UI, live stats, side tables)
     applyLiveBPVisibilityForMode('liveBP');
 
     showPitchTypeSelection();
@@ -212,7 +212,7 @@ function toggleMode() {
     document.getElementById('pointsContainer').style.display = 'block';
     document.getElementById('intendedZoneMode').style.display = 'none';
 
-    // Hide Live BP extras in Points Mode
+    // hide Live BP extras in Points Mode
     applyLiveBPVisibilityForMode('points');
 
     showComboPitchTypeSelection();
@@ -223,17 +223,12 @@ function toggleMode() {
     document.getElementById('liveBPMode').style.display    = 'none';
     document.getElementById('intendedZoneMode').style.display = 'block';
 
-    document.querySelectorAll("#intendedZoneSelection .intendedZoneBtn")
-      .forEach(btn => {
-        let zone = parseInt(btn.id.replace("intendedZone-", ""));
-        if (strikeLocations.includes(zone)) {
-          btn.classList.add("strikeZone");
-        } else if (shadowLocations.includes(zone)) {
-          btn.classList.add("shadowZone");
-        } else if (nonCompetitiveLocations.includes(zone)) {
-          btn.classList.add("nonCompetitiveZone");
-        }
-      });
+    document.querySelectorAll("#intendedZoneSelection .intendedZoneBtn").forEach(btn => {
+      let zone = parseInt(btn.id.replace("intendedZone-", ""));
+      if (strikeLocations.includes(zone))        btn.classList.add("strikeZone");
+      else if (shadowLocations.includes(zone))   btn.classList.add("shadowZone");
+      else if (nonCompetitiveLocations.includes(zone)) btn.classList.add("nonCompetitiveZone");
+    });
 
     document.getElementById('intendedZonePitchTypeSelection').style.display = 'block';
     document.getElementById('intendedZoneSelection').style.display = 'none';
@@ -244,7 +239,6 @@ function toggleMode() {
   resetCount();
   resetIntendedZoneMode();
 }
-
 
 function toggleMode() {
   if (mode === "bullpen") {
@@ -2197,4 +2191,5 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
 
