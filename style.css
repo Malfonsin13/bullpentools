@@ -125,15 +125,6 @@ button {
   margin: auto;
 }
 
-.miss-map-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-  justify-items: center;
-  width: fit-content;
-  margin: auto;
-}
-
 /* NEW: Styles for the Intended Zone Grid */
 #intendedZoneGrid {
   display: grid;
@@ -165,31 +156,6 @@ button {
 .intendedZoneBtn.nonCompetitiveZone {
   background-color: navy;
   color: white;
-}
-
-.missMapBtn {
-  width: 32px;
-  height: 32px;
-  font-size: 14px;
-  padding: 0;
-  margin: 0;
-}
-
-.missMapBtn.strikeZone { background-color: #ffb517; }
-.missMapBtn.shadowZone { background-color: lightblue; }
-.missMapBtn.nonCompetitiveZone { background-color: navy; color: white; }
-.missMapBtn.selected { outline: 2px solid #ffb517; }
-
-#missMapShell {
-  position: relative;
-  display: inline-block;
-}
-
-#missMapArrows {
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
 }
 
 .actualZoneBtn.strikeZone {
