@@ -197,6 +197,7 @@ function toggleMode() {
   hideHeatMap();
   hideIntendedMissMap();
 
+function toggleMode() {
   if (mode === "bullpen") {
     document.getElementById('bullpenMode').style.display   = 'block';
     document.getElementById('liveBPMode').style.display    = 'none';
