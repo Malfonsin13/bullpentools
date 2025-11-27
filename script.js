@@ -22,9 +22,13 @@ let points = 0;                // Points-mode only
 let comboPitchTypes = [];
 
 let isHeatMapMode = false;
+let isIntendedMissMapMode = false;
 let isTaggingMode = false;
 
-let pitchTags = {}; 
+let pitchTags = {};
+
+let missMapSelectedIntendedZone = null;
+let missMapSelectedPitchType = 'all';
 
 // --------- NEW – AT‑BAT SUMMARY ---------
 // This array stores summary information for each completed at‑bat when running
@@ -163,6 +167,13 @@ function setDisplay(id, show) {
   el.style.display = show ? '' : 'none'; // empty string restores default display
 }
 
+function setWrapperLayout(layoutClass) {
+  const wrapper = document.getElementById('liveBPWrapper');
+  if (!wrapper) return;
+  wrapper.classList.remove('points-mode', 'intended-zone-layout');
+  if (layoutClass) wrapper.classList.add(layoutClass);
+}
+
 /**
  * Show/Hide Live BP extras depending on mode.
  * Hidden in Points Mode. Visible in Live BP Mode.
@@ -179,18 +190,28 @@ function applyLiveBPVisibilityForMode(currentMode) {
 
 /* === REPLACE your entire toggleMode() with this === */
 function toggleMode() {
+  const heatBtn = document.getElementById('heatMapBtn');
+  if (heatBtn) heatBtn.innerText = 'HEAT MAP';
+  isHeatMapMode = false;
+  isIntendedMissMapMode = false;
+  hideHeatMap();
+  hideIntendedMissMap();
+
   if (mode === "bullpen") {
     document.getElementById('bullpenMode').style.display   = 'block';
     document.getElementById('liveBPMode').style.display    = 'none';
     document.getElementById('putawayButtons').style.display = 'none';
     document.getElementById('pointsContainer').style.display = 'none';
     document.getElementById('intendedZoneMode').style.display = 'none';
+    setWrapperLayout('');
   } else if (mode === "liveBP") {
     document.getElementById('bullpenMode').style.display   = 'none';
     document.getElementById('liveBPMode').style.display    = 'block';
     document.getElementById('modeTitle').innerText         = 'Live BP Mode';
     document.getElementById('pointsContainer').style.display = 'none';
     document.getElementById('intendedZoneMode').style.display = 'none';
+    setDisplay('mainPanel', true);
+    setWrapperLayout('');
 
     // show Live BP extras (batter/pitcher UI, live stats, side tables)
     applyLiveBPVisibilityForMode('liveBP');
@@ -211,6 +232,8 @@ function toggleMode() {
     document.getElementById('modeTitle').innerText         = 'Points Mode';
     document.getElementById('pointsContainer').style.display = 'block';
     document.getElementById('intendedZoneMode').style.display = 'none';
+    setDisplay('mainPanel', true);
+    setWrapperLayout('points-mode');
 
     // hide Live BP extras in Points Mode
     applyLiveBPVisibilityForMode('points');
@@ -220,8 +243,11 @@ function toggleMode() {
     renderAtBatLog();
   } else if (mode === "intendedZone") {
     document.getElementById('bullpenMode').style.display   = 'none';
-    document.getElementById('liveBPMode').style.display    = 'none';
+    document.getElementById('liveBPMode').style.display    = 'block';
     document.getElementById('intendedZoneMode').style.display = 'block';
+    setDisplay('mainPanel', false);
+    applyLiveBPVisibilityForMode('points');
+    setWrapperLayout('intended-zone-layout');
 
     document.querySelectorAll("#intendedZoneSelection .intendedZoneBtn").forEach(btn => {
       let zone = parseInt(btn.id.replace("intendedZone-", ""));
@@ -239,75 +265,6 @@ function toggleMode() {
   resetCount();
   resetIntendedZoneMode();
 }
-
-function toggleMode() {
-  if (mode === "bullpen") {
-    document.getElementById('bullpenMode').style.display = 'block';
-    document.getElementById('liveBPMode').style.display = 'none';
-    document.getElementById('putawayButtons').style.display = 'none';
-    document.getElementById('pointsContainer').style.display = 'none';
-    document.getElementById('intendedZoneMode').style.display = 'none';
-  } else if (mode === "liveBP") {
-    document.getElementById('bullpenMode').style.display = 'none';
-    document.getElementById('liveBPMode').style.display = 'block';
-    document.getElementById('modeTitle').innerText = 'Live BP Mode';
-    document.getElementById('pointsContainer').style.display = 'none';
-    document.getElementById('intendedZoneMode').style.display = 'none';
-    showPitchTypeSelection();   // make the 4S / 2S / CT… buttons appear
-    updateLiveStats();          // draw the new tables immediately
-    // NEW: ensure the logs reflect the current filter when entering Live BP
-    renderPitchLog();
-    renderAtBatLog();
-  } else if (mode === "putaway") {
-    document.getElementById('bullpenMode').style.display = 'block';
-    document.getElementById('liveBPMode').style.display = 'none';
-    document.getElementById('putawayButtons').style.display = 'none';
-    document.getElementById('pointsContainer').style.display = 'none';
-    document.getElementById('intendedZoneMode').style.display = 'none';
-  } else if (mode === "points") {
-    document.getElementById('bullpenMode').style.display = 'none';
-    document.getElementById('liveBPMode').style.display = 'block';
-    document.getElementById('modeTitle').innerText = 'Points Mode';
-    document.getElementById('pointsContainer').style.display = 'block';
-    document.getElementById('intendedZoneMode').style.display = 'none';
-    showComboPitchTypeSelection();
-    // When switching to points, also refresh logs
-    renderPitchLog();
-    renderAtBatLog();
-  } else if (mode === "intendedZone") {
-    // Hide the other modes
-    document.getElementById('bullpenMode').style.display = 'none';
-    document.getElementById('liveBPMode').style.display = 'none';
-
-    // Show the intendedZoneMode container
-    document.getElementById('intendedZoneMode').style.display = 'block';
-
-    document.querySelectorAll("#intendedZoneSelection .intendedZoneBtn")
-  .forEach(btn => {
-    let zone = parseInt(btn.id.replace("intendedZone-", ""));
-    if (strikeLocations.includes(zone)) {
-      btn.classList.add("strikeZone");
-    } else if (shadowLocations.includes(zone)) {
-      btn.classList.add("shadowZone");
-    } else if (nonCompetitiveLocations.includes(zone)) {
-      btn.classList.add("nonCompetitiveZone");
-    }
-  });
-
-    // **Important**: show the pitch type selection right away
-    document.getElementById('intendedZonePitchTypeSelection').style.display = 'block';
-    // And hide the other steps
-    document.getElementById('intendedZoneSelection').style.display = 'none';
-    document.getElementById('actualZoneSelection').style.display = 'none';
-
-    // If you have a #modeTitle outside of #intendedZoneMode, either remove or ignore it here
-    document.getElementById('intendedZoneTitle').innerText = 'Intended Zone';
-  }
-  resetCount();
-  resetIntendedZoneMode();
-}
-
-
 
 document.getElementById('strikeBtn').addEventListener('click', function() {
   actionLog.push(saveCurrentState());
@@ -450,6 +407,22 @@ document.querySelectorAll("#actualZoneSelection .actualZoneBtn").forEach(button 
     recordIntendedZonePitch();
   });
 });
+
+// Miss Map interactions
+document.querySelectorAll('#missMapGrid .missMapBtn').forEach(button => {
+  button.addEventListener('click', () => {
+    const zoneId = parseInt(button.id.replace('missMap-', ''));
+    selectMissMapIntendedZone(zoneId);
+  });
+});
+
+const missMapPitchTypeSelect = document.getElementById('missMapPitchType');
+if (missMapPitchTypeSelect) {
+  missMapPitchTypeSelect.addEventListener('change', () => {
+    missMapSelectedPitchType = missMapPitchTypeSelect.value;
+    renderMissMapArrows();
+  });
+}
 
 
 document.getElementById('comboSelectionDoneBtn').addEventListener('click', function() {
@@ -1134,6 +1107,10 @@ function processOutcomeBasedOnLocation() {
 
   actionLog.push(saveCurrentState());
   processOutcome(outcome);
+
+  // After recording the pitch in Points Mode, return to pitch-type selection
+  // while keeping the current count intact.
+  resetForNextPitch(false);
 }
 
 /* ---------- LIVE STATS ---------- */
@@ -1761,6 +1738,186 @@ function hideHeatMap() {
   document.getElementById('pitchTypeSelection').style.display = 'block';
 }
 
+/* ===== Intended Zone "Natural Miss" map ===== */
+function toggleIntendedMissMap(btn) {
+  isIntendedMissMapMode = !isIntendedMissMapMode;
+  if (isIntendedMissMapMode) {
+    showIntendedMissMap();
+    btn.innerText = 'BACK';
+  } else {
+    hideIntendedMissMap();
+    btn.innerText = 'HEAT MAP';
+  }
+}
+
+function showIntendedMissMap() {
+  // Focus on the miss map view
+  document.getElementById('missMapContainer').style.display = 'block';
+  document.getElementById('intendedZonePitchTypeSelection').style.display = 'none';
+  document.getElementById('intendedZoneSelection').style.display = 'none';
+  document.getElementById('actualZoneSelection').style.display = 'none';
+
+  buildMissMapPitchOptions();
+  missMapSelectedIntendedZone = null;
+  clearMissMapSelection();
+  renderMissMapArrows();
+}
+
+function hideIntendedMissMap() {
+  document.getElementById('missMapContainer').style.display = 'none';
+  // Return to the usual intended-zone flow
+  document.getElementById('intendedZonePitchTypeSelection').style.display = 'block';
+  document.getElementById('intendedZoneSelection').style.display = 'none';
+  document.getElementById('actualZoneSelection').style.display = 'none';
+}
+
+function buildMissMapPitchOptions() {
+  const select = document.getElementById('missMapPitchType');
+  if (!select) return;
+  const types = Array.from(new Set(intendedZoneData.map(p => p.pitchType))).sort();
+  select.innerHTML = '';
+
+  const allOpt = document.createElement('option');
+  allOpt.value = 'all';
+  allOpt.textContent = 'All pitches';
+  select.appendChild(allOpt);
+
+  types.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t;
+    select.appendChild(opt);
+  });
+
+  if (types.length && !types.includes(missMapSelectedPitchType)) {
+    missMapSelectedPitchType = 'all';
+  }
+  select.value = missMapSelectedPitchType;
+}
+
+function selectMissMapIntendedZone(zoneId) {
+  missMapSelectedIntendedZone = zoneId;
+  clearMissMapSelection();
+  const btn = document.getElementById('missMap-' + zoneId);
+  if (btn) btn.classList.add('selected');
+  renderMissMapArrows();
+}
+
+function clearMissMapSelection() {
+  document.querySelectorAll('#missMapGrid .missMapBtn').forEach(btn => btn.classList.remove('selected'));
+}
+
+function getMissMapButtonCenter(zoneId) {
+  const btn = document.getElementById('missMap-' + zoneId);
+  const shell = document.getElementById('missMapShell');
+  if (!btn || !shell) return { x: 0, y: 0 };
+  const b = btn.getBoundingClientRect();
+  const s = shell.getBoundingClientRect();
+  return { x: b.left - s.left + b.width / 2, y: b.top - s.top + b.height / 2 };
+}
+
+function getMissArrowColor(count, max) {
+  if (max === 0) return '#9e9e9e';
+  const start = { r: 106, g: 183, b: 255 }; // light blue
+  const end = { r: 211, g: 47, b: 47 };     // deep red
+  const ratio = count / max;
+  const r = Math.round(start.r + (end.r - start.r) * ratio);
+  const g = Math.round(start.g + (end.g - start.g) * ratio);
+  const b = Math.round(start.b + (end.b - start.b) * ratio);
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawMissArrow(svg, from, to, color, width) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const line = document.createElementNS(ns, 'line');
+  line.setAttribute('x1', from.x);
+  line.setAttribute('y1', from.y);
+  line.setAttribute('x2', to.x);
+  line.setAttribute('y2', to.y);
+  line.setAttribute('stroke', color);
+  line.setAttribute('stroke-width', width);
+  line.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(line);
+
+  const angle = Math.atan2(to.y - from.y, to.x - from.x);
+  const headLen = 8 + width; // scale arrow head with thickness
+  const hx1 = to.x - headLen * Math.cos(angle - Math.PI / 6);
+  const hy1 = to.y - headLen * Math.sin(angle - Math.PI / 6);
+  const hx2 = to.x - headLen * Math.cos(angle + Math.PI / 6);
+  const hy2 = to.y - headLen * Math.sin(angle + Math.PI / 6);
+
+  const head = document.createElementNS(ns, 'polygon');
+  head.setAttribute('points', `${to.x},${to.y} ${hx1},${hy1} ${hx2},${hy2}`);
+  head.setAttribute('fill', color);
+  head.setAttribute('opacity', 0.9);
+  svg.appendChild(head);
+}
+
+function renderMissMapArrows() {
+  const svg = document.getElementById('missMapArrows');
+  const status = document.getElementById('missMapStatus');
+  if (!svg || !status) return;
+  svg.innerHTML = '';
+
+  const shell = document.getElementById('missMapShell');
+  if (!shell) return;
+  svg.setAttribute('width', shell.clientWidth);
+  svg.setAttribute('height', shell.clientHeight);
+
+  if (!intendedZoneData.length) {
+    status.innerText = 'No intended zone pitches recorded yet.';
+    return;
+  }
+
+  if (!missMapSelectedIntendedZone) {
+    status.innerText = 'Select a target zone to see where misses land.';
+    return;
+  }
+
+  const filtered = intendedZoneData.filter(p =>
+    p.intendedZone === missMapSelectedIntendedZone &&
+    (missMapSelectedPitchType === 'all' || p.pitchType === missMapSelectedPitchType)
+  );
+
+  if (!filtered.length) {
+    status.innerText = 'No pitches recorded for that pitch type and target yet.';
+    return;
+  }
+
+  const misses = {};
+  filtered.forEach(p => {
+    if (p.actualZone === p.intendedZone) return; // ignore exact hits
+    misses[p.actualZone] = (misses[p.actualZone] || 0) + 1;
+  });
+
+  if (Object.keys(misses).length === 0) {
+    status.innerText = 'All pitches are hitting the selected target. Nice!';
+    return;
+  }
+
+  const max = Math.max(...Object.values(misses));
+  const origin = getMissMapButtonCenter(missMapSelectedIntendedZone);
+
+  Object.entries(misses).forEach(([zone, count]) => {
+    const destination = getMissMapButtonCenter(Number(zone));
+    const color = getMissArrowColor(count, max);
+    const width = 2 + (count / max) * 4;
+    drawMissArrow(svg, origin, destination, color, width);
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', destination.x + 6);
+    label.setAttribute('y', destination.y - 6);
+    label.setAttribute('fill', '#fff');
+    label.setAttribute('stroke', '#000');
+    label.setAttribute('stroke-width', '0.5');
+    label.setAttribute('font-size', '10');
+    label.textContent = count;
+    svg.appendChild(label);
+  });
+
+  status.innerText = 'Arrow thickness/color scale with how often misses land in each zone.';
+}
+
 function getHeatMapColor(count, maxCount) {
   if (maxCount === 0) {
     return '#FFFFFF'; // Return white if maxCount is zero
@@ -1979,6 +2136,11 @@ document.getElementById('exportAtBatBtn').addEventListener('click', function() {
 });
 
 document.getElementById('heatMapBtn').addEventListener('click', function() {
+  if (mode === 'intendedZone') {
+    toggleIntendedMissMap(this);
+    return;
+  }
+
   isHeatMapMode = !isHeatMapMode; // Toggle heatmap mode
   if (isHeatMapMode) {
     showHeatMap();
@@ -2179,8 +2341,10 @@ function exportLiveBPStats() {
   });
 }
 
+// Ensure the correct UI is visible as soon as the script loads
+toggleMode();
+
 document.addEventListener('DOMContentLoaded', function() {
-  toggleMode();
   document.getElementById('pitchLocationSelection').style.display = 'none';
   document.getElementById('outcomeSelection').style.display = 'none';
   document.getElementById('pitchTypeSelection').style.display = 'block';
