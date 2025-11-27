@@ -163,6 +163,13 @@ function setDisplay(id, show) {
   el.style.display = show ? '' : 'none'; // empty string restores default display
 }
 
+function setWrapperLayout(layoutClass) {
+  const wrapper = document.getElementById('liveBPWrapper');
+  if (!wrapper) return;
+  wrapper.classList.remove('points-mode', 'intended-zone-layout');
+  if (layoutClass) wrapper.classList.add(layoutClass);
+}
+
 /**
  * Show/Hide Live BP extras depending on mode.
  * Hidden in Points Mode. Visible in Live BP Mode.
@@ -185,12 +192,15 @@ function toggleMode() {
     document.getElementById('putawayButtons').style.display = 'none';
     document.getElementById('pointsContainer').style.display = 'none';
     document.getElementById('intendedZoneMode').style.display = 'none';
+    setWrapperLayout('');
   } else if (mode === "liveBP") {
     document.getElementById('bullpenMode').style.display   = 'none';
     document.getElementById('liveBPMode').style.display    = 'block';
     document.getElementById('modeTitle').innerText         = 'Live BP Mode';
     document.getElementById('pointsContainer').style.display = 'none';
     document.getElementById('intendedZoneMode').style.display = 'none';
+    setDisplay('mainPanel', true);
+    setWrapperLayout('');
 
     // show Live BP extras (batter/pitcher UI, live stats, side tables)
     applyLiveBPVisibilityForMode('liveBP');
@@ -211,6 +221,8 @@ function toggleMode() {
     document.getElementById('modeTitle').innerText         = 'Points Mode';
     document.getElementById('pointsContainer').style.display = 'block';
     document.getElementById('intendedZoneMode').style.display = 'none';
+    setDisplay('mainPanel', true);
+    setWrapperLayout('points-mode');
 
     // hide Live BP extras in Points Mode
     applyLiveBPVisibilityForMode('points');
@@ -220,8 +232,11 @@ function toggleMode() {
     renderAtBatLog();
   } else if (mode === "intendedZone") {
     document.getElementById('bullpenMode').style.display   = 'none';
-    document.getElementById('liveBPMode').style.display    = 'none';
+    document.getElementById('liveBPMode').style.display    = 'block';
     document.getElementById('intendedZoneMode').style.display = 'block';
+    setDisplay('mainPanel', false);
+    applyLiveBPVisibilityForMode('points');
+    setWrapperLayout('intended-zone-layout');
 
     document.querySelectorAll("#intendedZoneSelection .intendedZoneBtn").forEach(btn => {
       let zone = parseInt(btn.id.replace("intendedZone-", ""));
