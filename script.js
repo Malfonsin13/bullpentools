@@ -202,8 +202,9 @@ function applyLiveBPVisibilityForMode(currentMode) {
   setDisplay('sideRight',        showLiveExtras); // By Batter table
 }
 
-/* === REPLACE your entire toggleMode() with this === */
+/* === CORRECTED toggleMode FUNCTION === */
 function toggleMode() {
+  // 1. Cleanup existing states
   const heatBtn = document.getElementById('heatMapBtn');
   if (heatBtn) heatBtn.innerText = 'HEAT MAP';
   isHeatMapMode = false;
@@ -211,7 +212,7 @@ function toggleMode() {
   hideHeatMap();
   hideIntendedMissMap();
 
-function toggleMode() {
+  // 2. Switch Layouts
   if (mode === "bullpen") {
     document.getElementById('bullpenMode').style.display   = 'block';
     document.getElementById('liveBPMode').style.display    = 'none';
@@ -227,10 +228,7 @@ function toggleMode() {
     document.getElementById('intendedZoneMode').style.display = 'none';
     setDisplay('mainPanel', true);
     setWrapperLayout('');
-
-    // show Live BP extras (batter/pitcher UI, live stats, side tables)
     applyLiveBPVisibilityForMode('liveBP');
-
     showPitchTypeSelection();
     updateLiveStats();
     renderPitchLog();
@@ -249,10 +247,7 @@ function toggleMode() {
     document.getElementById('intendedZoneMode').style.display = 'none';
     setDisplay('mainPanel', true);
     setWrapperLayout('points-mode');
-
-    // hide Live BP extras in Points Mode
     applyLiveBPVisibilityForMode('points');
-
     showComboPitchTypeSelection();
     renderPitchLog();
     renderAtBatLog();
@@ -263,14 +258,15 @@ function toggleMode() {
     setDisplay('mainPanel', false);
     applyLiveBPVisibilityForMode('points');
     setWrapperLayout('intended-zone-layout');
-
+    
+    // Highlight zone buttons
     document.querySelectorAll("#intendedZoneSelection .intendedZoneBtn").forEach(btn => {
       let zone = parseInt(btn.id.replace("intendedZone-", ""));
       if (strikeLocations.includes(zone))        btn.classList.add("strikeZone");
       else if (shadowLocations.includes(zone))   btn.classList.add("shadowZone");
       else if (nonCompetitiveLocations.includes(zone)) btn.classList.add("nonCompetitiveZone");
     });
-
+    
     document.getElementById('intendedZonePitchTypeSelection').style.display = 'block';
     document.getElementById('intendedZoneSelection').style.display = 'none';
     document.getElementById('actualZoneSelection').style.display   = 'none';
@@ -2762,5 +2758,6 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
 
 
