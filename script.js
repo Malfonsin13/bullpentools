@@ -163,6 +163,13 @@ function setDisplay(id, show) {
   el.style.display = show ? '' : 'none'; // empty string restores default display
 }
 
+function setWrapperLayout(layoutClass) {
+  const wrapper = document.getElementById('liveBPWrapper');
+  if (!wrapper) return;
+  wrapper.classList.remove('points-mode', 'intended-zone-layout');
+  if (layoutClass) wrapper.classList.add(layoutClass);
+}
+
 /**
  * Show/Hide Live BP extras depending on mode.
  * Hidden in Points Mode. Visible in Live BP Mode.
@@ -185,12 +192,15 @@ function toggleMode() {
     document.getElementById('putawayButtons').style.display = 'none';
     document.getElementById('pointsContainer').style.display = 'none';
     document.getElementById('intendedZoneMode').style.display = 'none';
+    setWrapperLayout('');
   } else if (mode === "liveBP") {
     document.getElementById('bullpenMode').style.display   = 'none';
     document.getElementById('liveBPMode').style.display    = 'block';
     document.getElementById('modeTitle').innerText         = 'Live BP Mode';
     document.getElementById('pointsContainer').style.display = 'none';
     document.getElementById('intendedZoneMode').style.display = 'none';
+    setDisplay('mainPanel', true);
+    setWrapperLayout('');
 
     // show Live BP extras (batter/pitcher UI, live stats, side tables)
     applyLiveBPVisibilityForMode('liveBP');
@@ -211,6 +221,8 @@ function toggleMode() {
     document.getElementById('modeTitle').innerText         = 'Points Mode';
     document.getElementById('pointsContainer').style.display = 'block';
     document.getElementById('intendedZoneMode').style.display = 'none';
+    setDisplay('mainPanel', true);
+    setWrapperLayout('points-mode');
 
     // hide Live BP extras in Points Mode
     applyLiveBPVisibilityForMode('points');
@@ -220,8 +232,11 @@ function toggleMode() {
     renderAtBatLog();
   } else if (mode === "intendedZone") {
     document.getElementById('bullpenMode').style.display   = 'none';
-    document.getElementById('liveBPMode').style.display    = 'none';
+    document.getElementById('liveBPMode').style.display    = 'block';
     document.getElementById('intendedZoneMode').style.display = 'block';
+    setDisplay('mainPanel', false);
+    applyLiveBPVisibilityForMode('points');
+    setWrapperLayout('intended-zone-layout');
 
     document.querySelectorAll("#intendedZoneSelection .intendedZoneBtn").forEach(btn => {
       let zone = parseInt(btn.id.replace("intendedZone-", ""));
@@ -239,75 +254,6 @@ function toggleMode() {
   resetCount();
   resetIntendedZoneMode();
 }
-
-function toggleMode() {
-  if (mode === "bullpen") {
-    document.getElementById('bullpenMode').style.display = 'block';
-    document.getElementById('liveBPMode').style.display = 'none';
-    document.getElementById('putawayButtons').style.display = 'none';
-    document.getElementById('pointsContainer').style.display = 'none';
-    document.getElementById('intendedZoneMode').style.display = 'none';
-  } else if (mode === "liveBP") {
-    document.getElementById('bullpenMode').style.display = 'none';
-    document.getElementById('liveBPMode').style.display = 'block';
-    document.getElementById('modeTitle').innerText = 'Live BP Mode';
-    document.getElementById('pointsContainer').style.display = 'none';
-    document.getElementById('intendedZoneMode').style.display = 'none';
-    showPitchTypeSelection();   // make the 4S / 2S / CT… buttons appear
-    updateLiveStats();          // draw the new tables immediately
-    // NEW: ensure the logs reflect the current filter when entering Live BP
-    renderPitchLog();
-    renderAtBatLog();
-  } else if (mode === "putaway") {
-    document.getElementById('bullpenMode').style.display = 'block';
-    document.getElementById('liveBPMode').style.display = 'none';
-    document.getElementById('putawayButtons').style.display = 'none';
-    document.getElementById('pointsContainer').style.display = 'none';
-    document.getElementById('intendedZoneMode').style.display = 'none';
-  } else if (mode === "points") {
-    document.getElementById('bullpenMode').style.display = 'none';
-    document.getElementById('liveBPMode').style.display = 'block';
-    document.getElementById('modeTitle').innerText = 'Points Mode';
-    document.getElementById('pointsContainer').style.display = 'block';
-    document.getElementById('intendedZoneMode').style.display = 'none';
-    showComboPitchTypeSelection();
-    // When switching to points, also refresh logs
-    renderPitchLog();
-    renderAtBatLog();
-  } else if (mode === "intendedZone") {
-    // Hide the other modes
-    document.getElementById('bullpenMode').style.display = 'none';
-    document.getElementById('liveBPMode').style.display = 'none';
-
-    // Show the intendedZoneMode container
-    document.getElementById('intendedZoneMode').style.display = 'block';
-
-    document.querySelectorAll("#intendedZoneSelection .intendedZoneBtn")
-  .forEach(btn => {
-    let zone = parseInt(btn.id.replace("intendedZone-", ""));
-    if (strikeLocations.includes(zone)) {
-      btn.classList.add("strikeZone");
-    } else if (shadowLocations.includes(zone)) {
-      btn.classList.add("shadowZone");
-    } else if (nonCompetitiveLocations.includes(zone)) {
-      btn.classList.add("nonCompetitiveZone");
-    }
-  });
-
-    // **Important**: show the pitch type selection right away
-    document.getElementById('intendedZonePitchTypeSelection').style.display = 'block';
-    // And hide the other steps
-    document.getElementById('intendedZoneSelection').style.display = 'none';
-    document.getElementById('actualZoneSelection').style.display = 'none';
-
-    // If you have a #modeTitle outside of #intendedZoneMode, either remove or ignore it here
-    document.getElementById('intendedZoneTitle').innerText = 'Intended Zone';
-  }
-  resetCount();
-  resetIntendedZoneMode();
-}
-
-
 
 document.getElementById('strikeBtn').addEventListener('click', function() {
   actionLog.push(saveCurrentState());
@@ -1134,6 +1080,10 @@ function processOutcomeBasedOnLocation() {
 
   actionLog.push(saveCurrentState());
   processOutcome(outcome);
+
+  // After recording the pitch in Points Mode, return to pitch-type selection
+  // while keeping the current count intact.
+  resetForNextPitch(false);
 }
 
 /* ---------- LIVE STATS ---------- */

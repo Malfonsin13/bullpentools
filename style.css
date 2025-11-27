@@ -345,6 +345,22 @@ button {
   padding: 16px;
 }
 
+.wrapper.points-mode {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+
+.wrapper.points-mode .main-panel {
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.wrapper.intended-zone-layout {
+  display: flex;
+  justify-content: center;
+}
+
 .side-panel {
   background: rgba(255,255,255,0.05);
   border: 1px dashed rgba(255,255,255,0.2);
