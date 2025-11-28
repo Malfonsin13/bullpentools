@@ -108,16 +108,6 @@ const zoneGridOrder = [
   43,44,45,46,47,48,49
 ];
 
-const zoneGridOrder = [
-  26,27,28,29,30,31,32,
-  33,10,11,12,13,14,34,
-  35,15, 1, 2, 3,16,36,
-  37,17, 4, 5, 6,18,38,
-  39,19, 7, 8, 9,20,40,
-  41,21,22,23,24,25,42,
-  43,44,45,46,47,48,49
-];
-
 
 // Save the pitch log state
 document.getElementById('bullpenModeBtn').addEventListener('click', function() {
@@ -183,13 +173,6 @@ function setDisplay(id, show) {
   const el = document.getElementById(id);
   if (!el) return;
   el.style.display = show ? '' : 'none'; // empty string restores default display
-}
-
-function setWrapperLayout(layoutClass) {
-  const wrapper = document.getElementById('liveBPWrapper');
-  if (!wrapper) return;
-  wrapper.classList.remove('points-mode', 'intended-zone-layout');
-  if (layoutClass) wrapper.classList.add(layoutClass);
 }
 
 function setWrapperLayout(layoutClass) {
@@ -435,14 +418,6 @@ document.querySelectorAll("#actualZoneSelection .actualZoneBtn").forEach(button 
     recordIntendedZonePitch();
   });
 });
-
-const missMapPitchTypeSelect = document.getElementById('missMapPitchType');
-if (missMapPitchTypeSelect) {
-  missMapPitchTypeSelect.addEventListener('change', () => {
-    missMapSelectedPitchType = missMapPitchTypeSelect.value;
-    renderMissSummaryCards();
-  });
-}
 
 const missMapPitchTypeSelect = document.getElementById('missMapPitchType');
 if (missMapPitchTypeSelect) {
@@ -2828,6 +2803,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
 
 
 
