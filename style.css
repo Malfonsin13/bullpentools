@@ -249,7 +249,6 @@ button {
 .mini-cell.shadowZone { background: rgba(173, 216, 230, 0.3); }
 .mini-cell.nonCompetitiveZone { background: rgba(0, 0, 128, 0.35); }
 .mini-cell.intended-target { outline: 2px solid #fff; }
-.mini-cell.actual-landing { outline: 2px solid #ff5252; background: rgba(255,82,82,0.35) !important; }
 
 .miss-mini-arrows {
   position: absolute;

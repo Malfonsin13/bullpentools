@@ -108,6 +108,16 @@ const zoneGridOrder = [
   43,44,45,46,47,48,49
 ];
 
+const zoneGridOrder = [
+  26,27,28,29,30,31,32,
+  33,10,11,12,13,14,34,
+  35,15, 1, 2, 3,16,36,
+  37,17, 4, 5, 6,18,38,
+  39,19, 7, 8, 9,20,40,
+  41,21,22,23,24,25,42,
+  43,44,45,46,47,48,49
+];
+
 
 // Save the pitch log state
 document.getElementById('bullpenModeBtn').addEventListener('click', function() {
@@ -182,6 +192,13 @@ function setWrapperLayout(layoutClass) {
   if (layoutClass) wrapper.classList.add(layoutClass);
 }
 
+function setWrapperLayout(layoutClass) {
+  const wrapper = document.getElementById('liveBPWrapper');
+  if (!wrapper) return;
+  wrapper.classList.remove('points-mode', 'intended-zone-layout');
+  if (layoutClass) wrapper.classList.add(layoutClass);
+}
+
 /**
  * Show/Hide Live BP extras depending on mode.
  * Hidden in Points Mode. Visible in Live BP Mode.
@@ -198,13 +215,6 @@ function applyLiveBPVisibilityForMode(currentMode) {
 
 /* === REPLACE your entire toggleMode() with this === */
 function toggleMode() {
-  const heatBtn = document.getElementById('heatMapBtn');
-  if (heatBtn) heatBtn.innerText = 'HEAT MAP';
-  isHeatMapMode = false;
-  isIntendedMissMapMode = false;
-  hideHeatMap();
-  hideIntendedMissMap();
-
   if (mode === "bullpen") {
     document.getElementById('bullpenMode').style.display   = 'block';
     document.getElementById('liveBPMode').style.display    = 'none';
@@ -415,6 +425,14 @@ document.querySelectorAll("#actualZoneSelection .actualZoneBtn").forEach(button 
     recordIntendedZonePitch();
   });
 });
+
+const missMapPitchTypeSelect = document.getElementById('missMapPitchType');
+if (missMapPitchTypeSelect) {
+  missMapPitchTypeSelect.addEventListener('change', () => {
+    missMapSelectedPitchType = missMapPitchTypeSelect.value;
+    renderMissSummaryCards();
+  });
+}
 
 const missMapPitchTypeSelect = document.getElementById('missMapPitchType');
 if (missMapPitchTypeSelect) {
@@ -2089,6 +2107,279 @@ function renderMissSummaryCards() {
   });
 
   status.innerText = 'Viewing every pitch for this pitch type.';
+}
+
+/* ===== Intended Zone "Natural Miss" map ===== */
+function toggleIntendedMissMap(btn) {
+  isIntendedMissMapMode = !isIntendedMissMapMode;
+  if (isIntendedMissMapMode) {
+    showIntendedMissMap();
+    btn.innerText = 'BACK';
+  } else {
+    hideIntendedMissMap();
+    btn.innerText = 'HEAT MAP';
+  }
+}
+
+function showIntendedMissMap() {
+  // Focus on the miss map view
+  document.getElementById('missMapContainer').style.display = 'block';
+  document.getElementById('intendedZonePitchTypeSelection').style.display = 'none';
+  document.getElementById('intendedZoneSelection').style.display = 'none';
+  document.getElementById('actualZoneSelection').style.display = 'none';
+
+  buildMissMapPitchOptions();
+  renderMissSummaryCards();
+}
+
+function hideIntendedMissMap() {
+  document.getElementById('missMapContainer').style.display = 'none';
+  // Return to the usual intended-zone flow
+  document.getElementById('intendedZonePitchTypeSelection').style.display = 'block';
+  document.getElementById('intendedZoneSelection').style.display = 'none';
+  document.getElementById('actualZoneSelection').style.display = 'none';
+}
+
+function buildMissMapPitchOptions() {
+  const select = document.getElementById('missMapPitchType');
+  if (!select) return;
+  const types = Array.from(new Set(intendedZoneData.map(p => p.pitchType))).sort();
+  select.innerHTML = '';
+
+  const allOpt = document.createElement('option');
+  allOpt.value = 'all';
+  allOpt.textContent = 'All pitches';
+  select.appendChild(allOpt);
+
+  types.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t;
+    select.appendChild(opt);
+  });
+
+  if (types.length && !types.includes(missMapSelectedPitchType)) {
+    missMapSelectedPitchType = 'all';
+  }
+  select.value = missMapSelectedPitchType;
+}
+
+function getMissArrowColor(count, max) {
+  if (max === 0) return '#9e9e9e';
+  const start = { r: 106, g: 183, b: 255 }; // light blue
+  const end = { r: 211, g: 47, b: 47 };     // deep red
+  const ratio = count / max;
+  const r = Math.round(start.r + (end.r - start.r) * ratio);
+  const g = Math.round(start.g + (end.g - start.g) * ratio);
+  const b = Math.round(start.b + (end.b - start.b) * ratio);
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawMissArrow(svg, from, to, color, width) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const line = document.createElementNS(ns, 'line');
+  line.setAttribute('x1', from.x);
+  line.setAttribute('y1', from.y);
+  line.setAttribute('x2', to.x);
+  line.setAttribute('y2', to.y);
+  line.setAttribute('stroke', color);
+  line.setAttribute('stroke-width', width);
+  line.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(line);
+
+  const angle = Math.atan2(to.y - from.y, to.x - from.x);
+  const headLen = 8 + width; // scale arrow head with thickness
+  const hx1 = to.x - headLen * Math.cos(angle - Math.PI / 6);
+  const hy1 = to.y - headLen * Math.sin(angle - Math.PI / 6);
+  const hx2 = to.x - headLen * Math.cos(angle + Math.PI / 6);
+  const hy2 = to.y - headLen * Math.sin(angle + Math.PI / 6);
+
+  const head = document.createElementNS(ns, 'polygon');
+  head.setAttribute('points', `${to.x},${to.y} ${hx1},${hy1} ${hx2},${hy2}`);
+  head.setAttribute('fill', color);
+  head.setAttribute('opacity', 0.9);
+  svg.appendChild(head);
+}
+
+function zoneCssClass(zoneId) {
+  if (strikeLocations.includes(zoneId)) return 'strikeZone';
+  if (shadowLocations.includes(zoneId)) return 'shadowZone';
+  return 'nonCompetitiveZone';
+}
+
+function getMiniCellCenter(gridEl, zoneId) {
+  const cell = gridEl.querySelector(`.mini-cell[data-zone="${zoneId}"]`);
+  if (!cell) return { x: 0, y: 0 };
+  const cellRect = cell.getBoundingClientRect();
+  const gridRect = gridEl.getBoundingClientRect();
+  return {
+    x: cellRect.left - gridRect.left + cellRect.width / 2,
+    y: cellRect.top - gridRect.top + cellRect.height / 2
+  };
+}
+
+function getMiniPointFromRowCol(gridEl, row, col) {
+  const firstCell = gridEl.querySelector('.mini-cell');
+  if (!firstCell) return { x: 0, y: 0 };
+  const style = getComputedStyle(gridEl);
+  const gap = parseFloat(style.gap) || 0;
+  const cellRect = firstCell.getBoundingClientRect();
+  const cellWidth = cellRect.width;
+  const cellHeight = cellRect.height;
+  return {
+    x: col * (cellWidth + gap) + cellWidth / 2,
+    y: row * (cellHeight + gap) + cellHeight / 2
+  };
+}
+
+function drawMissArrowForCard(gridEl, svg, intendedZone, stats, globalMissMax) {
+  if (!svg || !gridEl) return;
+  svg.innerHTML = '';
+  svg.setAttribute('width', gridEl.clientWidth);
+  svg.setAttribute('height', gridEl.clientHeight);
+
+  if (!stats.missCount) return;
+
+  const origin = getMiniCellCenter(gridEl, intendedZone);
+  const missPitches = stats.pitches.filter(p => p.actualZone !== p.intendedZone);
+
+  let totalMisses = 0;
+  let sumRow = 0;
+  let sumCol = 0;
+  let sumDist = 0;
+
+  missPitches.forEach(p => {
+    const [r, c] = getZoneRowCol(p.actualZone);
+    if (r === -1 || c === -1) return;
+    totalMisses++;
+    sumRow += r;
+    sumCol += c;
+    sumDist += p.distance;
+  });
+
+  if (!totalMisses) return;
+
+  const avgRow = sumRow / totalMisses;
+  const avgCol = sumCol / totalMisses;
+  const avgDist = sumDist / totalMisses;
+
+  const centroid = getMiniPointFromRowCol(gridEl, avgRow, avgCol);
+  const vector = { x: centroid.x - origin.x, y: centroid.y - origin.y };
+  const vecLength = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
+  if (!vecLength) return;
+
+  const style = getComputedStyle(gridEl);
+  const gap = parseFloat(style.gap) || 0;
+  const firstCell = gridEl.querySelector('.mini-cell');
+  const cellWidth = firstCell ? firstCell.getBoundingClientRect().width : 0;
+  const stepSize = cellWidth + gap;
+
+  const desiredPixels = Math.max(avgDist * stepSize, stepSize * 0.5);
+  const scale = desiredPixels / vecLength;
+  const target = {
+    x: origin.x + vector.x * scale,
+    y: origin.y + vector.y * scale
+  };
+
+  const color = getMissArrowColor(stats.missCount, globalMissMax || stats.missCount);
+  const width = 2 + (stats.missCount / (globalMissMax || stats.missCount || 1)) * 4;
+  drawMissArrow(svg, origin, target, color, width);
+}
+
+function renderMissSummaryCards() {
+  const cards = document.getElementById('missMapCards');
+  const status = document.getElementById('missMapStatus');
+  if (!cards || !status) return;
+  cards.innerHTML = '';
+
+  if (!intendedZoneData.length) {
+    status.innerText = 'No intended zone pitches recorded yet.';
+    return;
+  }
+
+  const filtered = intendedZoneData.filter(p =>
+    missMapSelectedPitchType === 'all' || p.pitchType === missMapSelectedPitchType
+  );
+
+  if (!filtered.length) {
+    status.innerText = 'No pitches recorded for that pitch type yet.';
+    return;
+  }
+
+  const grouped = {};
+  filtered.forEach(p => {
+    if (!grouped[p.intendedZone]) {
+      grouped[p.intendedZone] = { pitches: [], counts: {}, missCount: 0 };
+    }
+    grouped[p.intendedZone].pitches.push(p);
+    grouped[p.intendedZone].counts[p.actualZone] = (grouped[p.intendedZone].counts[p.actualZone] || 0) + 1;
+    if (p.actualZone !== p.intendedZone) {
+      grouped[p.intendedZone].missCount++;
+    }
+  });
+
+  const globalMissMax = Math.max(
+    ...Object.values(grouped).map(g => g.missCount || 0),
+    0
+  );
+
+  zoneGridOrder.forEach(zoneId => {
+    const stats = grouped[zoneId];
+    if (!stats) return;
+
+    const card = document.createElement('div');
+    card.className = 'miss-summary-card';
+
+    const header = document.createElement('div');
+    header.className = 'miss-summary-header';
+    const title = document.createElement('span');
+    title.textContent = `Intended Zone ${zoneId}`;
+    const meta = document.createElement('span');
+    meta.className = 'miss-summary-meta';
+    meta.textContent = `${stats.pitches.length} pitch${stats.pitches.length === 1 ? '' : 'es'}`;
+    header.appendChild(title);
+    header.appendChild(meta);
+    card.appendChild(header);
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'miss-mini-wrapper';
+
+    const grid = document.createElement('div');
+    grid.className = 'miss-mini-grid';
+    const maxCount = Math.max(...zoneGridOrder.map(z => stats.counts[z] || 0), 0);
+
+    zoneGridOrder.forEach(z => {
+      const cell = document.createElement('div');
+      cell.className = `mini-cell ${zoneCssClass(z)}`;
+      cell.dataset.zone = z;
+      if (z === zoneId) cell.classList.add('intended-target');
+      const count = stats.counts[z] || 0;
+      cell.style.backgroundColor = getHeatMapColor(count, maxCount);
+      grid.appendChild(cell);
+    });
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.classList.add('miss-mini-arrows');
+
+    wrapper.appendChild(grid);
+    wrapper.appendChild(svg);
+    card.appendChild(wrapper);
+
+    drawMissArrowForCard(grid, svg, zoneId, stats, globalMissMax);
+
+    const note = document.createElement('div');
+    note.className = 'miss-card-note';
+    if (stats.missCount) {
+      note.textContent = 'Arrow length = avg miss distance; thickness = miss frequency.';
+    } else {
+      note.textContent = 'All pitches hit the intended target.';
+    }
+    card.appendChild(note);
+
+    cards.appendChild(card);
+  });
+
+  status.innerText = 'Heatmaps show actual landings; arrows point to miss centroids.';
 }
 
 function getHeatMapColor(count, maxCount) {
