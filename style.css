@@ -125,6 +125,15 @@ button {
   margin: auto;
 }
 
+.miss-map-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  justify-items: center;
+  width: fit-content;
+  margin: auto;
+}
+
 /* NEW: Styles for the Intended Zone Grid */
 #intendedZoneGrid {
   display: grid;
@@ -156,6 +165,102 @@ button {
 .intendedZoneBtn.nonCompetitiveZone {
   background-color: navy;
   color: white;
+}
+
+.missMapBtn {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  padding: 0;
+  margin: 0;
+}
+
+.missMapBtn.strikeZone { background-color: #ffb517; }
+.missMapBtn.shadowZone { background-color: lightblue; }
+.missMapBtn.nonCompetitiveZone { background-color: navy; color: white; }
+.missMapBtn.selected { outline: 2px solid #ffb517; }
+
+#missMapShell {
+  position: relative;
+  display: inline-block;
+}
+
+#missMapArrows {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+#missMapHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+#missMapCards {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.miss-summary-card {
+  position: relative;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+}
+
+.miss-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.miss-summary-meta {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.miss-mini-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.miss-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 18px);
+  gap: 2px;
+}
+
+.miss-mini-grid .mini-cell {
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-sizing: border-box;
+}
+
+.mini-cell.strikeZone { background: rgba(255, 181, 23, 0.3); }
+.mini-cell.shadowZone { background: rgba(173, 216, 230, 0.3); }
+.mini-cell.nonCompetitiveZone { background: rgba(0, 0, 128, 0.35); }
+.mini-cell.intended-target { outline: 2px solid #fff; }
+.mini-cell.actual-landing { outline: 2px solid #ff5252; background: rgba(255,82,82,0.35) !important; }
+
+.miss-mini-arrows {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.miss-card-note {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.8;
 }
 
 .actualZoneBtn.strikeZone {
@@ -343,6 +448,22 @@ button {
   grid-template-columns: 1fr 3fr 1fr;
   gap: 16px;
   padding: 16px;
+}
+
+.wrapper.points-mode {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+
+.wrapper.points-mode .main-panel {
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.wrapper.intended-zone-layout {
+  display: flex;
+  justify-content: center;
 }
 
 .side-panel {
