@@ -1938,70 +1938,199 @@ function drawMissArrowsForType(gridEl, svg, missByIntended, globalMissMax) {
   });
 }
 
+// === FIX: Intended-Zone Miss Map (unified, arrow-enabled, pitch-type grouping) ===
+
+// Helper: color scale for arrow intensity
+function getMissArrowColor(count, max) {
+  if (!max) return '#9e9e9e';
+  const start = { r: 106, g: 183, b: 255 };
+  const end   = { r: 211, g: 47,  b: 47  };
+  const t = count / max;
+  const r = Math.round(start.r + (end.r - start.r) * t);
+  const g = Math.round(start.g + (end.g - start.g) * t);
+  const b = Math.round(start.b + (end.b - start.b) * t);
+  return `rgb(${r},${g},${b})`;
+}
+
+// Helper: simple white→red heat for cells
+function getHeatMapColor(value, max) {
+  if (!max) return 'rgb(245,245,245)';
+  const ratio = value / max;
+  const g = Math.round(255 - 155 * ratio);
+  const b = Math.round(255 - 155 * ratio);
+  return `rgb(255,${g},${b})`;
+}
+
+// Helper: classify a zone → CSS class already used elsewhere
+function zoneCssClass(zoneId) {
+  if (strikeLocations.includes(zoneId)) return 'strikeZone';
+  if (shadowLocations.includes(zoneId)) return 'shadowZone';
+  if (nonCompetitiveLocations.includes(zoneId)) return 'nonCompetitiveZone';
+  return '';
+}
+
+// Geometry helpers
+function getMiniCellCenter(gridEl, zoneId) {
+  const cell = gridEl.querySelector(`.mini-cell[data-zone="${zoneId}"]`);
+  if (!cell) return { x: 0, y: 0 };
+  const cellRect = cell.getBoundingClientRect();
+  const gridRect = gridEl.getBoundingClientRect();
+  return {
+    x: cellRect.left - gridRect.left + cellRect.width / 2,
+    y: cellRect.top  - gridRect.top  + cellRect.height / 2
+  };
+}
+function getMiniPointFromRowCol(gridEl, row, col) {
+  const first = gridEl.querySelector('.mini-cell');
+  if (!first) return { x: 0, y: 0 };
+  const style = getComputedStyle(gridEl);
+  const gap   = parseFloat(style.gap) || 0;
+  const r     = first.getBoundingClientRect();
+  return { x: col * (r.width + gap) + r.width / 2,
+           y: row * (r.height + gap) + r.height / 2 };
+}
+
+// Summary for a set of pitches (one pitch type bucket)
+function computeMissSummary(pitches) {
+  const counts = {};          // actual landings heat
+  const intendedCounts = {};  // intended targets outline
+  const missByIntended = {};  // vectors per intended zone
+
+  pitches.forEach(p => {
+    counts[p.actualZone] = (counts[p.actualZone] || 0) + 1;
+    intendedCounts[p.intendedZone] = (intendedCounts[p.intendedZone] || 0) + 1;
+
+    if (p.intendedZone !== p.actualZone) {
+      // Use row/col from zone grid order lookups
+      const [r, c] = getZoneRowCol(p.actualZone);
+      if (!missByIntended[p.intendedZone]) {
+        missByIntended[p.intendedZone] = { missCount: 0, sumRow: 0, sumCol: 0, sumDist: 0 };
+      }
+      const bucket = missByIntended[p.intendedZone];
+      bucket.missCount++;
+      bucket.sumRow  += r;
+      bucket.sumCol  += c;
+      bucket.sumDist += p.distance;
+    }
+  });
+
+  return { counts, intendedCounts, missByIntended, total: pitches.length };
+}
+
+// Draw a single arrow (with head)
+function drawMissArrow(svg, from, to, color, width) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const line = document.createElementNS(ns, 'line');
+  line.setAttribute('x1', from.x); line.setAttribute('y1', from.y);
+  line.setAttribute('x2', to.x);   line.setAttribute('y2', to.y);
+  line.setAttribute('stroke', color);
+  line.setAttribute('stroke-width', width);
+  line.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(line);
+
+  const angle = Math.atan2(to.y - from.y, to.x - from.x);
+  const head = 8 + width;
+  const hx1 = to.x - head * Math.cos(angle - Math.PI / 6);
+  const hy1 = to.y - head * Math.sin(angle - Math.PI / 6);
+  const hx2 = to.x - head * Math.cos(angle + Math.PI / 6);
+  const hy2 = to.y - head * Math.sin(angle + Math.PI / 6);
+  const poly = document.createElementNS(ns, 'polygon');
+  poly.setAttribute('points', `${to.x},${to.y} ${hx1},${hy1} ${hx2},${hy2}`);
+  poly.setAttribute('fill', color);
+  poly.setAttribute('opacity', 0.9);
+  svg.appendChild(poly);
+}
+
+// Dot if no vector length (exact hits)
+function drawDot(svg, point, color) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const c = document.createElementNS(ns, 'circle');
+  c.setAttribute('cx', point.x); c.setAttribute('cy', point.y);
+  c.setAttribute('r', 4); c.setAttribute('fill', color);
+  svg.appendChild(c);
+}
+
+// Draw all arrows for a pitch-type summary (centroid per intended zone)
+function drawMissArrowsForType(gridEl, svg, missByIntended, globalMissMax) {
+  Object.entries(missByIntended).forEach(([intendedZone, stats]) => {
+    if (!stats || !stats.missCount) return;
+
+    const origin   = getMiniCellCenter(gridEl, Number(intendedZone));
+    const avgRow   = stats.sumRow / stats.missCount;
+    const avgCol   = stats.sumCol / stats.missCount;
+    const centroid = getMiniPointFromRowCol(gridEl, avgRow, avgCol);
+
+    const vec = { x: centroid.x - origin.x, y: centroid.y - origin.y };
+    const len = Math.hypot(vec.x, vec.y);
+    if (!len) { drawDot(svg, origin, getMissArrowColor(stats.missCount, globalMissMax)); return; }
+
+    // Scale arrow length to avg grid-distance
+    const style    = getComputedStyle(gridEl);
+    const gap      = parseFloat(style.gap) || 0;
+    const first    = gridEl.querySelector('.mini-cell');
+    const cw       = first ? first.getBoundingClientRect().width  : 0;
+    const stepSize = cw + gap;
+    const avgDist  = stats.sumDist / stats.missCount;
+    const desired  = Math.max(avgDist * stepSize, stepSize * 0.5);
+    const scale    = desired / len;
+    const target   = { x: origin.x + vec.x * scale, y: origin.y + vec.y * scale };
+
+    const color = getMissArrowColor(stats.missCount, globalMissMax || stats.missCount);
+    const width = 2 + (stats.missCount / (globalMissMax || stats.missCount || 1)) * 4;
+    drawMissArrow(svg, origin, target, color, width);
+  });
+}
+
+// MAIN: render cards
 function renderMissSummaryCards() {
-  const cards = document.getElementById('missMapCards');
+  const cards  = document.getElementById('missMapCards');
   const status = document.getElementById('missMapStatus');
   if (!cards || !status) return;
   cards.innerHTML = '';
 
-  if (!intendedZoneData.length) {
-    status.innerText = 'No intended zone pitches recorded yet.';
-    return;
-  }
+  if (!intendedZoneData.length) { status.innerText = 'No intended zone pitches recorded yet.'; return; }
 
   const filtered = intendedZoneData.filter(p =>
     missMapSelectedPitchType === 'all' || p.pitchType === missMapSelectedPitchType
   );
+  if (!filtered.length) { status.innerText = 'No pitches recorded for that pitch type yet.'; return; }
 
-  if (!filtered.length) {
-    status.innerText = 'No pitches recorded for that pitch type yet.';
-    return;
-  }
-
-  // All pitches selected: summarize by pitch type with all arrows on one grid per type
+  // ---- Case A: All pitches => one card per PITCH TYPE (with arrows) ----
   if (missMapSelectedPitchType === 'all') {
     const byType = {};
-    const summaryByType = {};
-    filtered.forEach(p => {
-      if (!byType[p.pitchType]) byType[p.pitchType] = [];
-      byType[p.pitchType].push(p);
-    });
+    filtered.forEach(p => { (byType[p.pitchType] ||= []).push(p); });
 
-    Object.keys(byType).forEach(type => {
-      summaryByType[type] = computeMissSummary(byType[type]);
-    });
+    const summaryByType = {};
+    Object.keys(byType).forEach(type => { summaryByType[type] = computeMissSummary(byType[type]); });
 
     const globalMissMax = Math.max(
-      ...Object.values(summaryByType).map(summary =>
-        Math.max(...Object.values(summary.missByIntended).map(m => m.missCount || 0), 0)
-      ),
+      ...Object.values(summaryByType).map(s =>
+        Math.max(...zoneGridOrder.map(z => (s.missByIntended[z]?.missCount || 0))), 0),
       0
     );
 
     Object.keys(byType).sort().forEach(type => {
       const summary = summaryByType[type];
 
-      const card = document.createElement('div');
-      card.className = 'miss-summary-card';
-
-      const header = document.createElement('div');
-      header.className = 'miss-summary-header';
-      const title = document.createElement('span');
-      title.textContent = `${type}`;
-      const meta = document.createElement('span');
-      meta.className = 'miss-summary-meta';
+      const card   = document.createElement('div'); card.className = 'miss-summary-card';
+      const header = document.createElement('div'); header.className = 'miss-summary-header';
+      const title  = document.createElement('span'); title.textContent = `${type}`;
+      const meta   = document.createElement('span'); meta.className = 'miss-summary-meta';
       meta.textContent = `${summary.total} pitch${summary.total === 1 ? '' : 'es'}`;
-      header.appendChild(title);
-      header.appendChild(meta);
-      card.appendChild(header);
+      header.appendChild(title); header.appendChild(meta); card.appendChild(header);
 
-      const wrapper = document.createElement('div');
-      wrapper.className = 'miss-mini-wrapper';
+      const wrapper = document.createElement('div'); wrapper.className = 'miss-mini-wrapper';
+      // ensure overlay works even without CSS file
+      wrapper.style.position = 'relative';
 
       const grid = document.createElement('div');
       grid.className = 'miss-mini-grid';
-      const maxCount = Math.max(...zoneGridOrder.map(z => summary.counts[z] || 0), 0);
+      // minimum grid styling in case CSS missing
+      grid.style.display = grid.style.display || 'grid';
+      grid.style.gridTemplateColumns = grid.style.gridTemplateColumns || 'repeat(7, 1fr)';
+      grid.style.gap = grid.style.gap || '2px';
 
+      const maxCount = Math.max(...zoneGridOrder.map(z => summary.counts[z] || 0), 0);
       zoneGridOrder.forEach(z => {
         const cell = document.createElement('div');
         cell.className = `mini-cell ${zoneCssClass(z)}`;
@@ -2014,6 +2143,8 @@ function renderMissSummaryCards() {
 
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.classList.add('miss-mini-arrows');
+      // make sure arrows are visible
+      svg.setAttribute('style', 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;');
 
       wrapper.appendChild(grid);
       wrapper.appendChild(svg);
@@ -2029,45 +2160,40 @@ function renderMissSummaryCards() {
       cards.appendChild(card);
     });
 
-    status.innerText = 'All pitches summarized by pitch type.';
+    status.innerText = 'All Pitches – summarized by pitch type';
     return;
   }
 
-  // Single pitch type: show every pitch individually
-  const ordered = [...filtered].sort((a, b) => a.pitchNumber - b.pitchNumber);
-
-  ordered.forEach(pitch => {
-    const card = document.createElement('div');
-    card.className = 'miss-summary-card';
-
-    const header = document.createElement('div');
-    header.className = 'miss-summary-header';
-    const title = document.createElement('span');
-    title.textContent = `Pitch #${pitch.pitchNumber}`;
-    const meta = document.createElement('span');
-    meta.className = 'miss-summary-meta';
+  // ---- Case B: Single pitch type => one card per pitch (kept behavior) ----
+  filtered.forEach(pitch => {
+    const card   = document.createElement('div'); card.className = 'miss-summary-card';
+    const header = document.createElement('div'); header.className = 'miss-summary-header';
+    const title  = document.createElement('span'); title.textContent = `Pitch #${pitch.pitchNumber}`;
+    const meta   = document.createElement('span'); meta.className = 'miss-summary-meta';
     meta.textContent = `${pitch.pitchType.toUpperCase()} – Intended ${pitch.intendedZone} → Actual ${pitch.actualZone}`;
-    header.appendChild(title);
-    header.appendChild(meta);
-    card.appendChild(header);
+    header.appendChild(title); header.appendChild(meta); card.appendChild(header);
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'miss-mini-wrapper';
+    const wrapper = document.createElement('div'); wrapper.className = 'miss-mini-wrapper';
+    wrapper.style.position = 'relative';
 
     const grid = document.createElement('div');
     grid.className = 'miss-mini-grid';
+    grid.style.display = grid.style.display || 'grid';
+    grid.style.gridTemplateColumns = grid.style.gridTemplateColumns || 'repeat(7, 1fr)';
+    grid.style.gap = grid.style.gap || '2px';
 
     zoneGridOrder.forEach(z => {
       const cell = document.createElement('div');
       cell.className = `mini-cell ${zoneCssClass(z)}`;
       cell.dataset.zone = z;
       if (z === pitch.intendedZone) cell.classList.add('intended-target');
-      if (z === pitch.actualZone) cell.classList.add('actual-landing');
+      if (z === pitch.actualZone)   cell.classList.add('actual-landing');
       grid.appendChild(cell);
     });
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.classList.add('miss-mini-arrows');
+    svg.setAttribute('style', 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;');
 
     wrapper.appendChild(grid);
     wrapper.appendChild(svg);
@@ -2079,20 +2205,16 @@ function renderMissSummaryCards() {
       if (pitch.intendedZone === pitch.actualZone) {
         drawDot(svg, target, '#ff5252');
       } else {
-        drawMissArrow(svg, origin, target, '#ff5252', 3);
+        drawMissArrow(svg, origin, target, '#d32f2f', 3);
       }
     }
-
-    const note = document.createElement('div');
-    note.className = 'miss-card-note';
-    note.textContent = 'Outlined = target, red = actual. Arrow shows this pitch’s miss direction.';
-    card.appendChild(note);
 
     cards.appendChild(card);
   });
 
-  status.innerText = 'Viewing every pitch for this pitch type.';
+  status.innerText = `${missMapSelectedPitchType.toUpperCase()} – per pitch`;
 }
+// === END FIX ===
 
 /* ===== Intended Zone "Natural Miss" map ===== */
 function toggleIntendedMissMap(btn) {
@@ -2269,102 +2391,6 @@ function drawMissArrowForCard(gridEl, svg, intendedZone, stats, globalMissMax) {
   const color = getMissArrowColor(stats.missCount, globalMissMax || stats.missCount);
   const width = 2 + (stats.missCount / (globalMissMax || stats.missCount || 1)) * 4;
   drawMissArrow(svg, origin, target, color, width);
-}
-
-function renderMissSummaryCards() {
-  const cards = document.getElementById('missMapCards');
-  const status = document.getElementById('missMapStatus');
-  if (!cards || !status) return;
-  cards.innerHTML = '';
-
-  if (!intendedZoneData.length) {
-    status.innerText = 'No intended zone pitches recorded yet.';
-    return;
-  }
-
-  const filtered = intendedZoneData.filter(p =>
-    missMapSelectedPitchType === 'all' || p.pitchType === missMapSelectedPitchType
-  );
-
-  if (!filtered.length) {
-    status.innerText = 'No pitches recorded for that pitch type yet.';
-    return;
-  }
-
-  const grouped = {};
-  filtered.forEach(p => {
-    if (!grouped[p.intendedZone]) {
-      grouped[p.intendedZone] = { pitches: [], counts: {}, missCount: 0 };
-    }
-    grouped[p.intendedZone].pitches.push(p);
-    grouped[p.intendedZone].counts[p.actualZone] = (grouped[p.intendedZone].counts[p.actualZone] || 0) + 1;
-    if (p.actualZone !== p.intendedZone) {
-      grouped[p.intendedZone].missCount++;
-    }
-  });
-
-  const globalMissMax = Math.max(
-    ...Object.values(grouped).map(g => g.missCount || 0),
-    0
-  );
-
-  zoneGridOrder.forEach(zoneId => {
-    const stats = grouped[zoneId];
-    if (!stats) return;
-
-    const card = document.createElement('div');
-    card.className = 'miss-summary-card';
-
-    const header = document.createElement('div');
-    header.className = 'miss-summary-header';
-    const title = document.createElement('span');
-    title.textContent = `Intended Zone ${zoneId}`;
-    const meta = document.createElement('span');
-    meta.className = 'miss-summary-meta';
-    meta.textContent = `${stats.pitches.length} pitch${stats.pitches.length === 1 ? '' : 'es'}`;
-    header.appendChild(title);
-    header.appendChild(meta);
-    card.appendChild(header);
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'miss-mini-wrapper';
-
-    const grid = document.createElement('div');
-    grid.className = 'miss-mini-grid';
-    const maxCount = Math.max(...zoneGridOrder.map(z => stats.counts[z] || 0), 0);
-
-    zoneGridOrder.forEach(z => {
-      const cell = document.createElement('div');
-      cell.className = `mini-cell ${zoneCssClass(z)}`;
-      cell.dataset.zone = z;
-      if (z === zoneId) cell.classList.add('intended-target');
-      const count = stats.counts[z] || 0;
-      cell.style.backgroundColor = getHeatMapColor(count, maxCount);
-      grid.appendChild(cell);
-    });
-
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.classList.add('miss-mini-arrows');
-
-    wrapper.appendChild(grid);
-    wrapper.appendChild(svg);
-    card.appendChild(wrapper);
-
-    drawMissArrowForCard(grid, svg, zoneId, stats, globalMissMax);
-
-    const note = document.createElement('div');
-    note.className = 'miss-card-note';
-    if (stats.missCount) {
-      note.textContent = 'Arrow length = avg miss distance; thickness = miss frequency.';
-    } else {
-      note.textContent = 'All pitches hit the intended target.';
-    }
-    card.appendChild(note);
-
-    cards.appendChild(card);
-  });
-
-  status.innerText = 'Heatmaps show actual landings; arrows point to miss centroids.';
 }
 
 function getHeatMapColor(count, maxCount) {
@@ -2803,6 +2829,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
 
 
 
