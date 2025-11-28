@@ -213,60 +213,70 @@ function applyLiveBPVisibilityForMode(currentMode) {
   setDisplay('sideRight',        showLiveExtras); // By Batter table
 }
 
-/* === REPLACE your entire toggleMode() with this === */
 function toggleMode() {
+  // 1. **ESSENTIAL CLEANUP:** Reset all mode-specific flags and hidden states
+  const heatBtn = document.getElementById('heatMapBtn');
+  if (heatBtn) heatBtn.innerText = 'HEAT MAP';
+  
+  // Reset heat map and miss map flags
+  isHeatMapMode = false;
+  isIntendedMissMapMode = false;
+  
+  // Hide overlays (assuming these helper functions exist)
+  if (typeof hideHeatMap === 'function') hideHeatMap();
+  if (typeof hideIntendedMissMap === 'function') hideIntendedMissMap();
+  
+  // Set wrapper layout class to default (removes points-mode, etc.)
+  setWrapperLayout('');
+
+  // 2. **Switch Layouts** (Force all panels to hide, then show the correct one)
+  document.getElementById('bullpenMode').style.display   = 'none';
+  document.getElementById('liveBPMode').style.display    = 'none';
+  document.getElementById('putawayButtons').style.display = 'none';
+  document.getElementById('pointsContainer').style.display = 'none';
+  document.getElementById('intendedZoneMode').style.display = 'none';
+  
+  
   if (mode === "bullpen") {
     document.getElementById('bullpenMode').style.display   = 'block';
-    document.getElementById('liveBPMode').style.display    = 'none';
-    document.getElementById('putawayButtons').style.display = 'none';
-    document.getElementById('pointsContainer').style.display = 'none';
-    document.getElementById('intendedZoneMode').style.display = 'none';
-    setWrapperLayout('');
+
   } else if (mode === "liveBP") {
-    document.getElementById('bullpenMode').style.display   = 'none';
     document.getElementById('liveBPMode').style.display    = 'block';
     document.getElementById('modeTitle').innerText         = 'Live BP Mode';
-    document.getElementById('pointsContainer').style.display = 'none';
-    document.getElementById('intendedZoneMode').style.display = 'none';
     setDisplay('mainPanel', true);
-    setWrapperLayout('');
-
+    
     // show Live BP extras (batter/pitcher UI, live stats, side tables)
     applyLiveBPVisibilityForMode('liveBP');
-
     showPitchTypeSelection();
     updateLiveStats();
     renderPitchLog();
     renderAtBatLog();
+
   } else if (mode === "putaway") {
+    // Putaway mode often uses the bullpen UI
     document.getElementById('bullpenMode').style.display   = 'block';
-    document.getElementById('liveBPMode').style.display    = 'none';
-    document.getElementById('putawayButtons').style.display = 'none';
-    document.getElementById('pointsContainer').style.display = 'none';
-    document.getElementById('intendedZoneMode').style.display = 'none';
+
   } else if (mode === "points") {
-    document.getElementById('bullpenMode').style.display   = 'none';
     document.getElementById('liveBPMode').style.display    = 'block';
     document.getElementById('modeTitle').innerText         = 'Points Mode';
     document.getElementById('pointsContainer').style.display = 'block';
-    document.getElementById('intendedZoneMode').style.display = 'none';
     setDisplay('mainPanel', true);
     setWrapperLayout('points-mode');
 
     // hide Live BP extras in Points Mode
     applyLiveBPVisibilityForMode('points');
-
     showComboPitchTypeSelection();
     renderPitchLog();
     renderAtBatLog();
+
   } else if (mode === "intendedZone") {
-    document.getElementById('bullpenMode').style.display   = 'none';
     document.getElementById('liveBPMode').style.display    = 'block';
     document.getElementById('intendedZoneMode').style.display = 'block';
     setDisplay('mainPanel', false);
     applyLiveBPVisibilityForMode('points');
     setWrapperLayout('intended-zone-layout');
 
+    // Highlight zone buttons
     document.querySelectorAll("#intendedZoneSelection .intendedZoneBtn").forEach(btn => {
       let zone = parseInt(btn.id.replace("intendedZone-", ""));
       if (strikeLocations.includes(zone))        btn.classList.add("strikeZone");
@@ -280,10 +290,10 @@ function toggleMode() {
     document.getElementById('intendedZoneTitle').innerText = 'Intended Zone';
   }
 
+  // 3. Final count/mode resets
   resetCount();
   resetIntendedZoneMode();
 }
-
 document.getElementById('strikeBtn').addEventListener('click', function() {
   actionLog.push(saveCurrentState());
   strikeCount++;
@@ -2818,5 +2828,6 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
 
 
