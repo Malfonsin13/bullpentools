@@ -198,13 +198,6 @@ function applyLiveBPVisibilityForMode(currentMode) {
 
 /* === REPLACE your entire toggleMode() with this === */
 function toggleMode() {
-  const heatBtn = document.getElementById('heatMapBtn');
-  if (heatBtn) heatBtn.innerText = 'HEAT MAP';
-  isHeatMapMode = false;
-  isIntendedMissMapMode = false;
-  hideHeatMap();
-  hideIntendedMissMap();
-
   if (mode === "bullpen") {
     document.getElementById('bullpenMode').style.display   = 'block';
     document.getElementById('liveBPMode').style.display    = 'none';
