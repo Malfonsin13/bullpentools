@@ -1973,21 +1973,28 @@ function zoneCssClass(zoneId) {
 function getMiniCellCenter(gridEl, zoneId) {
   const cell = gridEl.querySelector(`.mini-cell[data-zone="${zoneId}"]`);
   if (!cell) return { x: 0, y: 0 };
+  const wrap = gridEl.parentElement || gridEl;
   const cellRect = cell.getBoundingClientRect();
-  const gridRect = gridEl.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
   return {
-    x: cellRect.left - gridRect.left + cellRect.width / 2,
-    y: cellRect.top  - gridRect.top  + cellRect.height / 2
+    x: cellRect.left - wrapRect.left + cellRect.width / 2,
+    y: cellRect.top  - wrapRect.top  + cellRect.height / 2
   };
 }
+
 function getMiniPointFromRowCol(gridEl, row, col) {
   const first = gridEl.querySelector('.mini-cell');
   if (!first) return { x: 0, y: 0 };
+  const wrapRect = (gridEl.parentElement || gridEl).getBoundingClientRect();
+  const gridRect = gridEl.getBoundingClientRect();
   const style = getComputedStyle(gridEl);
-  const gap   = parseFloat(style.gap) || 0;
-  const r     = first.getBoundingClientRect();
-  return { x: col * (r.width + gap) + r.width / 2,
-           y: row * (r.height + gap) + r.height / 2 };
+  const gap = parseFloat(style.gap) || 0;
+  const cellRect = first.getBoundingClientRect();
+  const w = cellRect.width, h = cellRect.height;
+  return {
+    x: (gridRect.left - wrapRect.left) + col * (w + gap) + w / 2,
+    y: (gridRect.top  - wrapRect.top ) + row * (h + gap) + h / 2
+  };
 }
 
 // Summary for a set of pitches (one pitch type bucket)
@@ -2016,6 +2023,66 @@ function computeMissSummary(pitches) {
 
   return { counts, intendedCounts, missByIntended, total: pitches.length };
 }
+
+/* ---------- UTIL: make overlay SVG sit exactly on the grid ---------- */
+function prepareOverlay(wrapper, grid) {
+  wrapper.style.position = 'relative';
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.classList.add('miss-mini-arrows');
+  svg.setAttribute('style', 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;');
+  // force intrinsic size so (x,y) uses CSS pixels matching grid
+  svg.setAttribute('width', grid.clientWidth);
+  svg.setAttribute('height', grid.clientHeight);
+  wrapper.appendChild(grid);
+  wrapper.appendChild(svg);
+  return svg;
+}
+
+/* ---------- “ALL PITCHES” CARD BUILDER: one grid per PITCH TYPE ---------- */
+function buildAllPitchesCard(type, summary) {
+  const card   = document.createElement('div'); card.className = 'miss-summary-card';
+  const header = document.createElement('div'); header.className = 'miss-summary-header';
+  const title  = document.createElement('span'); title.textContent = `${type}`;
+  const meta   = document.createElement('span'); meta.className = 'miss-summary-meta';
+  meta.textContent = `${summary.total} pitch${summary.total === 1 ? '' : 'es'}`;
+  header.appendChild(title); header.appendChild(meta); card.appendChild(header);
+
+  const wrapper = document.createElement('div'); wrapper.className = 'miss-mini-wrapper';
+
+  const grid = document.createElement('div');
+  grid.className = 'miss-mini-grid';
+  if (!getComputedStyle(grid).gridTemplateColumns) {
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
+    grid.style.gap = '2px';
+  }
+
+  const maxCount = Math.max(...zoneGridOrder.map(z => summary.counts[z] || 0), 0);
+  zoneGridOrder.forEach(z => {
+    const cell = document.createElement('div');
+    cell.className = `mini-cell ${zoneCssClass(z)}`;
+    cell.dataset.zone = z;
+    if (summary.intendedCounts[z]) { cell.classList.add('intended-target'); cell.style.outline = '2px solid #fff'; cell.style.boxSizing = 'border-box'; } // ensure visible
+    const count = summary.counts[z] || 0;
+    cell.style.backgroundColor = getHeatMapColor(count, maxCount);
+    grid.appendChild(cell);
+  });
+
+  const svg = prepareOverlay(wrapper, grid);
+  card.appendChild(wrapper);
+
+  // draw centroid arrows per intended zone
+  drawMissArrowsForType(grid, svg, summary.missByIntended,
+    Math.max(...Object.values(summary.missByIntended).map(m => m.missCount || 0), 0)
+  );
+
+  const note = document.createElement('div');
+  note.className = 'miss-card-note';
+  note.textContent = 'Heatmap = actual landings, outlined cells = targets, arrows = miss centroids.';
+  card.appendChild(note);
+  return card;
+}
+
 
 // Draw a single arrow (with head)
 function drawMissArrow(svg, from, to, color, width) {
@@ -2213,7 +2280,82 @@ function renderMissSummaryCards() {
   });
 
   status.innerText = `${missMapSelectedPitchType.toUpperCase()} – per pitch`;
+}/* ---------- MAIN RENDER (keeps your current grouping) ---------- */
+function renderMissSummaryCards() {
+  const cards  = document.getElementById('missMapCards');
+  const status = document.getElementById('missMapStatus');
+  if (!cards || !status) return;
+  cards.innerHTML = '';
+
+  if (!intendedZoneData.length) { status.innerText = 'No intended zone pitches recorded yet.'; return; }
+
+  const filtered = intendedZoneData.filter(p =>
+    missMapSelectedPitchType === 'all' || p.pitchType === missMapSelectedPitchType
+  );
+  if (!filtered.length) { status.innerText = 'No pitches recorded for that pitch type yet.'; return; }
+
+  // A) All pitches → one card per pitch TYPE (unchanged behavior)
+  if (missMapSelectedPitchType === 'all') {
+    const byType = {};
+    filtered.forEach(p => { (byType[p.pitchType] ||= []).push(p); });
+
+    const summaryByType = {};
+    Object.keys(byType).forEach(t => { summaryByType[t] = computeMissSummary(byType[t]); });
+
+    Object.keys(byType).sort().forEach(t => {
+      const card = buildAllPitchesCard(t, summaryByType[t]);
+      cards.appendChild(card);
+    });
+
+    status.innerText = 'All Pitches – summarized by pitch type';
+    return;
+  }
+
+  // B) Single pitch type → one card per pitch (make intended/actual obvious + arrow)
+  filtered.forEach(pitch => {
+    const card   = document.createElement('div'); card.className = 'miss-summary-card';
+    const header = document.createElement('div'); header.className = 'miss-summary-header';
+    const title  = document.createElement('span'); title.textContent = `Pitch #${pitch.pitchNumber}`;
+    const meta   = document.createElement('span'); meta.className = 'miss-summary-meta';
+    meta.textContent = `${pitch.pitchType.toUpperCase()} – Intended ${pitch.intendedZone} → Actual ${pitch.actualZone}`;
+    header.appendChild(title); header.appendChild(meta); card.appendChild(header);
+
+    const wrapper = document.createElement('div'); wrapper.className = 'miss-mini-wrapper';
+
+    const grid = document.createElement('div');
+    grid.className = 'miss-mini-grid';
+    if (!getComputedStyle(grid).gridTemplateColumns) {
+      grid.style.display = 'grid';
+      grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
+      grid.style.gap = '2px';
+    }
+
+    zoneGridOrder.forEach(z => {
+      const cell = document.createElement('div');
+      cell.className = `mini-cell ${zoneCssClass(z)}`;
+      cell.dataset.zone = z;
+      if (z === pitch.intendedZone) { cell.classList.add('intended-target'); cell.style.outline = '2px solid #fff'; cell.style.boxSizing = 'border-box'; } // visible target
+      if (z === pitch.actualZone)   { cell.classList.add('actual-landing'); cell.style.backgroundColor = '#d32f2f'; } // visible landing
+      grid.appendChild(cell);
+    });
+
+    const svg = prepareOverlay(wrapper, grid);
+    card.appendChild(wrapper);
+
+    // arrow or dot
+    const origin = getMiniCellCenter(grid, pitch.intendedZone);
+    const target = getMiniCellCenter(grid, pitch.actualZone);
+    if (pitch.intendedZone === pitch.actualZone) {
+      drawDot(svg, target, '#ff5252');
+    } else {
+      drawMissArrow(svg, origin, target, '#d32f2f', 3);
+    }
+    cards.appendChild(card);
+  });
+
+  status.innerText = `${missMapSelectedPitchType.toUpperCase()} – per pitch`;
 }
+
 // === END FIX ===
 
 /* ===== Intended Zone "Natural Miss" map ===== */
@@ -2829,6 +2971,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
 
 
 
