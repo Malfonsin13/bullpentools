@@ -1854,20 +1854,6 @@ function zoneCssClass(zoneId) {
   return 'nonCompetitiveZone';
 }
 
-function getMiniPointFromRowCol(gridEl, row, col) {
-  const firstCell = gridEl.querySelector('.mini-cell');
-  if (!firstCell) return { x: 0, y: 0 };
-  const style = getComputedStyle(gridEl);
-  const gap = parseFloat(style.gap) || 0;
-  const cellRect = firstCell.getBoundingClientRect();
-  const cellWidth = cellRect.width;
-  const cellHeight = cellRect.height;
-  return {
-    x: col * (cellWidth + gap) + cellWidth / 2,
-    y: row * (cellHeight + gap) + cellHeight / 2
-  };
-}
-
 function computeMissSummary(pitches) {
   const counts = {};
   const intendedCounts = {};
@@ -2311,17 +2297,6 @@ function zoneCssClass(zoneId) {
   if (strikeLocations.includes(zoneId)) return 'strikeZone';
   if (shadowLocations.includes(zoneId)) return 'shadowZone';
   return 'nonCompetitiveZone';
-}
-
-function getMiniCellCenter(gridEl, zoneId) {
-  const cell = gridEl.querySelector(`.mini-cell[data-zone="${zoneId}"]`);
-  if (!cell) return { x: 0, y: 0 };
-  const cellRect = cell.getBoundingClientRect();
-  const gridRect = gridEl.getBoundingClientRect();
-  return {
-    x: cellRect.left - gridRect.left + cellRect.width / 2,
-    y: cellRect.top - gridRect.top + cellRect.height / 2
-  };
 }
 
 function drawMissArrowForCard(gridEl, svg, intendedZone, stats, globalMissMax) {
@@ -2814,6 +2789,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
 
 
 
