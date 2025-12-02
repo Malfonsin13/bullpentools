@@ -2000,17 +2000,30 @@ function computeMissSummary(pitches) {
 }
 
 /* ---------- UTIL: make overlay SVG sit exactly on the grid ---------- */
-function prepareOverlay(wrapper, grid) {
+function mountOverlayAndDraw(wrapper, grid, drawFn) {
   wrapper.style.position = 'relative';
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.classList.add('miss-mini-arrows');
-  svg.setAttribute('style', 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;');
-  // force intrinsic size so (x,y) uses CSS pixels matching grid
-  svg.setAttribute('width', grid.clientWidth);
-  svg.setAttribute('height', grid.clientHeight);
+  // Ensure a grid even without CSS
+  const cs = getComputedStyle(grid);
+  if (!cs.gridTemplateColumns || cs.gridTemplateColumns === 'none') {
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
+    grid.style.gap = '2px';
+  }
   wrapper.appendChild(grid);
-  wrapper.appendChild(svg);
-  return svg;
+
+  requestAnimationFrame(() => {
+    const rect = grid.getBoundingClientRect();
+    const svg  = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.classList.add('miss-mini-arrows');
+    svg.setAttribute('style',
+      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;');
+    svg.setAttribute('width',  rect.width);
+    svg.setAttribute('height', rect.height);
+    svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+    wrapper.appendChild(svg);
+    // draw after the SVG is mounted and sized
+    drawFn(svg);
+  });
 }
 
 /* ---------- “ALL PITCHES” CARD BUILDER: one grid per PITCH TYPE ---------- */
@@ -2043,14 +2056,13 @@ function buildAllPitchesCard(type, summary) {
     grid.appendChild(cell);
   });
 
-  const svg = prepareOverlay(wrapper, grid);
-  card.appendChild(wrapper);
-
-  // draw centroid arrows per intended zone
-  drawMissArrowsForType(grid, svg, summary.missByIntended,
-    Math.max(...Object.values(summary.missByIntended).map(m => m.missCount || 0), 0)
-  );
-
+  card.appendChild(wrapper);                 // <-- mount first
+  mountOverlayAndDraw(wrapper, grid, (svg) => {
+    const globalMax = Math.max(...Object.values(summary.missByIntended)
+                                .map(m => m?.missCount || 0), 0);
+    drawMissArrowsForType(grid, svg, summary.missByIntended, globalMax);
+  });
+  
   const note = document.createElement('div');
   note.className = 'miss-card-note';
   note.textContent = 'Heatmap = actual landings, outlined cells = targets, arrows = miss centroids.';
@@ -2182,17 +2194,17 @@ function renderMissSummaryCards() {
       grid.appendChild(cell);
     });
 
-    const svg = prepareOverlay(wrapper, grid);
-    card.appendChild(wrapper);
+    card.appendChild(wrapper);                  // <-- mount first
+    mountOverlayAndDraw(wrapper, grid, (svg) => {
+      const origin = getMiniCellCenter(grid, pitch.intendedZone);
+      const target = getMiniCellCenter(grid, pitch.actualZone);
+      if (pitch.intendedZone === pitch.actualZone) {
+        drawDot(svg, target, '#ff5252');
+      } else {
+        drawMissArrow(svg, origin, target, '#d32f2f', 3);
+      }
+    });
 
-    // arrow or dot
-    const origin = getMiniCellCenter(grid, pitch.intendedZone);
-    const target = getMiniCellCenter(grid, pitch.actualZone);
-    if (pitch.intendedZone === pitch.actualZone) {
-      drawDot(svg, target, '#ff5252');
-    } else {
-      drawMissArrow(svg, origin, target, '#d32f2f', 3);
-    }
     cards.appendChild(card);
   });
 
@@ -2789,6 +2801,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
 
 
 
