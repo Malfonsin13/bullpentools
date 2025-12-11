@@ -2001,28 +2001,33 @@ function computeMissSummary(pitches) {
 
 /* ---------- UTIL: make overlay SVG sit exactly on the grid ---------- */
 function mountOverlayAndDraw(wrapper, grid, drawFn) {
+  // Ensure proper stacking context.
   wrapper.style.position = 'relative';
-  
-  // Ensure a grid even without CSS
+
+  // If a caller forgot to mount the grid first, do it here.
+  if (grid && !grid.parentNode) {
+    wrapper.appendChild(grid); // why: overlay must come after the grid in DOM
+  }
+
   requestAnimationFrame(() => {
     const rect = grid.getBoundingClientRect();
     const svg  = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    
-    // VISUAL FIX: Set z-index higher than the cells (which use z-index 10)
-    svg.style.zIndex = '20'; 
-    
-    svg.style.position = 'absolute';
-    svg.style.top = '0';
-    svg.style.left = '0';
-    svg.style.width = '100%';
-    svg.style.height = '100%';
-    svg.style.pointerEvents = 'none'; // Clicks pass through to the grid
-    svg.style.overflow = 'visible';
-    
-    svg.setAttribute('width', rect.width);
-    svg.setAttribute('height', rect.height);
+
+    // Absolute overlay
+    svg.style.position       = 'absolute';
+    svg.style.top            = '0';
+    svg.style.left           = '0';
+    svg.style.width          = '100%';
+    svg.style.height         = '100%';
+    svg.style.pointerEvents  = 'none';
+    svg.style.overflow       = 'visible';
+    svg.style.zIndex         = '20';  // <-- crucial: above cells (cells use zIndex=10)
+
+    svg.setAttribute('width',   rect.width);
+    svg.setAttribute('height',  rect.height);
     svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
-    
+
+    // Append last so it paints on top.
     wrapper.appendChild(svg);
     drawFn(svg);
   });
@@ -2030,48 +2035,53 @@ function mountOverlayAndDraw(wrapper, grid, drawFn) {
 
 /* ---------- “ALL PITCHES” CARD BUILDER: one grid per PITCH TYPE ---------- */
 function buildAllPitchesCard(type, summary) {
-  const card   = document.createElement('div'); card.className = 'miss-summary-card';
-  const header = document.createElement('div'); header.className = 'miss-summary-header';
-  const title  = document.createElement('span'); title.textContent = `${type}`;
-  const meta   = document.createElement('span'); meta.className = 'miss-summary-meta';
+  const card    = document.createElement('div'); card.className = 'miss-summary-card';
+  const header  = document.createElement('div'); header.className = 'miss-summary-header';
+  const title   = document.createElement('span'); title.textContent = `${type}`;
+  const meta    = document.createElement('span'); meta.className = 'miss-summary-meta';
   meta.textContent = `${summary.total} pitch${summary.total === 1 ? '' : 'es'}`;
   header.appendChild(title); header.appendChild(meta); card.appendChild(header);
 
   const wrapper = document.createElement('div'); wrapper.className = 'miss-mini-wrapper';
-
-  const grid = document.createElement('div');
-  grid.className = 'miss-mini-grid';
+  const grid    = document.createElement('div'); grid.className = 'miss-mini-grid';
   if (!getComputedStyle(grid).gridTemplateColumns) {
     grid.style.display = 'grid';
     grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
     grid.style.gap = '2px';
   }
 
+  // Paint cells (blue intended targets get zIndex:10 elsewhere)
   const maxCount = Math.max(...zoneGridOrder.map(z => summary.counts[z] || 0), 0);
   zoneGridOrder.forEach(z => {
     const cell = document.createElement('div');
     cell.className = `mini-cell ${zoneCssClass(z)}`;
     cell.dataset.zone = z;
-    if (summary.intendedCounts[z]) { cell.classList.add('intended-target'); cell.style.outline = '2px solid #fff'; cell.style.boxSizing = 'border-box'; } // ensure visible
-    const count = summary.counts[z] || 0;
-    cell.style.backgroundColor = getHeatMapColor(count, maxCount);
+
+    if (summary.intendedCounts[z]) {
+      cell.style.backgroundColor = '#E1F5FE';
+      cell.style.outline = '2px solid #29B6F6';
+      cell.style.zIndex = '10';
+    } else {
+      const count = summary.counts[z] || 0;
+      cell.style.backgroundColor = getHeatMapColor(count, maxCount);
+    }
     grid.appendChild(cell);
   });
 
-  card.appendChild(wrapper);                 // <-- mount first
+  // Correct order: grid first, then overlay (arrows).
+  wrapper.appendChild(grid);
+  card.appendChild(wrapper);
+
   mountOverlayAndDraw(wrapper, grid, (svg) => {
-    const globalMax = Math.max(...Object.values(summary.missByIntended)
-                                .map(m => m?.missCount || 0), 0);
+    const globalMax = Math.max(
+      ...Object.values(summary.missByIntended).map(m => m?.missCount || 0),
+      0
+    );
     drawMissArrowsForType(grid, svg, summary.missByIntended, globalMax);
   });
-  
-  const note = document.createElement('div');
-  note.className = 'miss-card-note';
-  note.textContent = 'Heatmap = actual landings, outlined cells = targets, arrows = miss centroids.';
-  card.appendChild(note);
+
   return card;
 }
-
 
 // Draw a single arrow (with head)
 function drawMissArrow(svg, from, to, color, width) {
@@ -2522,22 +2532,33 @@ function buildSinglePitchCard(pitch) {
 // 5. SVG DRAWING HELPERS
 
 function mountOverlayAndDraw(wrapper, grid, drawFn) {
+  // Ensure proper stacking context.
   wrapper.style.position = 'relative';
+
+  // If a caller forgot to mount the grid first, do it here.
+  if (grid && !grid.parentNode) {
+    wrapper.appendChild(grid); // why: overlay must come after the grid in DOM
+  }
+
   requestAnimationFrame(() => {
     const rect = grid.getBoundingClientRect();
     const svg  = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.style.position = 'absolute';
-    svg.style.top = '0';
-    svg.style.left = '0';
-    svg.style.width = '100%';
-    svg.style.height = '100%';
-    svg.style.pointerEvents = 'none';
-    svg.style.overflow = 'visible';
-    
-    svg.setAttribute('width', rect.width);
-    svg.setAttribute('height', rect.height);
+
+    // Absolute overlay
+    svg.style.position       = 'absolute';
+    svg.style.top            = '0';
+    svg.style.left           = '0';
+    svg.style.width          = '100%';
+    svg.style.height         = '100%';
+    svg.style.pointerEvents  = 'none';
+    svg.style.overflow       = 'visible';
+    svg.style.zIndex         = '20';  // <-- crucial: above cells (cells use zIndex=10)
+
+    svg.setAttribute('width',   rect.width);
+    svg.setAttribute('height',  rect.height);
     svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
-    
+
+    // Append last so it paints on top.
     wrapper.appendChild(svg);
     drawFn(svg);
   });
@@ -3099,5 +3120,6 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
 
 
