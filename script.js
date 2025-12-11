@@ -2002,26 +2002,28 @@ function computeMissSummary(pitches) {
 /* ---------- UTIL: make overlay SVG sit exactly on the grid ---------- */
 function mountOverlayAndDraw(wrapper, grid, drawFn) {
   wrapper.style.position = 'relative';
+  
   // Ensure a grid even without CSS
-  const cs = getComputedStyle(grid);
-  if (!cs.gridTemplateColumns || cs.gridTemplateColumns === 'none') {
-    grid.style.display = 'grid';
-    grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
-    grid.style.gap = '2px';
-  }
-  wrapper.appendChild(grid);
-
   requestAnimationFrame(() => {
     const rect = grid.getBoundingClientRect();
     const svg  = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.classList.add('miss-mini-arrows');
-    svg.setAttribute('style',
-      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;');
-    svg.setAttribute('width',  rect.width);
+    
+    // VISUAL FIX: Set z-index higher than the cells (which use z-index 10)
+    svg.style.zIndex = '20'; 
+    
+    svg.style.position = 'absolute';
+    svg.style.top = '0';
+    svg.style.left = '0';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.pointerEvents = 'none'; // Clicks pass through to the grid
+    svg.style.overflow = 'visible';
+    
+    svg.setAttribute('width', rect.width);
     svg.setAttribute('height', rect.height);
     svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+    
     wrapper.appendChild(svg);
-    // draw after the SVG is mounted and sized
     drawFn(svg);
   });
 }
@@ -2419,7 +2421,6 @@ function buildSummaryCard(type, summary) {
 
   const grid = document.createElement('div');
   grid.className = 'miss-mini-grid';
-  // Force grid layout just in case CSS is missing
   grid.style.display = 'grid';
   grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
   grid.style.gap = '2px';
@@ -2439,7 +2440,7 @@ function buildSummaryCard(type, summary) {
     if (summary.intendedCounts[z]) {
         cell.style.backgroundColor = TARGET_BG; 
         cell.style.outline = `2px solid ${TARGET_BORDER}`;
-        cell.style.zIndex = '10'; // ensure border sits on top
+        cell.style.zIndex = '10'; // Borders stay crisp, but SVG (z-20) is now higher
     } else {
         // Normal Heatmap Logic
         cell.style.backgroundColor = count ? getHeatMapColor(count, maxCount) : '#f5f5f5';
@@ -2517,7 +2518,6 @@ function buildSinglePitchCard(pitch) {
 
   return card;
 }
-
 
 // 5. SVG DRAWING HELPERS
 
@@ -3099,4 +3099,5 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
 
