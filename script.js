@@ -1856,45 +1856,56 @@ function zoneCssClass(zoneId) {
 
 function computeMissSummary(pitches) {
   const counts = {};          // actual landings heat (by actual zone)
-  const intendedCounts = {};  // how many times each intended target was chosen
-  const missByIntended = {};  // per intended zone: centroid + counts
+  const intendedCounts = {};  // how many times each intended target chosen
+  const missByIntended = {};  // per intended zone: centroid + stats
 
   pitches.forEach(p => {
     counts[p.actualZone] = (counts[p.actualZone] || 0) + 1;
     intendedCounts[p.intendedZone] = (intendedCounts[p.intendedZone] || 0) + 1;
 
-    if (p.actualZone !== p.intendedZone) {
-      const [r, c] = getZoneRowCol(p.actualZone);
-      if (r === -1 || c === -1) return;
-      if (!missByIntended[p.intendedZone]) {
-        missByIntended[p.intendedZone] = {
-          missCount: 0, sumRow: 0, sumCol: 0, sumDist: 0,
-          strikeLandings: 0, ballLandings: 0
-        };
-      }
-      const bucket = missByIntended[p.intendedZone];
-      bucket.missCount++;
-      bucket.sumRow  += r;
-      bucket.sumCol  += c;
-      bucket.sumDist += p.distance;
+    if (p.actualZone === p.intendedZone) return;
 
-      // classify final actual as strike vs outside
-      if (Array.isArray(strikeLocations) && strikeLocations.includes(p.actualZone)) {
-        bucket.strikeLandings++;
-      } else {
-        bucket.ballLandings++;
-      }
+    // centroid accumulation in grid row/col space
+    const rc = getZoneRowCol(p.actualZone);
+    if (!rc || rc[0] === -1 || rc[1] === -1) return;
+    const [r, c] = rc;
+
+    if (!missByIntended[p.intendedZone]) {
+      missByIntended[p.intendedZone] = {
+        missCount: 0, sumRow: 0, sumCol: 0, sumDist: 0,
+        strikeLandings: 0, ballLandings: 0
+      };
+    }
+    const b = missByIntended[p.intendedZone];
+    b.missCount++;
+    b.sumRow  += r;
+    b.sumCol  += c;
+    b.sumDist += (typeof p.distance === 'number' ? p.distance : 1); // fallback if missing
+
+    // outcome hue source: actual location
+    if (Array.isArray(strikeLocations) && strikeLocations.includes(p.actualZone)) {
+      b.strikeLandings++;
+    } else {
+      b.ballLandings++;
     }
   });
 
   return { counts, intendedCounts, missByIntended, total: pitches.length };
 }
 
-const _RED  = { r: 211, g: 47,  b: 47  };  // #d32f2f
-const _BLUE = { r: 33,  g: 150, b: 243 };  // #2196f3
-function _mixWithWhite(base, t) { // t∈[0..1], 0=white, 1=solid base
-  const lerp = (a,b,u) => Math.round(a + (b - a) * u);
-  return `rgb(${lerp(255, base.r, t)},${lerp(255, base.g, t)},${lerp(255, base.b, t)})`;
+/* ---------- Color utilities ---------- */
+const _RED  = { r: 211, g: 47,  b: 47  };      // strike outcome
+const _BLUE = { r: 33,  g: 150, b: 243 };      // ball outcome
+
+function _clamp01(x) { return Math.max(0, Math.min(1, x)); }
+
+/** Mix a base color with white; t=0 → very light, t=1 → strong */
+function _mixWithWhite(base, t) {
+  const k = _clamp01(t);
+  const r = Math.round(255 + (base.r - 255) * k);
+  const g = Math.round(255 + (base.g - 255) * k);
+  const b = Math.round(255 + (base.b - 255) * k);
+  return `rgb(${r},${g},${b})`;
 }
 
 function drawMissArrowsForType(gridEl, svg, missByIntended, globalMissMax) {
@@ -1906,18 +1917,18 @@ function drawMissArrowsForType(gridEl, svg, missByIntended, globalMissMax) {
     const avgCol   = stats.sumCol / stats.missCount;
     const centroid = getMiniPointFromRowCol(gridEl, avgRow, avgCol);
 
-    const vec = { x: centroid.x - origin.x, y: centroid.y - origin.y };
-    const len = Math.hypot(vec.x, vec.y);
-    const intensity = stats.missCount / (globalMissMax || stats.missCount || 1);
+    const vx = centroid.x - origin.x, vy = centroid.y - origin.y;
+    const len = Math.hypot(vx, vy);
+    const intensity = stats.missCount / (globalMissMax || stats.missCount || 1); // 0..1
 
-    // exact hits → dot
+    // exact hits → dot in outcome color
     if (!len) {
-      const base = (stats.strikeLandings || 0) >= (stats.ballLandings || 0) ? _RED : _BLUE;
+      const base = (stats.strikeLandings >= stats.ballLandings) ? _RED : _BLUE;
       drawDot(svg, origin, _mixWithWhite(base, Math.max(0.35, intensity)));
       return;
     }
 
-    // scale arrow length to avg grid-distance
+    // scale arrow length to average grid-distance
     const style    = getComputedStyle(gridEl);
     const gap      = parseFloat(style.gap) || 0;
     const first    = gridEl.querySelector('.mini-cell');
@@ -1926,14 +1937,13 @@ function drawMissArrowsForType(gridEl, svg, missByIntended, globalMissMax) {
     const avgDist  = stats.sumDist / stats.missCount;
     const desired  = Math.max(avgDist * stepSize, stepSize * 0.5);
     const scale    = desired / len;
-    const target   = { x: origin.x + vec.x * scale, y: origin.y + vec.y * scale };
+    const target   = { x: origin.x + vx * scale, y: origin.y + vy * scale };
 
-    // outcome → hue; frequency → strength
-    const isStrikeMajority = (stats.strikeLandings || 0) >= (stats.ballLandings || 0);
-    const base = isStrikeMajority ? _RED : _BLUE;
-    const color   = _mixWithWhite(base, Math.max(0.35, intensity)); // stronger with hits
-    const opacity = 0.4 + 0.6 * intensity;                           // also stronger opacity
-    const width   = 2 + (stats.missCount / (globalMissMax || stats.missCount || 1)) * 4;
+    // hue by outcome majority; strength by frequency
+    const base    = (stats.strikeLandings >= stats.ballLandings) ? _RED : _BLUE;
+    const color   = _mixWithWhite(base, Math.max(0.35, intensity));
+    const opacity = 0.4 + 0.6 * intensity;
+    const width   = 2 + 4 * intensity;
 
     drawMissArrow(svg, origin, target, color, width, opacity);
   });
@@ -2054,13 +2064,13 @@ function mountOverlayAndDraw(wrapper, grid, drawFn) {
 
 /* ---------- “ALL PITCHES” CARD BUILDER: one grid per PITCH TYPE ---------- */
 function buildAllPitchesCard(type, summary) {
-  const TARGET_OUTLINE = '#6ab7ff';                 // light blue outline
-  const TARGET_BG_LITE = 'rgba(33,150,243,0.15)';   // very light blue fill
+  const TARGET_OUTLINE = '#6ab7ff';               // light blue outline
+  const TARGET_BG_LITE = 'rgba(33,150,243,0.15)'; // soft blue fill for empty targets
 
   const card   = document.createElement('div'); card.className = 'miss-summary-card';
   const header = document.createElement('div'); header.className = 'miss-summary-header';
   const title  = document.createElement('span'); title.textContent = `${type}`;
-  const meta   = document.createElement('span');  meta.className = 'miss-summary-meta';
+  const meta   = document.createElement('span'); meta.className = 'miss-summary-meta';
   meta.textContent = `${summary.total} pitch${summary.total === 1 ? '' : 'es'}`;
   header.appendChild(title); header.appendChild(meta); card.appendChild(header);
 
@@ -2074,8 +2084,9 @@ function buildAllPitchesCard(type, summary) {
     grid.style.gap = '2px';
   }
 
-  // regular heat map by actual landings
-  const maxCount = Math.max(...zoneGridOrder.map(z => summary.counts[z] || 0), 0);
+  // correct max calc (spread)
+  const heatCounts = zoneGridOrder.map(z => summary.counts[z] || 0);
+  const maxCount   = Math.max(0, ...heatCounts);
 
   zoneGridOrder.forEach(z => {
     const cell = document.createElement('div');
@@ -2083,16 +2094,13 @@ function buildAllPitchesCard(type, summary) {
     cell.dataset.zone = z;
 
     const count = summary.counts[z] || 0;
-    cell.style.backgroundColor = getHeatMapColor(count, maxCount);
+    cell.style.backgroundColor = count ? getHeatMapColor(count, maxCount) : TARGET_BG_LITE;
 
-    // target squares: light-blue outline; if no landings, softly fill blue (not white)
+    // target squares: light-blue outline (no white)
     if (summary.intendedCounts[z]) {
       cell.classList.add('intended-target');
-      cell.style.outline = `2px solid ${TARGET_OUTLINE}`; // was #fff
+      cell.style.outline = `2px solid ${TARGET_OUTLINE}`;
       cell.style.boxSizing = 'border-box';
-      if (count === 0) {
-        cell.style.backgroundColor = TARGET_BG_LITE;
-      }
     }
 
     grid.appendChild(cell);
@@ -2100,9 +2108,10 @@ function buildAllPitchesCard(type, summary) {
 
   card.appendChild(wrapper);
   mountOverlayAndDraw(wrapper, grid, (svg) => {
+    // correct global max (no stray dot)
     const globalMax = Math.max(
-      ...Object.values(summary.missByIntended).map(m => m?.missCount || 0),
-      0
+      0,
+      ...Object.values(summary.missByIntended).map(m => (m && m.missCount) || 0)
     );
     drawMissArrowsForType(grid, svg, summary.missByIntended, globalMax);
   });
@@ -2115,33 +2124,32 @@ function buildAllPitchesCard(type, summary) {
   return card;
 }
 
+
 // Draw a single arrow (with head)
 function drawMissArrow(svg, from, to, color, width, opacity = 0.9) {
-  const ns = 'http://www.w3.org/2000/svg';
+  const ns   = 'http://www.w3.org/2000/svg';
   const line = document.createElementNS(ns, 'line');
   line.setAttribute('x1', from.x); line.setAttribute('y1', from.y);
   line.setAttribute('x2', to.x);   line.setAttribute('y2', to.y);
   line.setAttribute('stroke', color);
   line.setAttribute('stroke-width', width);
   line.setAttribute('stroke-linecap', 'round');
-  line.setAttribute('stroke-opacity', opacity);        // new
+  line.setAttribute('stroke-opacity', opacity);     // stronger with frequency
   svg.appendChild(line);
 
+  // head
   const angle = Math.atan2(to.y - from.y, to.x - from.x);
-  const headLen = 8 + width;
-  const hx1 = to.x - headLen * Math.cos(angle - Math.PI / 6);
-  const hy1 = to.y - headLen * Math.sin(angle - Math.PI / 6);
-  const hx2 = to.x - headLen * Math.cos(angle + Math.PI / 6);
-  const hy2 = to.y - headLen * Math.sin(angle + Math.PI / 6);
-
-  const head = document.createElementNS(ns, 'polygon');
-  head.setAttribute('points', `${to.x},${to.y} ${hx1},${hy1} ${hx2},${hy2}`);
-  head.setAttribute('fill', color);
-  head.setAttribute('opacity', opacity);               // was fixed 0.9
-  svg.appendChild(head);
+  const head  = 8 + width;
+  const hx1 = to.x - head * Math.cos(angle - Math.PI / 6);
+  const hy1 = to.y - head * Math.sin(angle - Math.PI / 6);
+  const hx2 = to.x - head * Math.cos(angle + Math.PI / 6);
+  const hy2 = to.y - head * Math.sin(angle + Math.PI / 6);
+  const poly = document.createElementNS(ns, 'polygon');
+  poly.setAttribute('points', `${to.x},${to.y} ${hx1},${hy1} ${hx2},${hy2}`);
+  poly.setAttribute('fill', color);
+  poly.setAttribute('opacity', opacity);
+  svg.appendChild(poly);
 }
-
-
 
 // Dot if no vector length (exact hits)
 function drawDot(svg, point, color) {
@@ -2263,7 +2271,7 @@ function _drawPerPitchArrow(svg, grid, pitch) {
     drawDot(svg, target, '#ff5252');
   } else {
     const isStrike = Array.isArray(strikeLocations) && strikeLocations.includes(pitch.actualZone);
-    const color = isStrike ? 'rgb(211,47,47)' : 'rgb(33,150,243)';
+    const color    = isStrike ? 'rgb(211,47,47)' : 'rgb(33,150,243)';
     drawMissArrow(svg, origin, target, color, 3, 0.9);
   }
 }
@@ -2856,6 +2864,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
 
 
 
