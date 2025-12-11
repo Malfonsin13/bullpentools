@@ -1999,36 +1999,43 @@ function computeMissSummary(pitches) {
   return { counts, intendedCounts, missByIntended, total: pitches.length };
 }
 
+function getBestIntendedZoneForType(pitchType) {
+  const counts = new Map(); // intendedZone -> strike count
+  const sample = intendedZoneData.filter(p => p.pitchType === pitchType);
+  for (const p of sample) {
+    if (strikeLocations.includes(p.actualZone)) {
+      counts.set(p.intendedZone, (counts.get(p.intendedZone) || 0) + 1);
+    }
+  }
+  // choose the zone with the highest count (tie -> lowest zone id)
+  let bestZone = null, bestCount = -1;
+  for (const [zone, cnt] of counts.entries()) {
+    const z = Number(zone);
+    if (cnt > bestCount || (cnt === bestCount && (bestZone === null || z < bestZone))) {
+      bestZone = z; bestCount = cnt;
+    }
+  }
+  return bestZone;
+}
+
 /* ---------- UTIL: make overlay SVG sit exactly on the grid ---------- */
 function mountOverlayAndDraw(wrapper, grid, drawFn) {
-  // Ensure proper stacking context.
   wrapper.style.position = 'relative';
-
-  // If a caller forgot to mount the grid first, do it here.
-  if (grid && !grid.parentNode) {
-    wrapper.appendChild(grid); // why: overlay must come after the grid in DOM
-  }
-
   requestAnimationFrame(() => {
     const rect = grid.getBoundingClientRect();
     const svg  = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-
-    // Absolute overlay
-    svg.style.position       = 'absolute';
-    svg.style.top            = '0';
-    svg.style.left           = '0';
-    svg.style.width          = '100%';
-    svg.style.height         = '100%';
-    svg.style.pointerEvents  = 'none';
-    svg.style.overflow       = 'visible';
-    svg.style.zIndex         = '20';  // <-- crucial: above cells (cells use zIndex=10)
-
-    svg.setAttribute('width',   rect.width);
-    svg.setAttribute('height',  rect.height);
+    svg.style.position = 'absolute';
+    svg.style.top = '0';
+    svg.style.left = '0';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.pointerEvents = 'none';
+    svg.style.overflow = 'visible';
+    svg.style.zIndex = '20';               // <-- ensure arrows are on top
+    svg.setAttribute('width',  rect.width);
+    svg.setAttribute('height', rect.height);
     svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
-
-    // Append last so it paints on top.
-    wrapper.appendChild(svg);
+    wrapper.appendChild(svg);              // <-- append last so it paints on top
     drawFn(svg);
   });
 }
@@ -2050,34 +2057,42 @@ function buildAllPitchesCard(type, summary) {
     grid.style.gap = '2px';
   }
 
-  // Paint cells (blue intended targets get zIndex:10 elsewhere)
+  // Decide which intended zone to outline (most strikes for this pitch type)
+  const bestIntended = getBestIntendedZoneForType(type);
+
+  // Heat scale
   const maxCount = Math.max(...zoneGridOrder.map(z => summary.counts[z] || 0), 0);
+
+  // Paint cells: always heatmap; outline only the best intended zone
   zoneGridOrder.forEach(z => {
     const cell = document.createElement('div');
     cell.className = `mini-cell ${zoneCssClass(z)}`;
     cell.dataset.zone = z;
 
-    if (summary.intendedCounts[z]) {
-      cell.style.backgroundColor = '#E1F5FE';
-      cell.style.outline = '2px solid #29B6F6';
+    const count = summary.counts[z] || 0;
+    cell.style.backgroundColor = maxCount ? getHeatMapColor(count, maxCount) : '#f5f5f5';
+
+    if (bestIntended != null && z === bestIntended) {
+      // Outline only, no blue fill so heatmap stays visible
+      cell.style.outline = '2px solid #29B6F6';      // why: highlight top producing intended zone
+      cell.style.boxSizing = 'border-box';
       cell.style.zIndex = '10';
-    } else {
-      const count = summary.counts[z] || 0;
-      cell.style.backgroundColor = getHeatMapColor(count, maxCount);
     }
+
     grid.appendChild(cell);
   });
 
-  // Correct order: grid first, then overlay (arrows).
+  // Mount grid first, then overlay for arrows
   wrapper.appendChild(grid);
   card.appendChild(wrapper);
 
+  // Arrows (centroid per intended zone)
   mountOverlayAndDraw(wrapper, grid, (svg) => {
-    const globalMax = Math.max(
-      ...Object.values(summary.missByIntended).map(m => m?.missCount || 0),
+    const globalMissMax = Math.max(
+      ...Object.values(summary.missByIntended || {}).map(m => m?.missCount || 0),
       0
     );
-    drawMissArrowsForType(grid, svg, summary.missByIntended, globalMax);
+    drawMissArrowsForType(grid, svg, summary.missByIntended || {}, globalMissMax);
   });
 
   return card;
@@ -2469,7 +2484,7 @@ function buildSummaryCard(type, summary) {
     drawMissArrowsForType(grid, svg, summary.missByIntended, globalMissMax);
   });
 
-  return card;
+  return buildAllPitchesCard(type, summary);
 }
 
 function buildSinglePitchCard(pitch) {
@@ -2532,34 +2547,22 @@ function buildSinglePitchCard(pitch) {
 // 5. SVG DRAWING HELPERS
 
 function mountOverlayAndDraw(wrapper, grid, drawFn) {
-  // Ensure proper stacking context.
   wrapper.style.position = 'relative';
-
-  // If a caller forgot to mount the grid first, do it here.
-  if (grid && !grid.parentNode) {
-    wrapper.appendChild(grid); // why: overlay must come after the grid in DOM
-  }
-
   requestAnimationFrame(() => {
     const rect = grid.getBoundingClientRect();
     const svg  = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-
-    // Absolute overlay
-    svg.style.position       = 'absolute';
-    svg.style.top            = '0';
-    svg.style.left           = '0';
-    svg.style.width          = '100%';
-    svg.style.height         = '100%';
-    svg.style.pointerEvents  = 'none';
-    svg.style.overflow       = 'visible';
-    svg.style.zIndex         = '20';  // <-- crucial: above cells (cells use zIndex=10)
-
-    svg.setAttribute('width',   rect.width);
-    svg.setAttribute('height',  rect.height);
+    svg.style.position = 'absolute';
+    svg.style.top = '0';
+    svg.style.left = '0';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+    svg.style.pointerEvents = 'none';
+    svg.style.overflow = 'visible';
+    svg.style.zIndex = '20';               // <-- ensure arrows are on top
+    svg.setAttribute('width',  rect.width);
+    svg.setAttribute('height', rect.height);
     svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
-
-    // Append last so it paints on top.
-    wrapper.appendChild(svg);
+    wrapper.appendChild(svg);              // <-- append last so it paints on top
     drawFn(svg);
   });
 }
@@ -3120,6 +3123,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
 
 
 
