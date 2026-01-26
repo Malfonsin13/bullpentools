@@ -13,10 +13,10 @@
 
 <body>
   <div id="modeSelection">
-    <button id="bullpenModeBtn">R2K Mode</button>
-    <button id="putawayModeBtn">Putaway Mode</button>
-    <button id="pointsModeBtn">Points Mode</button>
-    <button id="intendedZoneModeBtn">Intended Zone Mode</button>
+    <button id="bullpenModeBtn" class="mode-btn outcome-mode"><span class="mode-label">R2K<br>Mode</span></button>
+    <button id="putawayModeBtn" class="mode-btn outcome-mode">Putaway Mode</button>
+    <button id="pointsModeBtn" class="mode-btn location-mode">Points Mode</button>
+    <button id="intendedZoneModeBtn" class="mode-btn location-mode">Intended Zone Mode</button>
     <button id="liveBPModeBtn">Live BP Mode</button>
     
     <button
@@ -29,11 +29,11 @@
 
   <!-- BULLPEN MODE -->
   <div id="bullpenMode" style="display:none;">
-    <h1>Pitch Tracker</h1>
-    <div id="totalPitches">Total Pitches: 0</div>
-    <div id="currentCount">Current Count: 0-0</div>
+    <h1 id="bullpenTitle">Pitch Tracker</h1>
+    <div id="totalPitches">Total Pitches: <span class="stat-value">0</span></div>
+    <div id="currentCount">Current Count: <span class="stat-value">0-0</span></div>
     <div id="strikePercentage">Strike %: 0</div>
-    <div id="raceWins">Race Wins: 0</div>
+    <div id="raceWins">Wins: <span class="stat-value">0</span></div>
 
     <!-- Regular buttons for R2K Mode -->
     <div id="r2kButtons">
@@ -55,22 +55,46 @@
 <div id="liveBPMode" style="display: none;">
   <div id="liveBPWrapper" class="wrapper">
 
-    <!-- LEFT PANEL: per-pitch summary -->
-    <div id="sideLeft" class="side-panel">
-      <h3>By Pitch Type</h3>
-      <table class="liveTbl" id="tbl-pitchType">
-        <thead>
-          <tr>
-            <th>Pitch</th><th>IZ%</th><th>OOZ%</th><th>CSW%</th>
-            <th>Strike%</th><th>Swing%</th>
-            <!-- NEW columns -->
-            <th>Fly%</th><th>GB%</th><th>LD%</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+    <div id="statsDrawer" class="stats-drawer is-peek">
+      <div id="statsDrawerHandle" class="stats-drawer-handle">
+        <button id="statsDrawerToggle" class="stats-drawer-toggle" type="button">Stats</button>
+        <div id="statsDrawerSummary" class="stats-drawer-summary">
+          <span id="drawerStatCount">Count: 0-0</span>
+          <span id="drawerStatPitches">Pitches: 0</span>
+          <span id="drawerStatStrike">Strike%: 0</span>
+        </div>
+      </div>
+      <div id="statsDrawerContent" class="stats-drawer-content">
+        <!-- LEFT PANEL: per-pitch summary -->
+        <div id="sideLeft" class="side-panel">
+          <h3>By Pitch Type</h3>
+          <table class="liveTbl" id="tbl-pitchType">
+            <thead>
+              <tr>
+                <th>Pitch</th><th>IZ%</th><th>OOZ%</th><th>CSW%</th>
+                <th>Strike%</th><th>Swing%</th>
+                <!-- NEW columns -->
+                <th>Fly%</th><th>GB%</th><th>LD%</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <!-- RIGHT PANEL: per-batter summary -->
+        <div id="sideRight" class="side-panel">
+          <h3>By Batter</h3>
+          <table class="liveTbl" id="tbl-batter">
+            <thead><tr>
+              <th>Batter</th><th>Early Swing%</th><th>Late Swing%</th>
+              <th>Chase%</th><th>CSW%</th><th>Strike%</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
     </div>
-    
+
     <!-- MAIN PANEL: everything else -->
     <div id="mainPanel" class="main-panel">
       <h2 id="modeTitle">Live BP Mode</h2>
@@ -82,7 +106,10 @@
       <option value="L">L</option>
       <option value="R">R</option>
     </select>
-    <button id="addBatterBtn">Add Batter</button>
+    <button id="addBatterBtn" class="add-entry-btn">
+      <span class="btn-full">Add Batter</span>
+      <span class="btn-short">Add</span>
+    </button>
   
     <!-- dropdown of active batters -->
     <select id="batterSelect" style="margin-left:8px;"></select>
@@ -95,7 +122,10 @@
       <option value="RH">RH</option>
       <option value="LH">LH</option>
     </select>
-    <button id="addPitcherBtn">Add Pitcher</button>
+    <button id="addPitcherBtn" class="add-entry-btn">
+      <span class="btn-full">Add Pitcher</span>
+      <span class="btn-short">Add</span>
+    </button>
   
     <select id="pitcherSelect"></select>
   </div>
@@ -572,17 +602,6 @@
 
 
 
-    <!-- RIGHT PANEL: per-batter summary -->
-    <div id="sideRight" class="side-panel">
-      <h3>By Batter</h3>
-      <table class="liveTbl" id="tbl-batter">
-        <thead><tr>
-          <th>Batter</th><th>Early Swing%</th><th>Late Swing%</th>
-          <th>Chase%</th><th>CSW%</th><th>Strike%</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
   </div> <!-- closes #liveBPWrapper -->
 </div>   <!-- closes #liveBPMode -->
 
