@@ -20,6 +20,7 @@ let pitchId = 0;
 
 let points = 0;                // Points-mode only
 let comboPitchTypes = [];
+let maxPotentialPoints = 0;
 
 let isHeatMapMode = false;
 let isIntendedMissMapMode = false;
@@ -135,6 +136,15 @@ document.getElementById('intendedZoneModeBtn').addEventListener('click', functio
   toggleMode();
 });
 
+const statsDrawer = document.getElementById('statsDrawer');
+const statsDrawerToggle = document.getElementById('statsDrawerToggle');
+if (statsDrawer && statsDrawerToggle) {
+  statsDrawerToggle.addEventListener('click', () => {
+    statsDrawer.classList.toggle('is-expanded');
+    statsDrawer.classList.toggle('is-peek');
+  });
+}
+
 /* === BATTER UI handlers === */
 document.getElementById('addBatterBtn').addEventListener('click', () => {
   const name = document.getElementById('newBatterName').value.trim();
@@ -194,6 +204,17 @@ function applyLiveBPVisibilityForMode(currentMode) {
   setDisplay('liveStatsBoard',   showLiveExtras);
   setDisplay('sideLeft',         showLiveExtras); // By Pitch Type table
   setDisplay('sideRight',        showLiveExtras); // By Batter table
+  setDisplay('statsDrawer',      showLiveExtras);
+}
+
+function updateStatsDrawerSummary(countText, totalPitchesText, strikePctText) {
+  const countEl = document.getElementById('drawerStatCount');
+  const pitchesEl = document.getElementById('drawerStatPitches');
+  const strikeEl = document.getElementById('drawerStatStrike');
+  if (!countEl || !pitchesEl || !strikeEl) return;
+  countEl.textContent = countText;
+  pitchesEl.textContent = totalPitchesText;
+  strikeEl.textContent = strikePctText;
 }
 
 function toggleMode() {
@@ -222,6 +243,7 @@ function toggleMode() {
   
   if (mode === "bullpen") {
     document.getElementById('bullpenMode').style.display   = 'block';
+    document.getElementById('bullpenTitle').innerText     = 'R2K Mode';
 
   } else if (mode === "liveBP") {
     document.getElementById('liveBPMode').style.display    = 'block';
@@ -238,6 +260,7 @@ function toggleMode() {
   } else if (mode === "putaway") {
     // Putaway mode often uses the bullpen UI
     document.getElementById('bullpenMode').style.display   = 'block';
+    document.getElementById('bullpenTitle').innerText     = 'Putaway Mode';
 
   } else if (mode === "points") {
     document.getElementById('liveBPMode').style.display    = 'block';
@@ -318,13 +341,13 @@ document.getElementById('ballBtn').addEventListener('click', function() {
   updateUI();
   updateCurrentCount();
 
-  if (mode === "putaway" && ballCount === 2) {
+  if (mode === "bullpen" && ballCount === 2) {
     logCount(strikeCount, ballCount, false); // Use ballCount here
     resetCount();
   }
 
-  if (mode === "bullpen" && ballCount === 2) {
-    logCount(strikeCount, ballCount, false); // Use ballCount here
+  if (mode === "putaway" && ballCount === 2) {
+    logCount(strikeCount, ballCount, false);
     resetCount();
   }
 
@@ -369,6 +392,7 @@ document.getElementById('undoBtn').addEventListener('click', function() {
     // NEW: re-render logs to honor current batter filter
     renderPitchLog();
     renderAtBatLog();
+    if (mode === "points") updatePointsDisplay();
     updateUI();
   }
 });
@@ -429,6 +453,7 @@ if (missMapPitchTypeSelect) {
 
 
 document.getElementById('comboSelectionDoneBtn').addEventListener('click', function() {
+  updatePointsDisplay();
   showPitchTypeSelection(); // Proceed to regular pitch recording
 });
 
@@ -451,6 +476,11 @@ document.querySelectorAll("#pitchTypeSelection .btn").forEach(button => {
   button.addEventListener('click', function() {
     pitchType = this.id;
     actionLog.push(saveCurrentState());
+    if (mode === 'points') {
+      const isCombo = comboPitchTypes.includes(pitchType);
+      maxPotentialPoints += isCombo ? 40 : 20;
+      updatePointsDisplay();
+    }
     showPitchLocationSelection();
   });
 });
@@ -747,6 +777,7 @@ function saveCurrentState() {
     totalStrikesLiveBP,
     foulsAfterTwoStrikes,
     mode,
+    maxPotentialPoints,
     pitchTags: JSON.parse(JSON.stringify(pitchTags)),
     pitchData: pitchData.slice(),
     pitchId,
@@ -767,6 +798,7 @@ function restoreState(state) {
   totalStrikesLiveBP = state.totalStrikesLiveBP;
   foulsAfterTwoStrikes = state.foulsAfterTwoStrikes;
   mode = state.mode;
+  maxPotentialPoints = state.maxPotentialPoints || 0;
   pitchTags = state.pitchTags || {};
   pitchData = state.pitchData.slice();
   pitchId = state.pitchId;
@@ -1623,8 +1655,25 @@ function resetForNextPitch(resetCounts = true) {
 
 
 function updatePointsDisplay() {
-  document.getElementById('pointsDisplay').innerText = `Points: ${points}`;
-  const comboPitchTypesText = comboPitchTypes.length > 0 ? comboPitchTypes.join(', ') : 'None';
+  const ratio = maxPotentialPoints > 0 ? points / maxPotentialPoints : 0;
+  const clampedRatio = Math.max(0, Math.min(1, ratio));
+  const pctText = `${Math.round(clampedRatio * 100)}%`;
+  document.getElementById('pointsDisplay').innerHTML =
+    `<span class="points-label">Points:</span> <span class="points-value">${points}</span> <span class="points-percent">(${pctText})</span>`;
+  const pointsValueEl = document.querySelector('#pointsDisplay .points-value');
+  if (pointsValueEl) pointsValueEl.style.color = getTigersPercentColor(clampedRatio * 100);
+  const pitchTypeLabels = {
+    fourSeam: '4S',
+    twoSeam: '2S',
+    cutter: 'CT',
+    curveBall: 'CB',
+    slider: 'SL',
+    changeup: 'CH',
+    splitter: 'SP'
+  };
+  const comboPitchTypesText = comboPitchTypes.length > 0
+    ? comboPitchTypes.map(type => pitchTypeLabels[type] || type.toUpperCase()).join(', ')
+    : 'None';
   document.getElementById('comboPitchTypesDisplay').innerText = `Combo Pitch Types: ${comboPitchTypesText}`;
 }
 
@@ -1657,22 +1706,44 @@ function updateUI() {
   let strikePercentageFromLog = calculateStrikePercentageFromLog();
   if (mode === "bullpen" || mode === "putaway") {
     strikePercentageFromLog = totalPitchesBullpen > 0 ? (totalStrikesBullpen / totalPitchesBullpen) * 100 : 0;
-    document.getElementById('totalPitches').innerText = `Total Pitches: ${totalPitchesBullpen}`;
+    document.getElementById('totalPitches').innerHTML = `Total Pitches: <span class="stat-value">${totalPitchesBullpen}</span>`;
     let strikeDisplay = strikeCount === 2 ? `${strikeCount}🔥` : strikeCount;
-    document.getElementById('currentCount').innerText = `Current Count: ${ballCount}-${strikeDisplay}`; // Use ballCount
-    let raceWinsDisplay = mode === "putaway" ? '⚰️'.repeat(raceWins) : '🔥'.repeat(raceWins);
-    document.getElementById('raceWins').innerText = `Race Wins: ${raceWinsDisplay}`;
+    document.getElementById('currentCount').innerHTML = `Current Count: <span class="stat-value">${ballCount}-${strikeDisplay}</span>`; // Use ballCount
+      const completedCounts = document.getElementById('countLog').children.length;
+      const winPct = completedCounts > 0 ? (raceWins / completedCounts) * 100 : 0;
+      let raceWinsDisplay = mode === "putaway" ? '💀'.repeat(raceWins) : '🔥'.repeat(raceWins);
+      document.getElementById('raceWins').innerHTML = `Wins: <span class="stat-value">${raceWinsDisplay} (${winPct.toFixed(0)}%)</span>`;
     const strikePercentageElement = document.getElementById('strikePercentage');
-    strikePercentageElement.innerText = `Strike %: ${strikePercentageFromLog.toFixed(2)}`;
-    strikePercentageElement.style.color = getPercentageColor(strikePercentageFromLog);
+    strikePercentageElement.innerHTML = `Strike %: <span class="stat-value">${strikePercentageFromLog.toFixed(2)}</span>`;
+    const strikeValue = strikePercentageElement.querySelector('.stat-value');
+    if (strikeValue) strikeValue.style.color = getTigersPercentColor(strikePercentageFromLog);
   } else if (mode === "liveBP" || mode === "points") {
-    document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
-    document.getElementById('currentCountLiveBP').innerText = `Current Count: ${ballCount}-${strikeCount}`; // Use ballCount
-    let raceWinsDisplayLiveBP = '🔥'.repeat(raceWins);
-    document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplayLiveBP}`;
-    const strikePercentageElementLiveBP = document.getElementById('strikePercentageLiveBP');
-    strikePercentageElementLiveBP.innerText = `Strike %: ${strikePercentageFromLog.toFixed(2)}`;
-    strikePercentageElementLiveBP.style.color = getPercentageColor(strikePercentageFromLog);
+    let raceWinsDisplayLiveBP = 'dY"ť'.repeat(raceWins);
+    if (mode === "points") {
+      document.getElementById('totalPitchesLiveBP').innerHTML =
+        `Total Pitches: <span class="stat-value">${totalPitches}</span>`;
+      document.getElementById('currentCountLiveBP').innerHTML =
+        `Current Count: <span class="stat-value">${ballCount}-${strikeCount}</span>`; // Use ballCount
+      document.getElementById('raceWinsLiveBP').innerHTML =
+        `Wins: <span class="stat-value">${raceWinsDisplayLiveBP}</span>`;
+      const strikePercentageElementLiveBP = document.getElementById('strikePercentageLiveBP');
+      strikePercentageElementLiveBP.innerHTML =
+        `Strike %: <span class="stat-value">${strikePercentageFromLog.toFixed(2)}</span>`;
+      const strikeValue = strikePercentageElementLiveBP.querySelector('.stat-value');
+      if (strikeValue) strikeValue.style.color = getTigersPercentColor(strikePercentageFromLog);
+    } else {
+      document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
+      document.getElementById('currentCountLiveBP').innerText = `Current Count: ${ballCount}-${strikeCount}`; // Use ballCount
+      document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplayLiveBP}`;
+      const strikePercentageElementLiveBP = document.getElementById('strikePercentageLiveBP');
+      strikePercentageElementLiveBP.innerText = `Strike %: ${strikePercentageFromLog.toFixed(2)}`;
+      strikePercentageElementLiveBP.style.color = getPercentageColor(strikePercentageFromLog);
+    }
+    updateStatsDrawerSummary(
+      `Count: ${ballCount}-${strikeCount}`,
+      `Pitches: ${totalPitches}`,
+      `Strike%: ${strikePercentageFromLog.toFixed(2)}`
+    );
   }
 
   const shouldDisplayUndo = actionLog.length > 0;
@@ -1688,14 +1759,34 @@ function getPercentageColor(percentage) {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
+function getTigersPercentColor(percentage) {
+  const startColor = { r: 255, g: 255, b: 255 }; // White
+  const endColor = { r: 250, g: 70, b: 22 }; // Tigers orange
+  const r = Math.round(startColor.r + (endColor.r - startColor.r) * (percentage / 100));
+  const g = Math.round(startColor.g + (endColor.g - startColor.g) * (percentage / 100));
+  const b = Math.round(startColor.b + (endColor.b - startColor.b) * (percentage / 100));
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 function updateCurrentCount() {
   let currentCountDisplay = mode === "bullpen" || mode === "putaway" ? 'currentCount' : 'currentCountLiveBP';
-  document.getElementById(currentCountDisplay).innerText = `Current Count: ${ballCount}-${strikeCount}`;
+  if (currentCountDisplay === 'currentCount') {
+    document.getElementById(currentCountDisplay).innerHTML = `Current Count: <span class="stat-value">${ballCount}-${strikeCount}</span>`;
+  } else if (mode === "points") {
+    document.getElementById(currentCountDisplay).innerHTML = `Current Count: <span class="stat-value">${ballCount}-${strikeCount}</span>`;
+  } else {
+    document.getElementById(currentCountDisplay).innerText = `Current Count: ${ballCount}-${strikeCount}`;
+  }
 }
 
 function resetCount() {
-  ballCount = 0;
-  strikeCount = 0;
+  if (mode === "putaway") {
+    ballCount = 1;
+    strikeCount = 1;
+  } else {
+    ballCount = 0;
+    strikeCount = 0;
+  }
   foulsAfterTwoStrikes = 0;
   pitchCountInAtBat = 0;
   if (isNewAtBat) {
@@ -1719,9 +1810,11 @@ function checkRaceCondition() {
 }
 
 function updateRaceWins() {
-  let raceWinsDisplay = raceWins > 0 ? (mode === "putaway" ? '⚰️' : '🔥').repeat(raceWins) : '';
+  let raceWinsDisplay = raceWins > 0 ? (mode === "putaway" ? '💀' : '🔥').repeat(raceWins) : '';
   if (mode === "bullpen" || mode === "putaway") {
-    document.getElementById('raceWins').innerText = `Race Wins: ${raceWinsDisplay}`;
+    const completedCounts = document.getElementById('countLog').children.length;
+    const winPct = completedCounts > 0 ? (raceWins / completedCounts) * 100 : 0;
+    document.getElementById('raceWins').innerHTML = `Wins: <span class="stat-value">${raceWinsDisplay} (${winPct.toFixed(0)}%)</span>`;
   } else if (mode === "liveBP") {
     document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplay}`;
   }
@@ -2888,7 +2981,7 @@ function logCount(strikes, balls, isK, isWalk = false) {
   let newEntry = document.createElement('li');
   newEntry.innerText = `Final Count: ${balls}-${strikes}`;
   if (isK) {
-    newEntry.innerText += ' ⚰️';
+    newEntry.innerText += ' 💀';
   } else if (isWalk) {
     newEntry.innerText += ' 🏃‍♂️'; // Emoji representing a walk
   }
@@ -3123,6 +3216,7 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
 
 
 
