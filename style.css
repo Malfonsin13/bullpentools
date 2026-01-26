@@ -1,8 +1,19 @@
+:root {
+  --tigers-navy: #0c2340;
+  --tigers-orange: #fa4616;
+  --tigers-blue: #1c3f6e;
+  --tigers-gray: #b0b7bc;
+  --tigers-light: #e9eef2;
+  --tigers-cream: #f8f7f3;
+  --drawer-peek: 32vh;
+  --drawer-open: 65vh;
+}
+
 body {
   text-align: center;
   font-family: 'Permanent Marker', cursive;
-  background-color: #0a2351; /* Brewers' Navy Blue */
-  color: #ffb517; /* Brewers' Gold */
+  background-color: var(--tigers-navy);
+  color: var(--tigers-orange);
 }
 
 button {
@@ -11,14 +22,87 @@ button {
   font-size: 16px;
   cursor: pointer;
   background-color: #ffffff;
-  color: #0a2351;
+  color: var(--tigers-navy);
   border: none;
   border-radius: 5px;
   font-family: 'Permanent Marker', cursive;
 }
 
+.add-entry-btn .btn-short {
+  display: none;
+}
+
+.mode-btn.outcome-mode {
+  background-color: var(--tigers-gray);
+  color: var(--tigers-navy);
+}
+
+.mode-btn.location-mode {
+  background-color: var(--tigers-blue);
+  color: #ffffff;
+}
+
 #currentCount, #raceWins {
   margin-bottom: 20px;
+}
+
+#modeSelection {
+  margin-bottom: 4px;
+}
+
+#bullpenMode h1,
+#modeTitle,
+#intendedZoneTitle {
+  margin: 4px 0 4px;
+}
+
+#bullpenMode,
+#liveBPMode {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+#totalPitches,
+#currentCount,
+#strikePercentage,
+#raceWins {
+  margin-bottom: 8px;
+}
+
+#pointsContainer {
+  margin: 8px 0;
+}
+
+#comboPitchTypesDisplay {
+  margin-top: 4px;
+}
+
+#pitchTypeSelection h3,
+#comboPitchTypeSelection h3,
+#pitchLocationSelection h3,
+#outcomeSelection h3,
+#inPlaySelection h3 {
+  margin: 8px 0;
+}
+
+#completedCounts {
+  margin-top: 8px;
+}
+
+#countLog {
+  margin-top: 8px;
+}
+
+.stat-value {
+  color: var(--tigers-light);
+}
+
+#bullpenTitle,
+#modeTitle,
+#intendedZoneTitle {
+  color: var(--tigers-light);
+  font-size: 2em;
+  line-height: 1.1;
 }
 
 ul {
@@ -33,33 +117,33 @@ li {
 #pitchTypeSelection #fourSeam,
 #pitchTypeSelection #twoSeam,
 #pitchTypeSelection #cutter {
-  background-color: #274472;
+  background-color: var(--tigers-blue);
   color: white;
 }
 
 #pitchTypeSelection #curveBall,
 #pitchTypeSelection #slider {
-  background-color: #d3a625;
+  background-color: var(--tigers-orange);
   color: white;
 }
 
 #pitchTypeSelection #changeup,
 #pitchTypeSelection #splitter {
-  background-color: #3c8ddb;
-  color: white;
+  background-color: var(--tigers-gray);
+  color: var(--tigers-navy);
 }
 
 /* Zone Colors for pitch location selection (not heatmap) */
 .locationBtn.strikeZone {
-  background-color: #ffb517;
+  background-color: var(--tigers-orange);
 }
 
 .locationBtn.shadowZone {
-  background-color: lightblue;
+  background-color: var(--tigers-gray);
 }
 
 .locationBtn.nonCompetitiveZone {
-  background-color: navy;
+  background-color: var(--tigers-navy);
   color: white;
 }
 
@@ -85,8 +169,8 @@ li {
 
 /* Royal Blue Shades for CH, SP */
 #changeup, #splitter {
-  background-color: #3c8ddb; /* Lighter Royal Blue */
-  color: white;
+  background-color: var(--tigers-gray);
+  color: var(--tigers-navy);
 }
 
 #r2kButtons {
@@ -155,15 +239,15 @@ button {
 
 /* NEW: Zone Colors for Intended Zone selection */
 .intendedZoneBtn.strikeZone {
-  background-color: #ffb517;
+  background-color: var(--tigers-orange);
 }
 
 .intendedZoneBtn.shadowZone {
-  background-color: lightblue;
+  background-color: var(--tigers-gray);
 }
 
 .intendedZoneBtn.nonCompetitiveZone {
-  background-color: navy;
+  background-color: var(--tigers-navy);
   color: white;
 }
 
@@ -175,10 +259,10 @@ button {
   margin: 0;
 }
 
-.missMapBtn.strikeZone { background-color: #ffb517; }
-.missMapBtn.shadowZone { background-color: lightblue; }
-.missMapBtn.nonCompetitiveZone { background-color: navy; color: white; }
-.missMapBtn.selected { outline: 2px solid #ffb517; }
+.missMapBtn.strikeZone { background-color: var(--tigers-orange); }
+.missMapBtn.shadowZone { background-color: var(--tigers-gray); }
+.missMapBtn.nonCompetitiveZone { background-color: var(--tigers-navy); color: white; }
+.missMapBtn.selected { outline: 2px solid var(--tigers-orange); }
 
 #missMapShell {
   position: relative;
@@ -245,9 +329,9 @@ button {
   box-sizing: border-box;
 }
 
-.mini-cell.strikeZone { background: rgba(255, 181, 23, 0.3); }
-.mini-cell.shadowZone { background: rgba(173, 216, 230, 0.3); }
-.mini-cell.nonCompetitiveZone { background: rgba(0, 0, 128, 0.35); }
+.mini-cell.strikeZone { background: rgba(250, 70, 22, 0.3); }
+.mini-cell.shadowZone { background: rgba(176, 183, 188, 0.3); }
+.mini-cell.nonCompetitiveZone { background: rgba(12, 35, 64, 0.35); }
 .mini-cell.intended-target { outline: 2px solid #fff; }
 
 .miss-mini-arrows {
@@ -305,14 +389,14 @@ button {
 }
 
 #countLog li {
-  background-color: #ffb517;
-  color: #0a2351;
+  background-color: var(--tigers-orange);
+  color: var(--tigers-navy);
   padding: 10px;
   border-radius: 5px;
 }
 
 .comboPitchTypeBtn {
-  background-color: #007bff; /* Initial color */
+  background-color: var(--tigers-blue);
   color: white;
   border: none;
   padding: 10px 15px;
@@ -324,7 +408,7 @@ button {
 }
 
 .comboPitchTypeBtn.selected {
-  background-color: #28a745; /* Color when selected */
+  background-color: var(--tigers-orange);
 }
 
 @keyframes fadeOut {
@@ -339,9 +423,20 @@ button {
 }
 
 #pointsDisplay {
-  font-size: 36px; /* Increase font size */
+  font-size: 24px;
   font-weight: bold;
-  color: #ff5722; /* Bright color */
+  color: var(--tigers-orange);
+}
+
+.points-label,
+.points-value {
+  font-size: 1em;
+  letter-spacing: 0.02em;
+}
+
+.points-percent {
+  font-size: 0.85em;
+  color: var(--tigers-light);
 }
 
 #comboPitchTypesDisplay {
@@ -363,12 +458,12 @@ button {
 }
 
 #pitchLog li.selected {
-  background-color: lightblue;
+  background-color: var(--tigers-light);
 }
 
 /* Styling for selected flag buttons */
 .flagBtn.selected {
-  border: 2px solid blue;
+  border: 2px solid var(--tigers-orange);
 }
 
 /* Styling for flag emoji */
@@ -379,15 +474,14 @@ button {
 
 /* Override default button styles with IDs */
 #bullpenModeBtn,
-#putawayModeBtn,
-#pointsModeBtn {
-  background-color: lightblue !important;
-  color: #0a2351 !important;
+#putawayModeBtn {
+  background-color: var(--tigers-gray) !important;
+  color: var(--tigers-navy) !important;
 }
 
 #liveBPModeBtn {
-  background-color: #ffb517 !important;
-  color: #0a2351 !important;
+  background-color: var(--tigers-orange) !important;
+  color: var(--tigers-navy) !important;
 }
 
 /* === live-stats tables === */
@@ -404,13 +498,13 @@ button {
   font-size:.9em;
   min-width:220px;
   background:#fff;
-  color:#0a2351;
+  color: var(--tigers-navy);
   border-radius:6px;
   overflow:hidden;
   box-shadow:0 2px 6px rgba(0,0,0,.15);
 }
 .liveTbl thead{
-  background:#274472;
+  background: var(--tigers-blue);
   color:#fff;
   position:sticky;   /* handy when the list grows */
   top:0;
@@ -425,7 +519,7 @@ button {
 }
 
 .liveTbl tbody tr:nth-child(odd){background:#f8f9fa;}
-.liveTbl tbody tr:hover{background:#d3e3ff;}
+.liveTbl tbody tr:hover{background: var(--tigers-light);}
 
 /* colour bars for % cells (simple gray bg) */
 .liveTbl td[data-pct]{
@@ -434,7 +528,7 @@ button {
 .liveTbl td[data-pct]::before{
   content:'';
   position:absolute; inset:0 0 0 0;
-  background:#99c;
+  background: var(--tigers-blue);
   opacity:.15;
   transform-origin:left;
   transform:scaleX(var(--w,0));
@@ -444,9 +538,10 @@ button {
 /* Live BP 3-col layout */
 .wrapper {
   display: grid;
-  grid-template-columns: 1fr 3fr 1fr;
+  grid-template-columns: minmax(240px, 1fr) minmax(520px, 2fr) minmax(240px, 1fr);
   gap: 16px;
   padding: 16px;
+  align-items: start;
 }
 
 .wrapper.points-mode {
@@ -458,6 +553,10 @@ button {
   max-width: 900px;
   width: 100%;
   margin: 0 auto;
+}
+
+.wrapper.points-mode #mainPanel {
+  grid-column: 1;
 }
 
 .wrapper.intended-zone-layout {
@@ -475,7 +574,7 @@ button {
   background: rgba(255,255,255,0.05);
   border: 1px dashed rgba(255,255,255,0.2);
   padding: 12px;
-  overflow-y: auto;
+  overflow: visible;
   min-height: 400px;
 }
 
@@ -484,15 +583,202 @@ button {
   padding: 0 8px;
 }
 
+#sideLeft {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+#mainPanel {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+#sideRight {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.side-panel .liveTbl {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.side-panel .liveTbl th,
+.side-panel .liveTbl td {
+  font-size: 0.8em;
+  padding: 4px 6px;
+  white-space: normal;
+  word-break: break-word;
+}
+
 #tbl-batter .total-row td:first-child,
 #tbl-pitchType .total-row td:first-child { font-weight: 700; }
 
 .total-row .total-cell {
   font-weight: 700;
-  background: #f5f7fb;   /* or transparent */
+  background: var(--tigers-cream);   /* or transparent */
   color: #000;
 }
 
+/* ===== Stats drawer (desktop uses side panels) ===== */
+.stats-drawer,
+.stats-drawer-content {
+  display: contents;
+}
+
+.stats-drawer-handle {
+  display: none;
+}
+
+.stats-drawer-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.stats-drawer-toggle {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--tigers-orange);
+  color: var(--tigers-navy);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  body {
+    padding-bottom: var(--drawer-peek);
+  }
+
+  .wrapper {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .main-panel {
+    padding: 0;
+  }
+
+  #liveStatsBoard {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: 8px;
+    border-radius: 10px;
+    background: rgba(12, 35, 64, 0.95);
+    border: 1px solid rgba(255,255,255,0.2);
+    margin-bottom: 8px;
+  }
+
+  #stats-overall,
+  #stats-early,
+  #stats-late {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  #statsDrawer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--drawer-open);
+    transform: translateY(calc(100% - var(--drawer-peek)));
+    transition: transform 0.2s ease;
+    z-index: 20;
+    display: block;
+    background: rgba(12, 35, 64, 0.98);
+    border-top: 1px solid rgba(255,255,255,0.2);
+  }
+
+  #statsDrawer.is-expanded {
+    transform: translateY(0);
+  }
+
+  #statsDrawerHandle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+  }
+
+  #statsDrawerContent {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  #statsDrawerContent .side-panel {
+    min-height: auto;
+    max-height: calc(var(--drawer-open) - 70px);
+    flex: 0 0 320px;
+    overflow: auto;
+    scroll-snap-align: start;
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  #modeSelection {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(90px, 1fr));
+    gap: 6px;
+    padding: 6px 8px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #modeSelection button {
+    margin: 0;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.1;
+    min-width: 90px;
+    min-height: 44px;
+  }
+
+  #liveBPActions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    gap: 8px;
+    justify-content: center;
+  }
+
+  #liveBPActions button {
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  #batterManagement .add-entry-btn,
+  #pitcherControls .add-entry-btn {
+    margin: 0;
+    padding: 8px 10px;
+    font-size: 12px;
+    min-width: 64px;
+  }
+
+  #batterManagement .add-entry-btn .btn-full,
+  #pitcherControls .add-entry-btn .btn-full {
+    display: none;
+  }
+
+  #batterManagement .add-entry-btn .btn-short,
+  #pitcherControls .add-entry-btn .btn-short {
+    display: inline;
+  }
+}
+@media (max-width: 900px) and (orientation: landscape) {
+  :root {
+    --drawer-peek: 22vh;
+    --drawer-open: 60vh;
+  }
+}
 
 
 
