@@ -542,9 +542,9 @@ button {
 /* Live BP 3-col layout */
 .wrapper {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(520px, 2fr) minmax(240px, 1fr);
+  grid-template-columns: 1fr;
   gap: 16px;
-  padding: 16px;
+  padding: 12px 12px calc(var(--drawer-peek) + 12px);
   align-items: start;
 }
 
@@ -588,18 +588,18 @@ button {
 }
 
 #sideLeft {
-  grid-column: 1;
-  grid-row: 1;
+  grid-column: auto;
+  grid-row: auto;
 }
 
 #mainPanel {
-  grid-column: 2;
-  grid-row: 1;
+  grid-column: 1;
+  grid-row: auto;
 }
 
 #sideRight {
-  grid-column: 3;
-  grid-row: 1;
+  grid-column: auto;
+  grid-row: auto;
 }
 
 .side-panel .liveTbl {
@@ -624,14 +624,47 @@ button {
   color: #000;
 }
 
-/* ===== Stats drawer (desktop uses side panels) ===== */
-.stats-drawer,
-.stats-drawer-content {
-  display: contents;
+/* ===== Stats drawer (all devices use bottom floater) ===== */
+#statsDrawer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--drawer-open);
+  transform: translateY(calc(100% - var(--drawer-peek)));
+  transition: transform 0.2s ease;
+  z-index: 20;
+  display: block;
+  background: rgba(12, 35, 64, 0.98);
+  border-top: 1px solid rgba(255,255,255,0.2);
 }
 
-.stats-drawer-handle {
-  display: none;
+#statsDrawer.is-expanded {
+  transform: translateY(0);
+}
+
+#statsDrawerHandle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+#statsDrawerContent {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+#statsDrawerContent .side-panel {
+  min-height: auto;
+  max-height: calc(var(--drawer-open) - 70px);
+  flex: 0 0 320px;
+  overflow: auto;
+  scroll-snap-align: start;
 }
 
 .stats-drawer-summary {
@@ -650,14 +683,14 @@ button {
   font-size: 12px;
 }
 
-@media (max-width: 900px) {
-  body {
-    padding-bottom: var(--drawer-peek);
-  }
+#liveStatsBoard h3 {
+  color: #fff;
+}
 
+@media (max-width: 900px) {
   .wrapper {
     grid-template-columns: 1fr;
-    padding: 12px;
+    padding: 12px 12px calc(var(--drawer-peek) + 12px);
   }
 
   .main-panel {
@@ -684,47 +717,6 @@ button {
     justify-content: center;
   }
 
-  #statsDrawer {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: var(--drawer-open);
-    transform: translateY(calc(100% - var(--drawer-peek)));
-    transition: transform 0.2s ease;
-    z-index: 20;
-    display: block;
-    background: rgba(12, 35, 64, 0.98);
-    border-top: 1px solid rgba(255,255,255,0.2);
-  }
-
-  #statsDrawer.is-expanded {
-    transform: translateY(0);
-  }
-
-  #statsDrawerHandle {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.15);
-  }
-
-  #statsDrawerContent {
-    display: flex;
-    gap: 12px;
-    padding: 12px;
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-  }
-
-  #statsDrawerContent .side-panel {
-    min-height: auto;
-    max-height: calc(var(--drawer-open) - 70px);
-    flex: 0 0 320px;
-    overflow: auto;
-    scroll-snap-align: start;
-  }
 }
 
 @media (max-width: 640px) and (orientation: portrait) {
