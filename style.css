@@ -28,8 +28,12 @@ button {
   font-family: 'Permanent Marker', cursive;
 }
 
-.add-entry-btn .btn-short {
+.add-entry-btn .btn-full {
   display: none;
+}
+
+.add-entry-btn .btn-short {
+  display: inline;
 }
 
 .mode-btn.outcome-mode {
@@ -724,6 +728,14 @@ button {
 }
 
 @media (max-width: 640px) and (orientation: portrait) {
+  .add-entry-btn .btn-full {
+    display: none;
+  }
+
+  .add-entry-btn .btn-short {
+    display: inline;
+  }
+
   #modeSelection {
     display: grid;
     grid-template-columns: repeat(3, minmax(90px, 1fr));
@@ -763,23 +775,18 @@ button {
     min-width: 64px;
   }
 
-  #batterManagement .add-entry-btn .btn-full,
-  #pitcherControls .add-entry-btn .btn-full {
-    display: none;
-  }
-
-  #batterManagement .add-entry-btn .btn-short,
-  #pitcherControls .add-entry-btn .btn-short {
-    display: inline;
-  }
 }
 @media (max-width: 900px) and (orientation: landscape) {
   :root {
     --drawer-peek: 22vh;
     --drawer-open: 60vh;
   }
+
+  #batterManagement .add-entry-btn,
+  #pitcherControls .add-entry-btn {
+    margin: 0;
+    padding: 8px 10px;
+    font-size: 12px;
+    min-width: 64px;
+  }
 }
-
-
-
-
