@@ -28,19 +28,21 @@ let isTaggingMode = false;
 
 let pitchTags = {};
 let missMapSelectedPitchType = 'all';
+const EMOJI_FIRE = '\u{1F525}';
+const EMOJI_SKULL = '\u{1F480}';
 
-// --------- NEW – AT‑BAT SUMMARY ---------
-// This array stores summary information for each completed at‑bat when running
+// --------- NEW â€“ ATâ€‘BAT SUMMARY ---------
+// This array stores summary information for each completed atâ€‘bat when running
 // in Live BP or Points mode.  Each entry looks like:
 // { atBatNumber, batterId, result, pitchCount }
 let atBats = [];
 
-/* ---------- NEW – BATTER STATE ---------- */
+/* ---------- NEW â€“ BATTER STATE ---------- */
 let batters = [];              // [{id,name,hand}]
 let currentBatterId = null;    // id of batter selected in dropdown
 let batterAutoId = 1;          // simple incremental id
 
-/* ---------- NEW – PITCHER STATE ---------- */
+/* ---------- NEW â€“ PITCHER STATE ---------- */
 let pitchers          = [];        // [{id,name,hand}]
 let currentPitcherId  = null;      // id of pitcher currently on the mound
 let pitcherAutoId     = 1;         // simple incremental id
@@ -54,7 +56,7 @@ let pitchData = [];
   prePitchCount:{balls,strikes},
   postPitchCount:{balls,strikes},
   pitchNumber, atBatNumber,
-  batterId,              //  <— NEW
+  batterId,              //  <â€” NEW
 }
 */
 
@@ -532,7 +534,7 @@ function getZoneRowCol(zoneId) {
 function getDistanceBetweenZones(zoneIdA, zoneIdB) {
   let [rA, cA] = getZoneRowCol(zoneIdA);
   let [rB, cB] = getZoneRowCol(zoneIdB);
-  // We can use simple Euclidean or Manhattan distance. Let’s pick Euclidean:
+  // We can use simple Euclidean or Manhattan distance. Letâ€™s pick Euclidean:
   let rowDiff = rA - rB;
   let colDiff = cA - cB;
   let dist = Math.sqrt(rowDiff*rowDiff + colDiff*colDiff);
@@ -616,7 +618,7 @@ function updateIntendedZoneUI() {
 function logIntendedZonePitch(pitchEntry) {
   let logUl = document.getElementById("intendedZoneLog");
   let li = document.createElement("li");
-  li.textContent = `#${pitchEntry.pitchNumber} – ${pitchEntry.pitchType.toUpperCase()}
+  li.textContent = `#${pitchEntry.pitchNumber} â€“ ${pitchEntry.pitchType.toUpperCase()}
     | Intended: ${pitchEntry.intendedZone}
     | Actual: ${pitchEntry.actualZone}
     | Dist: ${pitchEntry.distance.toFixed(2)}
@@ -713,7 +715,7 @@ function updateHeatMap () {
   const fCount   = document.getElementById('filterCount').value;   // all | early | late
   const fPitch   = document.getElementById('filterPitch').value;   // all | pitchType
   const fBatter  = document.getElementById('filterBatter').value;  // all | LH | RH | id:<n>
-  const fResult  = document.getElementById('filterResult').value;  // all | strike | …
+  const fResult  = document.getElementById('filterResult').value;  // all | strike | â€¦
 
   const locationCounts = Array(50).fill(0);
 
@@ -829,10 +831,10 @@ function updateBatterDropdown () {
   const sel = document.getElementById('batterSelect');
   sel.innerHTML = '';
 
-  /* ⇢ NEW: empty option shows every batter */
+  /* â‡¢ NEW: empty option shows every batter */
   const allOpt = document.createElement('option');
-  allOpt.value = '';                   // empty string → “all”
-  allOpt.textContent = '— All Batters —';
+  allOpt.value = '';                   // empty string â†’ â€œallâ€
+  allOpt.textContent = 'â€” All Batters â€”';
   sel.appendChild(allOpt);
 
   batters.forEach(b => {
@@ -861,7 +863,7 @@ function updatePitcherDropdown () {
   sel.innerHTML = '';
 
   const optAll = document.createElement('option');
-  optAll.value = ''; optAll.textContent = '— Select Pitcher —';
+  optAll.value = ''; optAll.textContent = 'â€” Select Pitcher â€”';
   sel.appendChild(optAll);
 
   pitchers.forEach(p => {
@@ -904,14 +906,14 @@ function showOutcomeSelection() {
   document.getElementById('outcomeSelection').style.display = 'block';
 }
 
-// —— unified Outcome Selection handler ——
+// â€”â€” unified Outcome Selection handler â€”â€”
 document.querySelectorAll("#outcomeSelection .btn").forEach(button => {
   button.addEventListener('click', function() {
     const outcome = this.id;
     actionLog.push(saveCurrentState());
     processOutcome(outcome);
 
-    // if it wasn’t an In‑Play sub‑flow, go right back to pitch‑type
+    // if it wasnâ€™t an Inâ€‘Play subâ€‘flow, go right back to pitchâ€‘type
     if (outcome !== 'inPlay' && outcome !== 'hbp') {
       document.getElementById('outcomeSelection').style.display   = 'none';
       document.getElementById('inPlaySelection').style.display    = 'none';
@@ -954,17 +956,17 @@ function processOutcome(outcome) {
       let pointsToDeduct = 0;
 
       if (ballLocations.includes(pitchLocation)) {
-        pointsToDeduct += 10; scenarioEmojis += '💀';
+        pointsToDeduct += 10; scenarioEmojis += 'ðŸ’€';
       }
 
       // Losing the race to 2 balls within first 3 pitches
       if (previousCount.balls === 1 && ballCount === 2 && strikeCount < 2 && pitchCount <= 3) {
-        pointsToDeduct += 20; scenarioEmojis += '💀';
+        pointsToDeduct += 20; scenarioEmojis += 'ðŸ’€';
       }
 
       // Walk
       if (ballCount >= 4) {
-        pointsToDeduct += 30; scenarioEmojis += '💀';
+        pointsToDeduct += 30; scenarioEmojis += 'ðŸ’€';
       }
 
       points -= pointsToDeduct;
@@ -1014,21 +1016,21 @@ function processOutcome(outcome) {
     // Points bonuses
     if (mode === 'points') {
       let pointsToAdd = 0;
-      if (strikeLocations.includes(pitchLocation)) { pointsToAdd += 10; scenarioEmojis += '🎯'; }
+      if (strikeLocations.includes(pitchLocation)) { pointsToAdd += 10; scenarioEmojis += 'ðŸŽ¯'; }
 
       if (previousCount.balls === 0 && previousCount.strikes === 0 && strikeCount === 1) {
-        pointsToAdd += 10; scenarioEmojis += '🚀';
+        pointsToAdd += 10; scenarioEmojis += 'ðŸš€';
       }
       if (strikeCount === 2 && previousCount.strikes === 1 && pitchCount <= 3) {
-        pointsToAdd += 10; scenarioEmojis += '🏁';
+        pointsToAdd += 10; scenarioEmojis += 'ðŸ';
       }
       if (strikeCount >= 3 && previousCount.strikes === 2 &&
           (pitchCount - previousCount.pitchCount) === 1) {
-        pointsToAdd += 10; scenarioEmojis += '⚡';
+        pointsToAdd += 10; scenarioEmojis += 'âš¡';
       }
 
       if (comboPitchTypes.includes(pitchType) && pointsToAdd > 0) {
-        pointsToAdd *= 2; scenarioEmojis += '🔥'; displayComboNotification();
+        pointsToAdd *= 2; scenarioEmojis += 'ðŸ”¥'; displayComboNotification();
       }
       points += pointsToAdd;
       updatePointsDisplay();
@@ -1071,19 +1073,19 @@ function processOutcome(outcome) {
 
     if (mode === 'points') {
       let pointsToAdd = 0;
-      if (strikeLocations.includes(pitchLocation)) { pointsToAdd += 10; scenarioEmojis += '🎯'; }
+      if (strikeLocations.includes(pitchLocation)) { pointsToAdd += 10; scenarioEmojis += 'ðŸŽ¯'; }
       if (previousCount.balls === 0 && previousCount.strikes === 0 && strikeCount === 1) {
-        pointsToAdd += 10; scenarioEmojis += '🚀';
+        pointsToAdd += 10; scenarioEmojis += 'ðŸš€';
       }
       if (strikeCount === 2 && previousCount.strikes === 1 && pitchCount <= 3) {
-        pointsToAdd += 10; scenarioEmojis += '🏁';
+        pointsToAdd += 10; scenarioEmojis += 'ðŸ';
       }
       if (strikeCount >= 3 && previousCount.strikes === 2 &&
           (pitchCount - previousCount.pitchCount) === 1) {
-        pointsToAdd += 10; scenarioEmojis += '⚡';
+        pointsToAdd += 10; scenarioEmojis += 'âš¡';
       }
       if (comboPitchTypes.includes(pitchType) && pointsToAdd > 0) {
-        pointsToAdd *= 2; scenarioEmojis += '🔥'; displayComboNotification();
+        pointsToAdd *= 2; scenarioEmojis += 'ðŸ”¥'; displayComboNotification();
       }
       points += pointsToAdd;
       updatePointsDisplay();
@@ -1154,16 +1156,16 @@ function processOutcomeBasedOnLocation() {
 }
 
 /* ---------- LIVE STATS ---------- */
-/*  helper – returns an empty counter object for swing, csw, …  */
+/*  helper â€“ returns an empty counter object for swing, csw, â€¦  */
 function makeCounters () {
   const base = {}; ['swing','csw','ipo','iz','ooz','strike'].forEach(k=>base[k]=0);
   return { all:{...base}, early:{...base}, late:{...base} };
 }
 
 /* early = strikes < 2 | late = strikes == 2
-   ─ The six “headline” numbers (and the early/late rows underneath)
+   â”€ The six â€œheadlineâ€ numbers (and the early/late rows underneath)
      are ALWAYS calculated from *every* pitch in pitchData.
-   ─ The two tables underneath still respect the dropdown filter. */
+   â”€ The two tables underneath still respect the dropdown filter. */
 
 function updateLiveStats () {
   const swingEl = document.getElementById('stat-swing');
@@ -1207,25 +1209,27 @@ function updateLiveStats () {
     if (strike) { totals.all.strike++; totals[bucket].strike++;}
   });
 
-  const pct = (n,d)=> d ? (n/d*100).toFixed(1) : '0.0';
+  const pctValue = (n,d)=> d ? (n/d*100) : 0;
+  const setLivePct = (id, label, num, den) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const value = pctValue(num, den);
+    el.innerHTML = `${label}: <span class="stat-value live-stat-value">${value.toFixed(1)}</span>`;
+    const valueEl = el.querySelector('.live-stat-value');
+    if (valueEl) valueEl.style.color = getTigersPercentColor(value);
+  };
 
   /* ----- write the headline numbers (ALWAYS global) ----- */
-  document.getElementById('stat-swing' ).textContent = `Swing%:  ${pct(totals.all.swing , denoms.all)}`;
-  document.getElementById('stat-csw'   ).textContent = `CSW%:    ${pct(totals.all.csw   , denoms.all)}`;
-  document.getElementById('stat-ipo'   ).textContent = `IPO%:    ${pct(totals.all.ipo   , denoms.all)}`;
-  document.getElementById('stat-iz'    ).textContent = `IZ%:     ${pct(totals.all.iz    , denoms.all)}`;
-  document.getElementById('stat-ooz'   ).textContent = `OOZ%:    ${pct(totals.all.ooz   , denoms.all)}`;
-  document.getElementById('stat-strike').textContent = `Strike%: ${pct(totals.all.strike, denoms.all)}`;
-
-  document.getElementById('stat-early-csw'  ).textContent =
-    `CSW% ${pct(totals.early.csw , denoms.early)}`;
-  document.getElementById('stat-early-strike').textContent =
-    `Strike% ${pct(totals.early.strike , denoms.early)}`;
-
-  document.getElementById('stat-late-csw'   ).textContent =
-    `CSW% ${pct(totals.late.csw  , denoms.late)}`;
-  document.getElementById('stat-late-strike').textContent =
-    `Strike% ${pct(totals.late.strike, denoms.late)}`;
+  setLivePct('stat-swing', 'Swing%', totals.all.swing, denoms.all);
+  setLivePct('stat-csw', 'CSW%', totals.all.csw, denoms.all);
+  setLivePct('stat-ipo', 'IPO%', totals.all.ipo, denoms.all);
+  setLivePct('stat-iz', 'IZ%', totals.all.iz, denoms.all);
+  setLivePct('stat-ooz', 'OOZ%', totals.all.ooz, denoms.all);
+  setLivePct('stat-strike', 'Strike%', totals.all.strike, denoms.all);
+  setLivePct('stat-early-csw', 'CSW%', totals.early.csw, denoms.early);
+  setLivePct('stat-early-strike', 'Strike%', totals.early.strike, denoms.early);
+  setLivePct('stat-late-csw', 'CSW%', totals.late.csw, denoms.late);
+  setLivePct('stat-late-strike', 'Strike%', totals.late.strike, denoms.late);
 
   /* ----- tables: still respond to the dropdown filter ----- */
   const aggFiltered = buildAggregators(filtered); // filtered set
@@ -1268,7 +1272,7 @@ function insertTotalRow(tbody, label, stats, columns) {
   });
 }
 
-/* ▬▬ paint the two live-stats tables with heat-colors ▬▬ */
+/* â–¬â–¬ paint the two live-stats tables with heat-colors â–¬â–¬ */
 function renderLiveTables(aggFiltered, aggAll) {
   /* ---------- BY PITCH TYPE ---------- */
   const tpBody = document.querySelector('#tbl-pitchType tbody');
@@ -1277,8 +1281,8 @@ function renderLiveTables(aggFiltered, aggAll) {
   const pitchCols = ['izPct','oozPct','cswPct','strikePct','swingPct','flyPct','gbPct','ldPct'];
   const pitchMax  = computeColumnMax(aggFiltered.byPitch, pitchCols);
 
-  // ⬆️ TOTAL row first (for the *filtered* set)
-  insertTotalRow(tpBody, '— All —', aggFiltered.overall, pitchCols);
+  // â¬†ï¸ TOTAL row first (for the *filtered* set)
+  insertTotalRow(tpBody, 'â€” All â€”', aggFiltered.overall, pitchCols);
 
   // then each pitch type
   aggFiltered.byPitch.forEach((stats, pt) => {
@@ -1300,9 +1304,9 @@ function renderLiveTables(aggFiltered, aggAll) {
   const batterCols = ['earlySwingPct','lateSwingPct','chasePct','cswPct','strikePct'];
   const batterMax  = computeColumnMax(aggFiltered.byBatter, batterCols);
 
-  // ⬆️ TOTAL row first (for the *filtered* set)
+  // â¬†ï¸ TOTAL row first (for the *filtered* set)
   // earlySwing% & lateSwing% use early/late denominators; chase% = OOZ-swings / swings
-  insertTotalRow(btBody, '— All —', aggFiltered.overall, batterCols);
+  insertTotalRow(btBody, 'â€” All â€”', aggFiltered.overall, batterCols);
 
   // then each batter (skip any stray aggregate key)
   aggFiltered.byBatter.forEach((stats, id) => {
@@ -1354,7 +1358,7 @@ function displayComboNotification() {
 
 function displayPointsDeduction(pointsLost) {
   let deductionNotification = document.createElement('div');
-  deductionNotification.innerText = `-${pointsLost} 💀`;
+  deductionNotification.innerText = `-${pointsLost} ðŸ’€`;
   deductionNotification.style.position = 'fixed';
   deductionNotification.style.top = '10%';
   deductionNotification.style.right = '10%';
@@ -1403,7 +1407,7 @@ document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
     logPitchResult(pitchType, `In Play - ${inPlayResult}`, pitchLocation, '', prev, 'inPlay');
   
     // *** NEW: record the at-bat summary ***
-    logAtBatResult("In Play – " + inPlayResult);
+    logAtBatResult("In Play â€“ " + inPlayResult);
   
     // and reset for the next pitch sequence
     isNewAtBat = true;
@@ -1423,7 +1427,7 @@ function renderPitchLog() {
   if (!ul) return;
   ul.innerHTML = '';
 
-  // null → “All batters”
+  // null â†’ â€œAll battersâ€
   const wantId = currentBatterId;
 
   pitchData.forEach(p => {
@@ -1454,7 +1458,7 @@ function renderPitchLog() {
     ul.appendChild(li);
   });
 
-  // If we’re currently in tagging mode, keep items selectable
+  // If weâ€™re currently in tagging mode, keep items selectable
   if (isTaggingMode) {
     document.querySelectorAll('#pitchLog li').forEach(item => {
       item.classList.add('selectable');
@@ -1472,7 +1476,7 @@ function renderAtBatLog() {
   if (!list) return;
   list.innerHTML = '';
 
-  const wantId = currentBatterId; // null → all
+  const wantId = currentBatterId; // null â†’ all
   atBats.forEach(ab => {
     if (wantId && ab.batterId !== wantId) return;
 
@@ -1480,7 +1484,7 @@ function renderAtBatLog() {
     const batter = batters.find(b => b.id === ab.batterId);
     const name  = batter ? batter.name : 'Unknown';
     const hand  = batter ? batter.hand : '';
-    li.innerText = `#${ab.atBatNumber} – ${name}${hand ? ' (' + hand + ')' : ''} – ${ab.result} (${ab.pitchCount} pitches)`;
+    li.innerText = `#${ab.atBatNumber} â€“ ${name}${hand ? ' (' + hand + ')' : ''} â€“ ${ab.result} (${ab.pitchCount} pitches)`;
     list.appendChild(li);
   });
 }
@@ -1572,9 +1576,9 @@ function applyTagToSelectedPitches() {
   let flagId = selectedFlagBtn.id; // e.g., 'flag-check-video'
 
   let flagInfo = {
-    'flag-check-video': { emoji: '🟡', description: 'Check Video' },
-    'flag-breakthrough': { emoji: '🟢', description: 'Breakthrough' },
-    'flag-learning-moment': { emoji: '🔴', description: 'Learning Moment' },
+    'flag-check-video': { emoji: 'ðŸŸ¡', description: 'Check Video' },
+    'flag-breakthrough': { emoji: 'ðŸŸ¢', description: 'Breakthrough' },
+    'flag-learning-moment': { emoji: 'ðŸ”´', description: 'Learning Moment' },
   };
 
   let flagData = flagInfo[flagId];
@@ -1704,41 +1708,45 @@ function removeLastCompletedCount() {
 
 function updateUI() {
   let strikePercentageFromLog = calculateStrikePercentageFromLog();
+  const fireEmoji = EMOJI_FIRE;
+  const skullEmoji = EMOJI_SKULL;
+
   if (mode === "bullpen" || mode === "putaway") {
     strikePercentageFromLog = totalPitchesBullpen > 0 ? (totalStrikesBullpen / totalPitchesBullpen) * 100 : 0;
     document.getElementById('totalPitches').innerHTML = `Total Pitches: <span class="stat-value">${totalPitchesBullpen}</span>`;
-    let strikeDisplay = strikeCount === 2 ? `${strikeCount}🔥` : strikeCount;
-    document.getElementById('currentCount').innerHTML = `Current Count: <span class="stat-value">${ballCount}-${strikeDisplay}</span>`; // Use ballCount
-      const completedCounts = document.getElementById('countLog').children.length;
-      const winPct = completedCounts > 0 ? (raceWins / completedCounts) * 100 : 0;
-      let raceWinsDisplay = mode === "putaway" ? '💀'.repeat(raceWins) : '🔥'.repeat(raceWins);
-      document.getElementById('raceWins').innerHTML = `Wins: <span class="stat-value">${raceWinsDisplay} (${winPct.toFixed(0)}%)</span>`;
+    let strikeDisplay = strikeCount === 2 ? `${strikeCount}${fireEmoji}` : strikeCount;
+    document.getElementById('currentCount').innerHTML = `Current Count: <span class="stat-value">${ballCount}-${strikeDisplay}</span>`;
+
+    const completedCounts = document.getElementById('countLog').children.length;
+    const winPct = completedCounts > 0 ? (raceWins / completedCounts) * 100 : 0;
+    const raceEmoji = mode === "putaway" ? skullEmoji : fireEmoji;
+    const raceWinsIcons = raceWins > 0 ? raceEmoji.repeat(raceWins) : '';
+    const raceWinsSummary = `${raceWinsIcons}${raceWinsIcons ? ' ' : ''}(${winPct.toFixed(0)}%)`;
+    document.getElementById('raceWins').innerHTML = `Wins: <span class="stat-value">${raceWinsSummary}</span>`;
+
     const strikePercentageElement = document.getElementById('strikePercentage');
     strikePercentageElement.innerHTML = `Strike %: <span class="stat-value">${strikePercentageFromLog.toFixed(2)}</span>`;
     const strikeValue = strikePercentageElement.querySelector('.stat-value');
     if (strikeValue) strikeValue.style.color = getTigersPercentColor(strikePercentageFromLog);
   } else if (mode === "liveBP" || mode === "points") {
-    let raceWinsDisplayLiveBP = 'dY"ť'.repeat(raceWins);
-    if (mode === "points") {
-      document.getElementById('totalPitchesLiveBP').innerHTML =
-        `Total Pitches: <span class="stat-value">${totalPitches}</span>`;
-      document.getElementById('currentCountLiveBP').innerHTML =
-        `Current Count: <span class="stat-value">${ballCount}-${strikeCount}</span>`; // Use ballCount
-      document.getElementById('raceWinsLiveBP').innerHTML =
-        `Wins: <span class="stat-value">${raceWinsDisplayLiveBP}</span>`;
-      const strikePercentageElementLiveBP = document.getElementById('strikePercentageLiveBP');
-      strikePercentageElementLiveBP.innerHTML =
-        `Strike %: <span class="stat-value">${strikePercentageFromLog.toFixed(2)}</span>`;
-      const strikeValue = strikePercentageElementLiveBP.querySelector('.stat-value');
-      if (strikeValue) strikeValue.style.color = getTigersPercentColor(strikePercentageFromLog);
-    } else {
-      document.getElementById('totalPitchesLiveBP').innerText = `Total Pitches: ${totalPitches}`;
-      document.getElementById('currentCountLiveBP').innerText = `Current Count: ${ballCount}-${strikeCount}`; // Use ballCount
-      document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplayLiveBP}`;
-      const strikePercentageElementLiveBP = document.getElementById('strikePercentageLiveBP');
-      strikePercentageElementLiveBP.innerText = `Strike %: ${strikePercentageFromLog.toFixed(2)}`;
-      strikePercentageElementLiveBP.style.color = getPercentageColor(strikePercentageFromLog);
-    }
+    const completedAtBats = atBats.length;
+    const winPct = completedAtBats > 0 ? (raceWins / completedAtBats) * 100 : 0;
+    const raceWinsIcons = raceWins > 0 ? fireEmoji.repeat(raceWins) : '';
+    const raceWinsSummary = `${raceWinsIcons}${raceWinsIcons ? ' ' : ''}(${winPct.toFixed(0)}%)`;
+
+    document.getElementById('totalPitchesLiveBP').innerHTML =
+      `Total Pitches: <span class="stat-value">${totalPitches}</span>`;
+    document.getElementById('currentCountLiveBP').innerHTML =
+      `Current Count: <span class="stat-value">${ballCount}-${strikeCount}</span>`;
+    document.getElementById('raceWinsLiveBP').innerHTML =
+      `Race Wins: <span class="stat-value">${raceWinsSummary}</span>`;
+
+    const strikePercentageElementLiveBP = document.getElementById('strikePercentageLiveBP');
+    strikePercentageElementLiveBP.innerHTML =
+      `Strike %: <span class="stat-value">${strikePercentageFromLog.toFixed(2)}</span>`;
+    const strikeValue = strikePercentageElementLiveBP.querySelector('.stat-value');
+    if (strikeValue) strikeValue.style.color = getTigersPercentColor(strikePercentageFromLog);
+
     updateStatsDrawerSummary(
       `Count: ${ballCount}-${strikeCount}`,
       `Pitches: ${totalPitches}`,
@@ -1801,7 +1809,7 @@ function checkRaceCondition() {
   // LiveBP/Points race wins handled inside processOutcome() when the pitch *reaches* 2 strikes.
   // Bullpen race win on 2 strikes handled in the strikeBtn handler.
   // Putaway awards only on K button.
-  // → Only auto-complete the bullpen “2 balls, 0 strikes” case here.
+  // â†’ Only auto-complete the bullpen â€œ2 balls, 0 strikesâ€ case here.
   if (mode === "bullpen" && ballCount === 2 && strikeCount === 0) {
     logCount(strikeCount, ballCount, false);
     resetCount();
@@ -1810,13 +1818,19 @@ function checkRaceCondition() {
 }
 
 function updateRaceWins() {
-  let raceWinsDisplay = raceWins > 0 ? (mode === "putaway" ? '💀' : '🔥').repeat(raceWins) : '';
+  const raceEmoji = mode === "putaway" ? EMOJI_SKULL : EMOJI_FIRE;
+  const raceWinsIcons = raceWins > 0 ? raceEmoji.repeat(raceWins) : '';
+
   if (mode === "bullpen" || mode === "putaway") {
     const completedCounts = document.getElementById('countLog').children.length;
     const winPct = completedCounts > 0 ? (raceWins / completedCounts) * 100 : 0;
-    document.getElementById('raceWins').innerHTML = `Wins: <span class="stat-value">${raceWinsDisplay} (${winPct.toFixed(0)}%)</span>`;
-  } else if (mode === "liveBP") {
-    document.getElementById('raceWinsLiveBP').innerText = `Race Wins: ${raceWinsDisplay}`;
+    const summary = `${raceWinsIcons}${raceWinsIcons ? ' ' : ''}(${winPct.toFixed(0)}%)`;
+    document.getElementById('raceWins').innerHTML = `Wins: <span class="stat-value">${summary}</span>`;
+  } else if (mode === "liveBP" || mode === "points") {
+    const completedAtBats = atBats.length;
+    const winPct = completedAtBats > 0 ? (raceWins / completedAtBats) * 100 : 0;
+    const summary = `${raceWinsIcons}${raceWinsIcons ? ' ' : ''}(${winPct.toFixed(0)}%)`;
+    document.getElementById('raceWinsLiveBP').innerHTML = `Race Wins: <span class="stat-value">${summary}</span>`;
   }
 }
 
@@ -2020,7 +2034,7 @@ function getMissArrowColor(count, max) {
   return `rgb(${r},${g},${b})`;
 }
 
-// Helper: simple white→red heat for cells
+// Helper: simple whiteâ†’red heat for cells
 function getHeatMapColor(value, max) {
   if (!max) return 'rgb(245,245,245)';
   const ratio = value / max;
@@ -2029,7 +2043,7 @@ function getHeatMapColor(value, max) {
   return `rgb(255,${g},${b})`;
 }
 
-// Helper: classify a zone → CSS class already used elsewhere
+// Helper: classify a zone â†’ CSS class already used elsewhere
 function zoneCssClass(zoneId) {
   if (strikeLocations.includes(zoneId)) return 'strikeZone';
   if (shadowLocations.includes(zoneId)) return 'shadowZone';
@@ -2133,7 +2147,7 @@ function mountOverlayAndDraw(wrapper, grid, drawFn) {
   });
 }
 
-/* ---------- “ALL PITCHES” CARD BUILDER: one grid per PITCH TYPE ---------- */
+/* ---------- â€œALL PITCHESâ€ CARD BUILDER: one grid per PITCH TYPE ---------- */
 function buildAllPitchesCard(type, summary) {
   const card    = document.createElement('div'); card.className = 'miss-summary-card';
   const header  = document.createElement('div'); header.className = 'miss-summary-header';
@@ -2269,7 +2283,7 @@ function renderMissSummaryCards() {
   );
   if (!filtered.length) { status.innerText = 'No pitches recorded for that pitch type yet.'; return; }
 
-  // A) All pitches → one card per pitch TYPE (unchanged behavior)
+  // A) All pitches â†’ one card per pitch TYPE (unchanged behavior)
   if (missMapSelectedPitchType === 'all') {
     const byType = {};
     filtered.forEach(p => { (byType[p.pitchType] ||= []).push(p); });
@@ -2282,17 +2296,17 @@ function renderMissSummaryCards() {
       cards.appendChild(card);
     });
 
-    status.innerText = 'All Pitches – summarized by pitch type';
+    status.innerText = 'All Pitches â€“ summarized by pitch type';
     return;
   }
 
-  // B) Single pitch type → one card per pitch (make intended/actual obvious + arrow)
+  // B) Single pitch type â†’ one card per pitch (make intended/actual obvious + arrow)
   filtered.forEach(pitch => {
     const card   = document.createElement('div'); card.className = 'miss-summary-card';
     const header = document.createElement('div'); header.className = 'miss-summary-header';
     const title  = document.createElement('span'); title.textContent = `Pitch #${pitch.pitchNumber}`;
     const meta   = document.createElement('span'); meta.className = 'miss-summary-meta';
-    meta.textContent = `${pitch.pitchType.toUpperCase()} – Intended ${pitch.intendedZone} → Actual ${pitch.actualZone}`;
+    meta.textContent = `${pitch.pitchType.toUpperCase()} â€“ Intended ${pitch.intendedZone} â†’ Actual ${pitch.actualZone}`;
     header.appendChild(title); header.appendChild(meta); card.appendChild(header);
 
     const wrapper = document.createElement('div'); wrapper.className = 'miss-mini-wrapper';
@@ -2328,7 +2342,7 @@ function renderMissSummaryCards() {
     cards.appendChild(card);
   });
 
-  status.innerText = `${missMapSelectedPitchType.toUpperCase()} – per pitch`;
+  status.innerText = `${missMapSelectedPitchType.toUpperCase()} â€“ per pitch`;
 }
 
 // === END FIX ===
@@ -2496,7 +2510,7 @@ function renderMissSummaryCards() {
 
   // --- VIEW A: AGGREGATE SUMMARY (One card per pitch type) ---
   if (missMapSelectedPitchType === 'all') {
-    status.innerText = 'All Pitches – Summarized by Pitch Type';
+    status.innerText = 'All Pitches â€“ Summarized by Pitch Type';
     
     // Group by pitch type
     const byType = {};
@@ -2511,7 +2525,7 @@ function renderMissSummaryCards() {
   }
 
   // --- VIEW B: INDIVIDUAL PITCHES (One card per pitch) ---
-  status.innerText = `${missMapSelectedPitchType.toUpperCase()} – Individual Pitches`;
+  status.innerText = `${missMapSelectedPitchType.toUpperCase()} â€“ Individual Pitches`;
   
   filtered.forEach(pitch => {
     const card = buildSinglePitchCard(pitch);
@@ -2819,7 +2833,7 @@ function computeColumnMax(map, columns) {
 }
 
 
-/* --- map %-metric → its raw count so we can show “(n)” ----------- */
+/* --- map %-metric â†’ its raw count so we can show â€œ(n)â€ ----------- */
 function metricCount(stats, metric) {
   switch (metric) {
     case 'izPct'        : return stats.iz;
@@ -2880,13 +2894,13 @@ function accumulate(stats, p) {
                    .includes(p.outcome);
   const isCSW = ['whiff','calledStrike'].includes(p.outcome);
 
-  // Robust pre‑pitch strikes:
+  // Robust preâ€‘pitch strikes:
   // Prefer prePitchCount.strikes. If missing, infer from postPitchCount and outcome.
   let preStrikes;
   if (p.prePitchCount && typeof p.prePitchCount.strikes === 'number') {
     preStrikes = p.prePitchCount.strikes;
   } else if (p.postPitchCount && typeof p.postPitchCount.strikes === 'number') {
-    // If the pitch produced a strike, post = pre+1 (except 2‑strike fouls keep post=2).
+    // If the pitch produced a strike, post = pre+1 (except 2â€‘strike fouls keep post=2).
     const madeStrike = isStrike;
     if (!madeStrike) {
       preStrikes = p.postPitchCount.strikes; // ball/HBP/inPlay-without strike counted
@@ -2932,8 +2946,8 @@ function accumulate(stats, p) {
 function pct (num, den) { return den ? (num/den*100) : 0; }
 
 function buildAggregators (dataArr) {
-  const byPitch  = new Map();   // pitchType → stats object
-  const byBatter = new Map();   // batterId  → stats object
+  const byPitch  = new Map();   // pitchType â†’ stats object
+  const byBatter = new Map();   // batterId  â†’ stats object
   const overall  = initStats();
 
   dataArr.forEach(p => {
@@ -2954,7 +2968,7 @@ function buildAggregators (dataArr) {
     byBatter.set(bKey, sBat);
   });
 
-  // ↳ add ready-made percentages so the table renderer stays dumb
+  // â†³ add ready-made percentages so the table renderer stays dumb
   const addPcts = s => Object.assign(s, {
     izPct         : pct(s.iz        , s.pitches),
     oozPct        : pct(s.ooz       , s.pitches),
@@ -2966,7 +2980,7 @@ function buildAggregators (dataArr) {
     ldPct         : pct(s.ld        , s.pitches),
     earlySwingPct : pct(s.earlySwing, s.earlyPitches),
     lateSwingPct  : pct(s.lateSwing , s.latePitches),
-    chasePct      : pct(s.oozSwing , s.swing)   // correct – swings / swings
+    chasePct      : pct(s.oozSwing , s.swing)   // correct â€“ swings / swings
   });
 
   addPcts(overall);
@@ -2981,9 +2995,9 @@ function logCount(strikes, balls, isK, isWalk = false) {
   let newEntry = document.createElement('li');
   newEntry.innerText = `Final Count: ${balls}-${strikes}`;
   if (isK) {
-    newEntry.innerText += ' 💀';
+    newEntry.innerText += ' ðŸ’€';
   } else if (isWalk) {
-    newEntry.innerText += ' 🏃‍♂️'; // Emoji representing a walk
+    newEntry.innerText += ' ðŸƒâ€â™‚ï¸'; // Emoji representing a walk
   }
   countLog.appendChild(newEntry);
 }
@@ -2992,7 +3006,7 @@ document.getElementById('exportBtn').addEventListener('click', function() {
   exportLiveBPStats();
 });
 
-// NEW: export at‑bat summaries
+// NEW: export atâ€‘bat summaries
 document.getElementById('exportAtBatBtn').addEventListener('click', function() {
   exportAtBatSummary();
 });
@@ -3017,11 +3031,11 @@ document.getElementById('heatMapBtn').addEventListener('click', function() {
   .forEach(id => document.getElementById(id)?.addEventListener('change', updateHeatMap));
 
 /**
- * Append a summary of the current at‑bat to the atBatLog and record it
+ * Append a summary of the current atâ€‘bat to the atBatLog and record it
  * in the atBats array.  The pitch count is computed by counting
  * pitchData entries with the same atBatNumber.
- * @param {string} result – The final result of the at‑bat
- *   (e.g. "Strikeout", "Walk", "HBP", "In Play – groundball")
+ * @param {string} result â€“ The final result of the atâ€‘bat
+ *   (e.g. "Strikeout", "Walk", "HBP", "In Play â€“ groundball")
  */
 function logAtBatResult(result) {
   const summary = {
@@ -3038,12 +3052,12 @@ function logAtBatResult(result) {
 }
 
 /**
- * Export at‑bat summaries to the clipboard as comma‑separated values.
+ * Export atâ€‘bat summaries to the clipboard as commaâ€‘separated values.
  * The first line contains a header row for easy pasting into spreadsheets.
  */
 function exportAtBatSummary() {
   if (atBats.length === 0) {
-    alert('No at‑bat data to export!');
+    alert('No atâ€‘bat data to export!');
     return;
   }
   const lines = [];
@@ -3057,7 +3071,7 @@ function exportAtBatSummary() {
   const exportText = lines.join('\n');
   navigator.clipboard.writeText(exportText)
     .then(() => {
-      alert('At‑bat summary copied to clipboard!');
+      alert('Atâ€‘bat summary copied to clipboard!');
     })
     .catch(() => {
       alert('Failed to copy summary to clipboard.');
@@ -3216,4 +3230,10 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
 });
+
+
+
+
+
+
 
