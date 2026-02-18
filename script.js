@@ -3217,7 +3217,3 @@ document.addEventListener('DOMContentLoaded', function() {
   renderAtBatLog();
 });
 
-
-
-
-
