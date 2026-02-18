@@ -544,7 +544,7 @@ button {
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
-  padding: 12px 12px calc(var(--drawer-peek) + 12px);
+  padding: 12px;
   align-items: start;
 }
 
@@ -625,47 +625,54 @@ button {
   color: #000;
 }
 
-/* ===== Stats drawer (all devices use bottom floater) ===== */
+/* ===== Stats drawer (left pull-tab drawer) ===== */
 #statsDrawer {
   position: fixed;
   left: 0;
-  right: 0;
-  bottom: 0;
-  height: var(--drawer-open);
-  transform: translateY(calc(100% - var(--drawer-peek)));
+  top: 90px;
+  width: min(500px, 78vw);
+  height: calc(100vh - 120px);
+  transform: translateX(calc(-100% + 34px));
   transition: transform 0.2s ease;
   z-index: 20;
   display: block;
   background: rgba(12, 35, 64, 0.98);
+  border-right: 1px solid rgba(255,255,255,0.25);
   border-top: 1px solid rgba(255,255,255,0.2);
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+  overflow: visible;
 }
 
 #statsDrawer.is-expanded {
-  transform: translateY(0);
+  transform: translateX(0);
 }
 
 #statsDrawerHandle {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
   border-bottom: 1px solid rgba(255,255,255,0.15);
 }
 
 #statsDrawerContent {
   display: flex;
+  flex-direction: column;
   gap: 12px;
   padding: 12px;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
+  overflow: auto;
 }
 
 #statsDrawerContent .side-panel {
   min-height: auto;
-  max-height: calc(var(--drawer-open) - 70px);
-  flex: 0 0 440px;
+  max-height: none;
+  flex: 0 0 auto;
+  width: 100%;
   overflow: auto;
-  scroll-snap-align: start;
 }
 
 .stats-drawer-summary {
@@ -676,9 +683,17 @@ button {
 }
 
 .stats-drawer-toggle {
+  position: absolute;
+  right: -34px;
+  top: 18px;
+  width: 34px;
+  height: 108px;
   margin: 0;
-  padding: 6px 10px;
-  border-radius: 999px;
+  padding: 8px 4px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  border-radius: 0 8px 8px 0;
   background: var(--tigers-orange);
   color: var(--tigers-navy);
   font-size: 12px;
@@ -689,7 +704,16 @@ button {
 }
 
 #liveBPActionsWrapper {
-  margin-bottom: calc(var(--drawer-peek) + 12px) !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+#liveBPActions {
+  margin-top: 0 !important;
+}
+
+#liveBPActions button {
+  margin-top: 0 !important;
 }
 
 #pitchLogDrawer {
@@ -771,7 +795,7 @@ button {
 @media (max-width: 900px) {
   .wrapper {
     grid-template-columns: 1fr;
-    padding: 12px 12px calc(var(--drawer-peek) + 12px);
+    padding: 12px;
   }
 
   .main-panel {
@@ -800,6 +824,10 @@ button {
 
   #pitchLogDrawer {
     width: min(400px, 82vw);
+  }
+
+  #statsDrawer {
+    width: min(460px, 86vw);
   }
 
 }
