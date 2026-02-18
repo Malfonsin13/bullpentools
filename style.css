@@ -603,16 +603,17 @@ button {
 }
 
 .side-panel .liveTbl {
-  width: 100%;
-  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
 }
 
 .side-panel .liveTbl th,
 .side-panel .liveTbl td {
   font-size: 0.8em;
   padding: 4px 6px;
-  white-space: normal;
-  word-break: break-word;
+  white-space: nowrap;
+  word-break: normal;
 }
 
 #tbl-batter .total-row td:first-child,
@@ -662,7 +663,7 @@ button {
 #statsDrawerContent .side-panel {
   min-height: auto;
   max-height: calc(var(--drawer-open) - 70px);
-  flex: 0 0 320px;
+  flex: 0 0 440px;
   overflow: auto;
   scroll-snap-align: start;
 }
@@ -685,6 +686,86 @@ button {
 
 #liveStatsBoard h3 {
   color: #fff;
+}
+
+#liveBPActionsWrapper {
+  margin-bottom: calc(var(--drawer-peek) + 12px) !important;
+}
+
+#pitchLogDrawer {
+  position: fixed;
+  top: 90px;
+  right: 0;
+  width: min(440px, 78vw);
+  height: calc(100vh - var(--drawer-peek) - 120px);
+  transform: translateX(calc(100% - 34px));
+  transition: transform 0.2s ease;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  background: rgba(12, 35, 64, 0.98);
+  border-left: 1px solid rgba(255,255,255,0.25);
+  border-top: 1px solid rgba(255,255,255,0.2);
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+
+#pitchLogDrawer.is-expanded {
+  transform: translateX(0);
+}
+
+#pitchLogDrawerToggle {
+  position: absolute;
+  left: -34px;
+  top: 18px;
+  width: 34px;
+  height: 118px;
+  margin: 0;
+  padding: 8px 4px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  border-radius: 8px 0 0 8px;
+  background: var(--tigers-orange);
+  color: var(--tigers-navy);
+  font-size: 12px;
+}
+
+#pitchLogDrawerHeader {
+  padding: 10px 14px;
+  color: var(--tigers-light);
+  border-bottom: 1px solid rgba(255,255,255,0.18);
+  text-align: left;
+}
+
+#pitchLogDrawerContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 10px 12px;
+}
+
+#pitchLog {
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+#pitchLog li {
+  margin: 4px 0;
+  padding: 7px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  color: var(--tigers-light);
+}
+
+#pitchLog li.atbat-divider {
+  margin-top: 10px;
+  background: transparent;
+  border: 1px dashed rgba(255,255,255,0.25);
+  color: var(--tigers-orange);
+  font-size: 0.9em;
+  cursor: default;
 }
 
 @media (max-width: 900px) {
@@ -715,6 +796,10 @@ button {
     flex-wrap: wrap;
     gap: 6px;
     justify-content: center;
+  }
+
+  #pitchLogDrawer {
+    width: min(400px, 82vw);
   }
 
 }
@@ -765,6 +850,16 @@ button {
     padding: 8px 10px;
     font-size: 12px;
     min-width: 64px;
+  }
+
+  #statsDrawerContent .side-panel {
+    flex: 0 0 320px;
+  }
+
+  .side-panel .liveTbl th,
+  .side-panel .liveTbl td {
+    white-space: normal;
+    word-break: break-word;
   }
 
 }
