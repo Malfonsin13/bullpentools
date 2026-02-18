@@ -147,6 +147,15 @@ if (statsDrawer && statsDrawerToggle) {
   });
 }
 
+const pitchLogDrawer = document.getElementById('pitchLogDrawer');
+const pitchLogDrawerToggle = document.getElementById('pitchLogDrawerToggle');
+if (pitchLogDrawer && pitchLogDrawerToggle) {
+  pitchLogDrawerToggle.addEventListener('click', () => {
+    const isExpanded = pitchLogDrawer.classList.toggle('is-expanded');
+    pitchLogDrawerToggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+  });
+}
+
 /* === BATTER UI handlers === */
 document.getElementById('addBatterBtn').addEventListener('click', () => {
   const name = document.getElementById('newBatterName').value.trim();
@@ -207,6 +216,11 @@ function applyLiveBPVisibilityForMode(currentMode) {
   setDisplay('sideLeft',         showLiveExtras); // By Pitch Type table
   setDisplay('sideRight',        showLiveExtras); // By Batter table
   setDisplay('statsDrawer',      showLiveExtras);
+  setDisplay('pitchLogDrawer',   showLiveExtras);
+  if (!showLiveExtras && pitchLogDrawer) {
+    pitchLogDrawer.classList.remove('is-expanded');
+    if (pitchLogDrawerToggle) pitchLogDrawerToggle.setAttribute('aria-expanded', 'false');
+  }
 }
 
 function updateStatsDrawerSummary(countText, totalPitchesText, strikePctText) {
@@ -1429,9 +1443,18 @@ function renderPitchLog() {
 
   // null â†’ â€œAll battersâ€
   const wantId = currentBatterId;
+  let lastAtBatNumber = null;
 
   pitchData.forEach(p => {
     if (wantId && p.batterId !== wantId) return;
+
+    if (p.atBatNumber !== lastAtBatNumber) {
+      const divider = document.createElement('li');
+      divider.classList.add('atbat-divider');
+      divider.textContent = `At-Bat #${p.atBatNumber}`;
+      ul.appendChild(divider);
+      lastAtBatNumber = p.atBatNumber;
+    }
 
     const li = document.createElement('li');
     const pt = (p.pitchType || 'UNKNOWN').toUpperCase();
@@ -1442,7 +1465,7 @@ function renderPitchLog() {
     const postBalls   = (p.postPitchCount && typeof p.postPitchCount.balls === 'number')   ? p.postPitchCount.balls   : 0;
     const postStrikes = (p.postPitchCount && typeof p.postPitchCount.strikes === 'number') ? p.postPitchCount.strikes : 0;
 
-    li.textContent = `${pt}, Location: ${loc}, Result: ${res}, Count: ${postBalls}-${postStrikes}`;
+    li.textContent = `AB ${p.atBatNumber} - ${pt}, Location: ${loc}, Result: ${res}, Count: ${postBalls}-${postStrikes}`;
     li.setAttribute('data-pitch-id', p.pitchId);
 
     // If pitch was tagged, re-apply the emoji
@@ -1460,7 +1483,7 @@ function renderPitchLog() {
 
   // If weâ€™re currently in tagging mode, keep items selectable
   if (isTaggingMode) {
-    document.querySelectorAll('#pitchLog li').forEach(item => {
+    document.querySelectorAll('#pitchLog li:not(.atbat-divider)').forEach(item => {
       item.classList.add('selectable');
       item.addEventListener('click', togglePitchSelection);
     });
@@ -1529,7 +1552,7 @@ function enterTaggingMode() {
   isTaggingMode = true;
   document.getElementById('tagPitchBtn').innerText = 'Cancel Tagging';
   // Make pitch log entries selectable
-  let pitchLogItems = document.querySelectorAll('#pitchLog li');
+  let pitchLogItems = document.querySelectorAll('#pitchLog li:not(.atbat-divider)');
   pitchLogItems.forEach(item => {
     item.classList.add('selectable');
     item.addEventListener('click', togglePitchSelection);
@@ -1553,7 +1576,7 @@ function exitTaggingMode() {
   isTaggingMode = false;
   document.getElementById('tagPitchBtn').innerText = 'Tag Pitch';
   // Remove selection from pitch log entries
-  let pitchLogItems = document.querySelectorAll('#pitchLog li');
+  let pitchLogItems = document.querySelectorAll('#pitchLog li:not(.atbat-divider)');
   pitchLogItems.forEach(item => {
     item.classList.remove('selectable');
     item.classList.remove('selected');
