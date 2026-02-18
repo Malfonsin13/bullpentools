@@ -1296,7 +1296,7 @@ function renderLiveTables(aggFiltered, aggAll) {
   const pitchMax  = computeColumnMax(aggFiltered.byPitch, pitchCols);
 
   // â¬†ï¸ TOTAL row first (for the *filtered* set)
-  insertTotalRow(tpBody, 'â€” All â€”', aggFiltered.overall, pitchCols);
+  insertTotalRow(tpBody, '- All -', aggFiltered.overall, pitchCols);
 
   // then each pitch type
   aggFiltered.byPitch.forEach((stats, pt) => {
@@ -1320,7 +1320,7 @@ function renderLiveTables(aggFiltered, aggAll) {
 
   // â¬†ï¸ TOTAL row first (for the *filtered* set)
   // earlySwing% & lateSwing% use early/late denominators; chase% = OOZ-swings / swings
-  insertTotalRow(btBody, 'â€” All â€”', aggFiltered.overall, batterCols);
+  insertTotalRow(btBody, '- All -', aggFiltered.overall, batterCols);
 
   // then each batter (skip any stray aggregate key)
   aggFiltered.byBatter.forEach((stats, id) => {
@@ -1421,7 +1421,7 @@ document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
     logPitchResult(pitchType, `In Play - ${inPlayResult}`, pitchLocation, '', prev, 'inPlay');
   
     // *** NEW: record the at-bat summary ***
-    logAtBatResult("In Play â€“ " + inPlayResult);
+    logAtBatResult("In Play - " + inPlayResult);
   
     // and reset for the next pitch sequence
     isNewAtBat = true;
@@ -1507,7 +1507,7 @@ function renderAtBatLog() {
     const batter = batters.find(b => b.id === ab.batterId);
     const name  = batter ? batter.name : 'Unknown';
     const hand  = batter ? batter.hand : '';
-    li.innerText = `#${ab.atBatNumber} â€“ ${name}${hand ? ' (' + hand + ')' : ''} â€“ ${ab.result} (${ab.pitchCount} pitches)`;
+    li.innerText = `#${ab.atBatNumber} - ${name}${hand ? ' (' + hand + ')' : ''} - ${ab.result} (${ab.pitchCount} pitches)`;
     list.appendChild(li);
   });
 }
