@@ -1729,6 +1729,10 @@ function removeLastCompletedCount() {
   }
 }
 
+function getQualifiedAtBatCount(minPitches = 3) {
+  return atBats.filter(ab => (Number(ab.pitchCount) || 0) >= minPitches).length;
+}
+
 function updateUI() {
   let strikePercentageFromLog = calculateStrikePercentageFromLog();
   const fireEmoji = EMOJI_FIRE;
@@ -1751,9 +1755,9 @@ function updateUI() {
     strikePercentageElement.innerHTML = `Strike %: <span class="stat-value">${strikePercentageFromLog.toFixed(2)}</span>`;
     const strikeValue = strikePercentageElement.querySelector('.stat-value');
     if (strikeValue) strikeValue.style.color = getTigersPercentColor(strikePercentageFromLog);
-  } else if (mode === "liveBP" || mode === "points") {
-    const completedAtBats = atBats.length;
-    const winPct = completedAtBats > 0 ? (raceWins / completedAtBats) * 100 : 0;
+  } else if (mode === "liveBP" || mode === "points" || mode === "intendedZone") {
+    const qualifiedAtBats = getQualifiedAtBatCount(3);
+    const winPct = qualifiedAtBats > 0 ? (raceWins / qualifiedAtBats) * 100 : 0;
     const raceWinsIcons = raceWins > 0 ? fireEmoji.repeat(raceWins) : '';
     const raceWinsSummary = `${raceWinsIcons}${raceWinsIcons ? ' ' : ''}(${winPct.toFixed(0)}%)`;
 
@@ -1849,9 +1853,9 @@ function updateRaceWins() {
     const winPct = completedCounts > 0 ? (raceWins / completedCounts) * 100 : 0;
     const summary = `${raceWinsIcons}${raceWinsIcons ? ' ' : ''}(${winPct.toFixed(0)}%)`;
     document.getElementById('raceWins').innerHTML = `Wins: <span class="stat-value">${summary}</span>`;
-  } else if (mode === "liveBP" || mode === "points") {
-    const completedAtBats = atBats.length;
-    const winPct = completedAtBats > 0 ? (raceWins / completedAtBats) * 100 : 0;
+  } else if (mode === "liveBP" || mode === "points" || mode === "intendedZone") {
+    const qualifiedAtBats = getQualifiedAtBatCount(3);
+    const winPct = qualifiedAtBats > 0 ? (raceWins / qualifiedAtBats) * 100 : 0;
     const summary = `${raceWinsIcons}${raceWinsIcons ? ' ' : ''}(${winPct.toFixed(0)}%)`;
     document.getElementById('raceWinsLiveBP').innerHTML = `Race Wins: <span class="stat-value">${summary}</span>`;
   }
