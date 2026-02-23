@@ -3116,6 +3116,7 @@ function exportLiveBPStats() {
   let shadowCount = 0;
   let strikeZoneCount = 0;
   let totalSwings = 0;
+  let totalWhiffs = 0;
 
   let pitchTypeStats = {};
 
@@ -3131,6 +3132,7 @@ function exportLiveBPStats() {
         total: 0,
         strikes: 0,
         swings: 0,
+        whiffs: 0,
         nonCompetitive: 0,
         shadow: 0,
         strikeZone: 0,
@@ -3150,6 +3152,11 @@ function exportLiveBPStats() {
     if (['whiff', 'foul'].includes(outcome) || result.startsWith('In Play')) {
       totalSwings++;
       pitchTypeStats[pitchType].swings++;
+    }
+
+    if (outcome === 'whiff') {
+      totalWhiffs++;
+      pitchTypeStats[pitchType].whiffs++;
     }
 
     // Check location
@@ -3190,11 +3197,13 @@ function exportLiveBPStats() {
   statsText += `Total % Strike Zone Pitches: ${(strikeZoneCount / totalPitches * 100).toFixed(2)}%\n`;
 
   statsText += `Total % Swings: ${(totalSwings / totalPitches * 100).toFixed(2)}%\n`;
+  statsText += `Total Whiff %: ${(totalWhiffs / totalPitches * 100).toFixed(2)}% (${totalWhiffs})\n`;
 
   Object.entries(pitchTypeStats).forEach(([pitchType, stats]) => {
     let usagePercentage = (stats.total / totalPitches) * 100;
     let strikePercentage = (stats.strikes / stats.total) * 100;
     let swingsPercentage = (stats.swings / stats.total) * 100;
+    let whiffPercentage = (stats.whiffs / stats.total) * 100;
     let nonCompetitivePercentage = (stats.nonCompetitive / stats.total) * 100;
     let shadowPercentage = (stats.shadow / stats.total) * 100;
     let strikeZonePercentage = (stats.strikeZone / stats.total) * 100;
@@ -3203,9 +3212,40 @@ function exportLiveBPStats() {
     statsText += `Usage %: ${usagePercentage.toFixed(2)}%\n`;
     statsText += `Strike %: ${strikePercentage.toFixed(2)}%\n`;
     statsText += `Swings %: ${swingsPercentage.toFixed(2)}%\n`;
+    statsText += `Whiff %: ${whiffPercentage.toFixed(2)}% (${stats.whiffs})\n`;
     statsText += `% Non-Competitive Pitches: ${nonCompetitivePercentage.toFixed(2)}%\n`;
     statsText += `% Shadow Pitches: ${shadowPercentage.toFixed(2)}%\n`;
     statsText += `% Strike Zone Pitches: ${strikeZonePercentage.toFixed(2)}%\n`;
+  });
+
+  statsText += `\nPitch Log By At-Bat:\n`;
+  const atBatResultsByNumber = new Map(atBats.map(ab => [ab.atBatNumber, ab]));
+  const groupedPitches = new Map();
+  pitchData.forEach(pitch => {
+    const abNum = pitch.atBatNumber ?? 0;
+    if (!groupedPitches.has(abNum)) groupedPitches.set(abNum, []);
+    groupedPitches.get(abNum).push(pitch);
+  });
+
+  [...groupedPitches.keys()].sort((a, b) => a - b).forEach(abNum => {
+    const pitches = groupedPitches.get(abNum) || [];
+    const firstPitch = pitches[0];
+    const batter = batters.find(b => b.id === firstPitch?.batterId);
+    const pitcher = pitchers.find(p => p.id === firstPitch?.pitcherId);
+    const abSummary = atBatResultsByNumber.get(abNum);
+    const batterLabel = batter ? `${batter.name}${batter.hand ? ` (${batter.hand})` : ''}` : 'Unknown';
+    const pitcherLabel = pitcher ? `${pitcher.name}${pitcher.hand ? ` (${pitcher.hand})` : ''}` : 'Unknown';
+    const resultLabel = abSummary ? abSummary.result : 'In Progress';
+
+    statsText += `\nAt-Bat #${abNum} | Batter: ${batterLabel} | Pitcher: ${pitcherLabel} | Result: ${resultLabel}\n`;
+    pitches.forEach((pitch, idx) => {
+      const pt = (pitch.pitchType || 'UNKNOWN').toUpperCase();
+      const loc = pitch.location ?? 'UNKNOWN';
+      const res = pitch.result || 'UNKNOWN';
+      const postBalls = (pitch.postPitchCount && typeof pitch.postPitchCount.balls === 'number') ? pitch.postPitchCount.balls : 0;
+      const postStrikes = (pitch.postPitchCount && typeof pitch.postPitchCount.strikes === 'number') ? pitch.postPitchCount.strikes : 0;
+      statsText += `  ${idx + 1}. ${pt}, Location: ${loc}, Result: ${res}, Count: ${postBalls}-${postStrikes}\n`;
+    });
   });
 
   // Add tagged pitches information
