@@ -848,7 +848,7 @@ function updateBatterDropdown () {
   /* â‡¢ NEW: empty option shows every batter */
   const allOpt = document.createElement('option');
   allOpt.value = '';                   // empty string â†’ â€œallâ€
-  allOpt.textContent = 'â€” All Batters â€”';
+  allOpt.textContent = '- All Batters -';
   sel.appendChild(allOpt);
 
   batters.forEach(b => {
@@ -877,7 +877,7 @@ function updatePitcherDropdown () {
   sel.innerHTML = '';
 
   const optAll = document.createElement('option');
-  optAll.value = ''; optAll.textContent = 'â€” Select Pitcher â€”';
+  optAll.value = ''; optAll.textContent = '- Select Pitcher -';
   sel.appendChild(optAll);
 
   pitchers.forEach(p => {
@@ -1590,6 +1590,15 @@ function togglePitchSelection() {
   this.classList.toggle('selected');
 }
 
+function normalizeTagEmoji(emoji) {
+  const map = {
+    'ðŸŸ¡': '\u{1F7E1}', // yellow circle
+    'ðŸŸ¢': '\u{1F7E2}', // green circle
+    'ðŸ”´': '\u{1F534}'  // red circle
+  };
+  return map[emoji] || emoji;
+}
+
 function applyTagToSelectedPitches() {
   let selectedFlagBtn = document.querySelector('#flagSelection .flagBtn.selected');
   if (!selectedFlagBtn) {
@@ -1599,9 +1608,9 @@ function applyTagToSelectedPitches() {
   let flagId = selectedFlagBtn.id; // e.g., 'flag-check-video'
 
   let flagInfo = {
-    'flag-check-video': { emoji: 'ðŸŸ¡', description: 'Check Video' },
-    'flag-breakthrough': { emoji: 'ðŸŸ¢', description: 'Breakthrough' },
-    'flag-learning-moment': { emoji: 'ðŸ”´', description: 'Learning Moment' },
+    'flag-check-video': { emoji: '\u{1F7E1}', description: 'Check Video' },
+    'flag-breakthrough': { emoji: '\u{1F7E2}', description: 'Breakthrough' },
+    'flag-learning-moment': { emoji: '\u{1F534}', description: 'Learning Moment' },
   };
 
   let flagData = flagInfo[flagId];
@@ -1625,12 +1634,12 @@ function applyTagToSelectedPitches() {
     if (!pitchEntry.querySelector('.flagEmoji')) {
       let flagSpan = document.createElement('span');
       flagSpan.classList.add('flagEmoji');
-      flagSpan.innerText = flagData.emoji;
+      flagSpan.innerText = normalizeTagEmoji(flagData.emoji);
       flagSpan.title = flagData.description + (note ? ': ' + note : '');
       pitchEntry.appendChild(flagSpan);
     } else {
       let flagSpan = pitchEntry.querySelector('.flagEmoji');
-      flagSpan.innerText = flagData.emoji;
+      flagSpan.innerText = normalizeTagEmoji(flagData.emoji);
       flagSpan.title = flagData.description + (note ? ': ' + note : '');
     }
   });
@@ -1649,12 +1658,12 @@ function updatePitchLogTags() {
       if (!pitchEntry.querySelector('.flagEmoji')) {
         let flagSpan = document.createElement('span');
         flagSpan.classList.add('flagEmoji');
-        flagSpan.innerText = tagData.emoji;
+        flagSpan.innerText = normalizeTagEmoji(tagData.emoji);
         flagSpan.title = tagData.description + (tagData.note ? ': ' + tagData.note : '');
         pitchEntry.appendChild(flagSpan);
       } else {
         let flagSpan = pitchEntry.querySelector('.flagEmoji');
-        flagSpan.innerText = tagData.emoji;
+        flagSpan.innerText = normalizeTagEmoji(tagData.emoji);
         flagSpan.title = tagData.description + (tagData.note ? ': ' + tagData.note : '');
       }
     } else {
