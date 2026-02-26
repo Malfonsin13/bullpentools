@@ -126,7 +126,8 @@ li {
 }
 
 #pitchTypeSelection #curveBall,
-#pitchTypeSelection #slider {
+#pitchTypeSelection #slider,
+#pitchTypeSelection #sweeper {
   background-color: var(--tigers-orange);
   color: white;
 }
