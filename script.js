@@ -1704,6 +1704,7 @@ function updatePointsDisplay() {
     cutter: 'CT',
     curveBall: 'CB',
     slider: 'SL',
+    sweeper: 'SW',
     changeup: 'CH',
     splitter: 'SP'
   };
