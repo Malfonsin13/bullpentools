@@ -12,20 +12,27 @@
 </head>
 
 <body>
-  <div id="modeSelection">
-    <button id="bullpenModeBtn" class="mode-btn outcome-mode"><span class="mode-label">R2K<br>Mode</span></button>
-    <button id="putawayModeBtn" class="mode-btn outcome-mode">Putaway Mode</button>
-    <button id="pointsModeBtn" class="mode-btn location-mode">Points Mode</button>
-    <button id="intendedZoneModeBtn" class="mode-btn location-mode">Intended Zone Mode</button>
-    <button id="liveBPModeBtn">Live BP Mode</button>
-    
-    <button
-      id="undoBtn"
-      style="background-color: red; color: white;"
-    >
-      UNDO
-    </button>
-  </div>
+<div class="bento-app">
+
+  <!-- ===== HEADER CHROME ===== -->
+  <header class="bento-header">
+    <h1 class="bento-title">Pitch Tracker</h1>
+  </header>
+
+  <!-- ===== TOOLBAR / MODE SELECTION ===== -->
+  <nav class="bento-toolbar">
+    <div id="modeSelection">
+      <button id="bullpenModeBtn" class="mode-btn outcome-mode"><span class="mode-label">R2K<br>Mode</span></button>
+      <button id="putawayModeBtn" class="mode-btn outcome-mode">Putaway Mode</button>
+      <button id="pointsModeBtn" class="mode-btn location-mode">Points Mode</button>
+      <button id="intendedZoneModeBtn" class="mode-btn location-mode">Intended Zone Mode</button>
+      <button id="liveBPModeBtn">Live BP Mode</button>
+      <button id="undoBtn">UNDO</button>
+    </div>
+  </nav>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="bento-main">
 
   <!-- BULLPEN MODE -->
   <div id="bullpenMode" style="display:none;">
@@ -65,15 +72,21 @@
         </div>
       </div>
       <div id="statsDrawerContent" class="stats-drawer-content">
+        <!-- USAGE DONUT: pitch mix breakdown -->
+        <div id="usageDonutWrapper">
+          <h3>Pitch Mix</h3>
+          <div id="usageDonutChart"></div>
+          <div id="usageDonutLegend"></div>
+        </div>
+
         <!-- LEFT PANEL: per-pitch summary -->
         <div id="sideLeft" class="side-panel">
           <h3>By Pitch Type</h3>
           <table class="liveTbl" id="tbl-pitchType">
             <thead>
               <tr>
-                <th>Pitch</th><th>IZ%</th><th>OOZ%</th><th>CSW%</th>
+                <th>Pitch</th><th>Usage%</th><th>IZ%</th><th>OOZ%</th><th>CSW%</th>
                 <th>Strike%</th><th>Swing%</th>
-                <!-- NEW columns -->
                 <th>Fly%</th><th>GB%</th><th>LD%</th>
               </tr>
             </thead>
@@ -99,65 +112,106 @@
     <div id="mainPanel" class="main-panel">
       <h2 id="modeTitle">Live BP Mode</h2>
 
-  <!-- ========= BATTER MANAGEMENT ========= -->
-  <div id="batterManagement" style="margin:10px 0;">
-    <input id="newBatterName" type="text" placeholder="Batter name">
-    <select id="newBatterHand">
-      <option value="L">L</option>
-      <option value="R">R</option>
-    </select>
-    <button id="addBatterBtn" class="add-entry-btn">
-      <span class="btn-full">Add Batter</span>
-      <span class="btn-short">Add</span>
-    </button>
-  
-    <!-- dropdown of active batters -->
-    <select id="batterSelect" style="margin-left:8px;"></select>
+  <!-- ========= HERO: BATTER/PITCHER + COUNT ========= -->
+  <div class="bento-hero">
+    <div class="bento-hero-matchup">
+      <!-- BATTER MANAGEMENT -->
+      <div id="batterManagement">
+        <input id="newBatterName" type="text" placeholder="Batter name">
+        <select id="newBatterHand">
+          <option value="L">L</option>
+          <option value="R">R</option>
+        </select>
+        <button id="addBatterBtn" class="add-entry-btn">
+          <span class="btn-full">Add Batter</span>
+          <span class="btn-short">Add</span>
+        </button>
+        <!-- dropdown of active batters -->
+        <select id="batterSelect"></select>
+      </div>
+
+      <!-- PITCHER MANAGEMENT -->
+      <div id="pitcherControls">
+        <input id="newPitcherName" placeholder="Pitcher name">
+        <select id="newPitcherHand">
+          <option value="RH">RH</option>
+          <option value="LH">LH</option>
+        </select>
+        <button id="addPitcherBtn" class="add-entry-btn">
+          <span class="btn-full">Add Pitcher</span>
+          <span class="btn-short">Add</span>
+        </button>
+        <select id="pitcherSelect"></select>
+      </div>
+    </div>
   </div>
 
-  <!-- PITCHER MANAGEMENT -->
-  <div id="pitcherControls">
-    <input  id="newPitcherName" placeholder="Pitcher name">
-    <select id="newPitcherHand">
-      <option value="RH">RH</option>
-      <option value="LH">LH</option>
-    </select>
-    <button id="addPitcherBtn" class="add-entry-btn">
-      <span class="btn-full">Add Pitcher</span>
-      <span class="btn-short">Add</span>
-    </button>
-  
-    <select id="pitcherSelect"></select>
+  <!-- ========= KPI ROW: LIVE STATS ========= -->
+  <div class="bento-kpi-row">
+    <div id="liveStatsBoard">
+      <h3>Live Stats</h3>
+      <div id="stats-overall">
+        <div class="donut-card">
+          <svg class="donut-svg" viewBox="0 0 64 64" aria-hidden="true">
+            <circle class="donut-track" cx="32" cy="32" r="24"/>
+            <circle class="donut-fill" id="donut-strike" cx="32" cy="32" r="24"/>
+            <text class="donut-value" x="32" y="32" id="donut-val-strike">0</text>
+          </svg>
+          <span id="stat-strike" class="donut-label">Strike%: <span class="stat-value live-stat-value">0</span></span>
+        </div>
+        <div class="donut-card">
+          <svg class="donut-svg" viewBox="0 0 64 64" aria-hidden="true">
+            <circle class="donut-track" cx="32" cy="32" r="24"/>
+            <circle class="donut-fill" id="donut-csw" cx="32" cy="32" r="24"/>
+            <text class="donut-value" x="32" y="32" id="donut-val-csw">0</text>
+          </svg>
+          <span id="stat-csw" class="donut-label">CSW%: <span class="stat-value live-stat-value">0</span></span>
+        </div>
+        <div class="donut-card">
+          <svg class="donut-svg" viewBox="0 0 64 64" aria-hidden="true">
+            <circle class="donut-track" cx="32" cy="32" r="24"/>
+            <circle class="donut-fill" id="donut-iz" cx="32" cy="32" r="24"/>
+            <text class="donut-value" x="32" y="32" id="donut-val-iz">0</text>
+          </svg>
+          <span id="stat-iz" class="donut-label">IZ%: <span class="stat-value live-stat-value">0</span></span>
+        </div>
+        <div class="donut-card">
+          <svg class="donut-svg" viewBox="0 0 64 64" aria-hidden="true">
+            <circle class="donut-track" cx="32" cy="32" r="24"/>
+            <circle class="donut-fill" id="donut-swing" cx="32" cy="32" r="24"/>
+            <text class="donut-value" x="32" y="32" id="donut-val-swing">0</text>
+          </svg>
+          <span id="stat-swing" class="donut-label">Swing%: <span class="stat-value live-stat-value">0</span></span>
+        </div>
+        <div class="donut-card">
+          <svg class="donut-svg" viewBox="0 0 64 64" aria-hidden="true">
+            <circle class="donut-track" cx="32" cy="32" r="24"/>
+            <circle class="donut-segment" id="donut-bb-fly" cx="32" cy="32" r="24"/>
+            <circle class="donut-segment" id="donut-bb-gb" cx="32" cy="32" r="24"/>
+            <circle class="donut-segment" id="donut-bb-ld" cx="32" cy="32" r="24"/>
+            <text class="donut-value" x="32" y="32" id="donut-val-bb">0</text>
+          </svg>
+          <span id="stat-ipo" class="donut-label" style="display:none"></span>
+          <span class="bb-legend">
+            <span class="bb-legend-item" style="color:#5b8fc9">FB</span>
+            <span class="bb-legend-item" style="color:#d4652a">GB</span>
+            <span class="bb-legend-item" style="color:#4a9e6e">LD</span>
+          </span>
+        </div>
+      </div>
+      <div id="stats-early">
+        Early (&lt;2 strikes) &ndash;
+        <span id="stat-early-csw">CSW% 0</span> &bull;
+        <span id="stat-early-strike">Strike% 0</span>
+      </div>
+      <div id="stats-late">
+        Late (2 strikes) &ndash;
+        <span id="stat-late-csw">CSW% 0</span> &bull;
+        <span id="stat-late-strike">Strike% 0</span>
+      </div>
+      <div id="statsTablesWrapper"></div>
+    </div>
   </div>
-    
-  <!-- ========= LIVE STATS ========= -->
-  <div id="liveStatsBoard">
-    <h3 style="margin:4px 0;">Live Stats</h3>
-    <div id="stats-overall">
-      <span id="stat-swing">Swing%: 0</span> |
-      <span id="stat-csw">CSW%: 0</span> |
-      <span id="stat-ipo">IPO%: 0</span> |
-      <span id="stat-iz">IZ%: 0</span> |
-      <span id="stat-ooz">OOZ%: 0</span> |
-      <span id="stat-strike">Strike%: 0</span>
-    </div>
-    <div id="stats-early" style="font-size:.9em;">
-      Early (&lt;2 strikes) – 
-      <span id="stat-early-csw">CSW% 0</span> •
-      <span id="stat-early-strike">Strike% 0</span>
-    </div>
-    <div id="stats-late" style="font-size:.9em;">
-      Late (2 strikes) – 
-      <span id="stat-late-csw">CSW% 0</span> •
-      <span id="stat-late-strike">Strike% 0</span>
-    </div>
-    <!-- ▾▾▾ NEW live-stats tables ▾▾▾ -->
-    <div id="statsTablesWrapper">
-        
-    </div>
-    <!-- ▴▴▴ NEW ▴▴▴ -->
-  </div>
-
 
     <!-- Points Container -->
     <div id="pointsContainer" style="display: none;">
@@ -165,161 +219,163 @@
       <div id="comboPitchTypesDisplay">Combo Pitch Types: None</div>
     </div>
 
-    <!-- Pitch Type Selection -->
-    <div id="pitchTypeSelection">
-      <h3>Select Pitch Type</h3>
-      <button class="btn" id="fourSeam">4S</button>
-      <button class="btn" id="twoSeam">2S</button>
-      <button class="btn" id="cutter">CT</button>
-      <button class="btn" id="curveBall">CB</button>
-      <button class="btn" id="slider">SL</button>
-      <button class="btn" id="sweeper">SW</button>
-      <button class="btn" id="changeup">CH</button>
-      <button class="btn" id="splitter">SP</button>
-    </div>
-
-    <!-- Combo Pitch Type Selection -->
-    <div id="comboPitchTypeSelection" style="display: none;">
-      <h3>Select Pitch Type Goal</h3>
-      <button class="comboPitchTypeBtn" id="combo-fourSeam">4S</button>
-      <button class="comboPitchTypeBtn" id="combo-twoSeam">2S</button>
-      <button class="comboPitchTypeBtn" id="combo-cutter">CT</button>
-      <button class="comboPitchTypeBtn" id="combo-curveBall">CB</button>
-      <button class="comboPitchTypeBtn" id="combo-slider">SL</button>
-      <button class="comboPitchTypeBtn" id="combo-sweeper">SW</button>
-      <button class="comboPitchTypeBtn" id="combo-changeup">CH</button>
-      <button class="comboPitchTypeBtn" id="combo-splitter">SP</button>
-      <button id="comboSelectionDoneBtn">Done</button>
-    </div>
-
-    <!-- Pitch Location Selection -->
-    <div id="pitchLocationSelection" style="display:none;">
-      <h3>Select Pitch Location</h3>
-      <div id="pitchLocationContainer" style="display: flex; justify-content: center;">
-        <div id="pitchLocationGrid">
-          <!-- EXACT 7x7 ROWS -->
-          <!-- Row 1 -->
-          <button class="locationBtn nonCompetitiveZone" id="location-26">26</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-27">27</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-28">28</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-29">29</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-30">30</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-31">31</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-32">32</button>
-
-          <!-- Row 2 -->
-          <button class="locationBtn nonCompetitiveZone" id="location-33">33</button>
-          <button class="locationBtn shadowZone" id="location-10">10</button>
-          <button class="locationBtn shadowZone" id="location-11">11</button>
-          <button class="locationBtn shadowZone" id="location-12">12</button>
-          <button class="locationBtn shadowZone" id="location-13">13</button>
-          <button class="locationBtn shadowZone" id="location-14">14</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-34">34</button>
-
-          <!-- Row 3 -->
-          <button class="locationBtn nonCompetitiveZone" id="location-35">35</button>
-          <button class="locationBtn shadowZone" id="location-15">15</button>
-          <button class="locationBtn strikeZone" id="location-1">1</button>
-          <button class="locationBtn strikeZone" id="location-2">2</button>
-          <button class="locationBtn strikeZone" id="location-3">3</button>
-          <button class="locationBtn shadowZone" id="location-16">16</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-36">36</button>
-
-          <!-- Row 4 -->
-          <button class="locationBtn nonCompetitiveZone" id="location-37">37</button>
-          <button class="locationBtn shadowZone" id="location-17">17</button>
-          <button class="locationBtn strikeZone" id="location-4">4</button>
-          <button class="locationBtn strikeZone" id="location-5">5</button>
-          <button class="locationBtn strikeZone" id="location-6">6</button>
-          <button class="locationBtn shadowZone" id="location-18">18</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-38">38</button>
-
-          <!-- Row 5 -->
-          <button class="locationBtn nonCompetitiveZone" id="location-39">39</button>
-          <button class="locationBtn shadowZone" id="location-19">19</button>
-          <button class="locationBtn strikeZone" id="location-7">7</button>
-          <button class="locationBtn strikeZone" id="location-8">8</button>
-          <button class="locationBtn strikeZone" id="location-9">9</button>
-          <button class="locationBtn shadowZone" id="location-20">20</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-40">40</button>
-
-          <!-- Row 6 -->
-          <button class="locationBtn nonCompetitiveZone" id="location-41">41</button>
-          <button class="locationBtn shadowZone" id="location-21">21</button>
-          <button class="locationBtn shadowZone" id="location-22">22</button>
-          <button class="locationBtn shadowZone" id="location-23">23</button>
-          <button class="locationBtn shadowZone" id="location-24">24</button>
-          <button class="locationBtn shadowZone" id="location-25">25</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-42">42</button>
-
-          <!-- Row 7 -->
-          <button class="locationBtn nonCompetitiveZone" id="location-43">43</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-44">44</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-45">45</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-46">46</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-47">47</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-48">48</button>
-          <button class="locationBtn nonCompetitiveZone" id="location-49">49</button>
+    <!-- ========= PITCH PANEL ========= -->
+    <div class="bento-pitch-panel">
+      <!-- Pitch Type Selection -->
+      <div id="pitchTypeSelection">
+        <h3>Select Pitch Type</h3>
+        <div class="pitch-btn-group">
+          <button class="btn" id="fourSeam">4S</button>
+          <button class="btn" id="twoSeam">2S</button>
+          <button class="btn" id="cutter">CT</button>
         </div>
+        <div class="pitch-btn-group">
+          <button class="btn" id="curveBall">CB</button>
+          <button class="btn" id="slider">SL</button>
+          <button class="btn" id="sweeper">SW</button>
+        </div>
+        <div class="pitch-btn-group">
+          <button class="btn" id="changeup">CH</button>
+          <button class="btn" id="splitter">SP</button>
+        </div>
+      </div>
+
+      <!-- Combo Pitch Type Selection -->
+      <div id="comboPitchTypeSelection" style="display: none;">
+        <h3>Select Pitch Type Goal</h3>
+        <button class="comboPitchTypeBtn" id="combo-fourSeam">4S</button>
+        <button class="comboPitchTypeBtn" id="combo-twoSeam">2S</button>
+        <button class="comboPitchTypeBtn" id="combo-cutter">CT</button>
+        <button class="comboPitchTypeBtn" id="combo-curveBall">CB</button>
+        <button class="comboPitchTypeBtn" id="combo-slider">SL</button>
+        <button class="comboPitchTypeBtn" id="combo-sweeper">SW</button>
+        <button class="comboPitchTypeBtn" id="combo-changeup">CH</button>
+        <button class="comboPitchTypeBtn" id="combo-splitter">SP</button>
+        <button id="comboSelectionDoneBtn">Done</button>
       </div>
     </div>
 
-    <!-- Outcome Selection -->
-  <div id="outcomeSelection" style="display:none;">
-    <h3>Select Outcome</h3>
-    <button class="btn" id="ball">Ball</button>
-    <button class="btn" id="whiff">Whiff</button>
-    <button class="btn" id="calledStrike">Called Strike</button>
-    <button class="btn" id="foul">Foul</button>
-    <button class="btn" id="inPlay">In Play</button>
-    <button class="btn" id="hbp">HBP</button>
-  </div>
+    <!-- ========= ENTRY PANEL ========= -->
+    <div class="bento-entry-panel">
+      <!-- Pitch Location Selection -->
+      <div id="pitchLocationSelection" style="display:none;">
+        <h3>Select Pitch Location</h3>
+        <div id="pitchLocationContainer">
+          <div id="pitchLocationGrid">
+            <!-- Row 1 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-26">26</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-27">27</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-28">28</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-29">29</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-30">30</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-31">31</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-32">32</button>
+            <!-- Row 2 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-33">33</button>
+            <button class="locationBtn shadowZone" id="location-10">10</button>
+            <button class="locationBtn shadowZone" id="location-11">11</button>
+            <button class="locationBtn shadowZone" id="location-12">12</button>
+            <button class="locationBtn shadowZone" id="location-13">13</button>
+            <button class="locationBtn shadowZone" id="location-14">14</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-34">34</button>
+            <!-- Row 3 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-35">35</button>
+            <button class="locationBtn shadowZone" id="location-15">15</button>
+            <button class="locationBtn strikeZone" id="location-1">1</button>
+            <button class="locationBtn strikeZone" id="location-2">2</button>
+            <button class="locationBtn strikeZone" id="location-3">3</button>
+            <button class="locationBtn shadowZone" id="location-16">16</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-36">36</button>
+            <!-- Row 4 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-37">37</button>
+            <button class="locationBtn shadowZone" id="location-17">17</button>
+            <button class="locationBtn strikeZone" id="location-4">4</button>
+            <button class="locationBtn strikeZone" id="location-5">5</button>
+            <button class="locationBtn strikeZone" id="location-6">6</button>
+            <button class="locationBtn shadowZone" id="location-18">18</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-38">38</button>
+            <!-- Row 5 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-39">39</button>
+            <button class="locationBtn shadowZone" id="location-19">19</button>
+            <button class="locationBtn strikeZone" id="location-7">7</button>
+            <button class="locationBtn strikeZone" id="location-8">8</button>
+            <button class="locationBtn strikeZone" id="location-9">9</button>
+            <button class="locationBtn shadowZone" id="location-20">20</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-40">40</button>
+            <!-- Row 6 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-41">41</button>
+            <button class="locationBtn shadowZone" id="location-21">21</button>
+            <button class="locationBtn shadowZone" id="location-22">22</button>
+            <button class="locationBtn shadowZone" id="location-23">23</button>
+            <button class="locationBtn shadowZone" id="location-24">24</button>
+            <button class="locationBtn shadowZone" id="location-25">25</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-42">42</button>
+            <!-- Row 7 -->
+            <button class="locationBtn nonCompetitiveZone" id="location-43">43</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-44">44</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-45">45</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-46">46</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-47">47</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-48">48</button>
+            <button class="locationBtn nonCompetitiveZone" id="location-49">49</button>
+          </div>
+        </div>
+      </div>
 
-  <!-- In Play Outcome Selection -->
-  <div id="inPlaySelection" style="display:none;">
-    <h3>In Play Result</h3>
-    <button class="btn" id="groundball">Groundball</button>
-    <button class="btn" id="flyball">FlyBall</button>
-    <button class="btn" id="linedrive">LineDrive</button>
-  </div>
+      <!-- Outcome Selection -->
+      <div id="outcomeSelection" style="display:none;">
+        <h3>Select Outcome</h3>
+        <button class="btn" id="ball">Ball</button>
+        <button class="btn" id="whiff">Whiff</button>
+        <button class="btn" id="calledStrike">Called Strike</button>
+        <button class="btn" id="foul">Foul</button>
+        <button class="btn" id="inPlay">In Play</button>
+        <button class="btn" id="hbp">HBP</button>
+      </div>
 
-<!-- Heatmap Grid -->
+      <!-- In Play Outcome Selection -->
+      <div id="inPlaySelection" style="display:none;">
+        <h3>In Play Result</h3>
+        <button class="btn" id="groundball">Groundball</button>
+        <button class="btn" id="flyball">FlyBall</button>
+        <button class="btn" id="linedrive">LineDrive</button>
+      </div>
+    </div>
+
+    <!-- Heatmap Grid -->
     <div id="heatmapGrid" style="display:none;">
-<!-- ========= HEATMAP FILTERS ========= -->
-<div id="heatmapFilters" style="margin-bottom:6px;">
-  <label>Count
-    <select id="filterCount">
-      <option value="all">All</option>
-      <option value="early">Early (&lt;2 strikes)</option>
-      <option value="late">Late (2 strikes)</option>
-    </select>
-  </label>
-  <label style="margin-left:6px;">Pitch
-    <select id="filterPitch">
-      <option value="all">All</option>
-      <!-- JS populates the rest -->
-    </select>
-  </label>
-  <label style="margin-left:6px;">Result
-    <select id="filterResult">
-      <option value="all">All results</option>
-      <option value="strike">Strike</option>
-      <option value="ball">Ball</option>
-      <option value="swing">Swing</option>
-      <option value="inPlay">In Play</option>
-      <option value="hbp">HBP</option>
-    </select>
-  </label>
-  <label style="margin-left:6px;">Batter
-    <select id="filterBatter">
-      <option value="all">All</option>
-      <!-- JS populates -->
-    </select>
-  </label>
-</div>
+      <div id="heatmapFilters">
+        <label>Count
+          <select id="filterCount">
+            <option value="all">All</option>
+            <option value="early">Early (&lt;2 strikes)</option>
+            <option value="late">Late (2 strikes)</option>
+          </select>
+        </label>
+        <label>Pitch
+          <select id="filterPitch">
+            <option value="all">All</option>
+          </select>
+        </label>
+        <label>Result
+          <select id="filterResult">
+            <option value="all">All results</option>
+            <option value="strike">Strike</option>
+            <option value="ball">Ball</option>
+            <option value="swing">Swing</option>
+            <option value="inPlay">In Play</option>
+            <option value="hbp">HBP</option>
+          </select>
+        </label>
+        <label>Batter
+          <select id="filterBatter">
+            <option value="all">All</option>
+          </select>
+        </label>
+      </div>
 
       <h3>Heat Map</h3>
-      <div id="heatmapContainer" style="display: flex; justify-content: center;">
+      <div id="heatmapContainer">
         <div id="heatmap">
           <!-- Row 1 -->
           <button class="heatmapBtn nonCompetitiveZone" id="heatmap-26">26</button>
@@ -382,17 +438,25 @@
     </div>
 
   <!-- Pitch Log Summary -->
-  <div id="pitchLogSummary">
+  <div id="pitchLogSummary" class="bento-kpi-cards">
     <h3>Pitch Log</h3>
-    <div id="totalPitchesLiveBP">Total Pitches: 0</div>
-    <div id="currentCountLiveBP">Current Count: 0-0</div>
-    <div id="raceWinsLiveBP">Race Wins:</div>
-    <div id="strikePercentageLiveBP">Strike %: 0</div>
+    <div class="kpi-card">
+      <div id="totalPitchesLiveBP">Total Pitches: 0</div>
+    </div>
+    <div class="kpi-card kpi-card--hero">
+      <div id="currentCountLiveBP">Current Count: 0-0</div>
+    </div>
+    <div class="kpi-card">
+      <div id="raceWinsLiveBP">Race Wins:</div>
+    </div>
+    <div class="kpi-card">
+      <div id="strikePercentageLiveBP">Strike %: 0</div>
+    </div>
   </div>
 
-  <!-- NEW: At‑Bat Summary -->
+  <!-- At-Bat Summary -->
   <div id="atBatSummary">
-    <h3>At‑Bat Summary</h3>
+    <h3>At&#8209;Bat Summary</h3>
     <ul id="atBatLog"></ul>
   </div>
 
@@ -403,39 +467,52 @@
       <ul id="pitchLog"></ul>
     </div>
   </aside>
-</div> <!-- /#mainPanel -->  
+</div> <!-- /#mainPanel -->
 
   <!-- INTENDED ZONE MODE -->
   <div id="intendedZoneMode" style="display:none;">
     <h2 id="intendedZoneTitle">Intended Zone</h2>
 
-    <!-- Scoreboard for the pitcher’s accuracy -->
-    <div id="intendedZoneStats">
-      <div id="intendedZoneTotalPitches">Total Pitches: 0</div>
-      <div id="intendedZoneAccuracyPoints">Accuracy Points: 0</div>
-      <div id="intendedZoneExactHits">Exact Hits: 0</div>
-      <div id="intendedZoneHitPercentage">Hit %: 0</div>
+    <!-- Scoreboard for the pitcher's accuracy -->
+    <div id="intendedZoneStats" class="bento-kpi-cards">
+      <div class="kpi-card">
+        <div id="intendedZoneTotalPitches">Total Pitches: 0</div>
+      </div>
+      <div class="kpi-card kpi-card--hero">
+        <div id="intendedZoneAccuracyPoints">Accuracy Points: 0</div>
+      </div>
+      <div class="kpi-card">
+        <div id="intendedZoneExactHits">Exact Hits: 0</div>
+      </div>
+      <div class="kpi-card">
+        <div id="intendedZoneHitPercentage">Hit %: 0</div>
+      </div>
     </div>
 
     <!-- Step 1: Pitch type selection -->
     <div id="intendedZonePitchTypeSelection">
       <h3>Select Pitch Type</h3>
-      <button class="btn" id="intended-fourSeam">4S</button>
-      <button class="btn" id="intended-twoSeam">2S</button>
-      <button class="btn" id="intended-cutter">CT</button>
-      <button class="btn" id="intended-curveBall">CB</button>
-      <button class="btn" id="intended-slider">SL</button>
-      <button class="btn" id="intended-sweeper">SW</button>
-      <button class="btn" id="intended-changeup">CH</button>
-      <button class="btn" id="intended-splitter">SP</button>
+      <div class="pitch-btn-group">
+        <button class="btn" id="intended-fourSeam">4S</button>
+        <button class="btn" id="intended-twoSeam">2S</button>
+        <button class="btn" id="intended-cutter">CT</button>
+      </div>
+      <div class="pitch-btn-group">
+        <button class="btn" id="intended-curveBall">CB</button>
+        <button class="btn" id="intended-slider">SL</button>
+        <button class="btn" id="intended-sweeper">SW</button>
+      </div>
+      <div class="pitch-btn-group">
+        <button class="btn" id="intended-changeup">CH</button>
+        <button class="btn" id="intended-splitter">SP</button>
+      </div>
     </div>
 
     <!-- Step 2: Intended Zone selection -->
     <div id="intendedZoneSelection" style="display:none;">
       <h3>Select Intended Zone</h3>
-      <div id="intendedZoneGridContainer" style="display: flex; justify-content: center;">
+      <div id="intendedZoneGridContainer">
         <div id="intendedZoneGrid">
-          <!-- EXACT same 7x7 arrangement as pitchLocation -->
           <!-- Row 1 -->
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-26">26</button>
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-27">27</button>
@@ -444,7 +521,6 @@
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-30">30</button>
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-31">31</button>
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-32">32</button>
-
           <!-- Row 2 -->
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-33">33</button>
           <button class="intendedZoneBtn shadowZone"        id="intendedZone-10">10</button>
@@ -453,7 +529,6 @@
           <button class="intendedZoneBtn shadowZone"        id="intendedZone-13">13</button>
           <button class="intendedZoneBtn shadowZone"        id="intendedZone-14">14</button>
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-34">34</button>
-
           <!-- Row 3 -->
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-35">35</button>
           <button class="intendedZoneBtn shadowZone"        id="intendedZone-15">15</button>
@@ -462,7 +537,6 @@
           <button class="intendedZoneBtn strikeZone"        id="intendedZone-3">3</button>
           <button class="intendedZoneBtn shadowZone"        id="intendedZone-16">16</button>
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-36">36</button>
-
           <!-- Row 4 -->
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-37">37</button>
           <button class="intendedZoneBtn shadowZone"        id="intendedZone-17">17</button>
@@ -471,7 +545,6 @@
           <button class="intendedZoneBtn strikeZone"        id="intendedZone-6">6</button>
           <button class="intendedZoneBtn shadowZone"        id="intendedZone-18">18</button>
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-38">38</button>
-
           <!-- Row 5 -->
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-39">39</button>
           <button class="intendedZoneBtn shadowZone"        id="intendedZone-19">19</button>
@@ -480,7 +553,6 @@
           <button class="intendedZoneBtn strikeZone"        id="intendedZone-9">9</button>
           <button class="intendedZoneBtn shadowZone"        id="intendedZone-20">20</button>
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-40">40</button>
-
           <!-- Row 6 -->
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-41">41</button>
           <button class="intendedZoneBtn shadowZone"        id="intendedZone-21">21</button>
@@ -489,7 +561,6 @@
           <button class="intendedZoneBtn shadowZone"        id="intendedZone-24">24</button>
           <button class="intendedZoneBtn shadowZone"        id="intendedZone-25">25</button>
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-42">42</button>
-
           <!-- Row 7 -->
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-43">43</button>
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-44">44</button>
@@ -502,90 +573,83 @@
       </div>
     </div>
 
-<!-- Step 3: Actual Zone selection -->
-<div id="actualZoneSelection" style="display:none;">
-  <h3>Select Actual Zone</h3>
-  <div id="actualZoneGridContainer" style="display: flex; justify-content: center;">
-    <div id="actualZoneGrid">
-      <!-- Row 1 -->
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-26">26</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-27">27</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-28">28</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-29">29</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-30">30</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-31">31</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-32">32</button>
-
-      <!-- Row 2 -->
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-33">33</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-10">10</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-11">11</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-12">12</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-13">13</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-14">14</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-34">34</button>
-
-      <!-- Row 3 -->
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-35">35</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-15">15</button>
-      <button class="actualZoneBtn strikeZone" id="actualZone-1">1</button>
-      <button class="actualZoneBtn strikeZone" id="actualZone-2">2</button>
-      <button class="actualZoneBtn strikeZone" id="actualZone-3">3</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-16">16</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-36">36</button>
-
-      <!-- Row 4 -->
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-37">37</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-17">17</button>
-      <button class="actualZoneBtn strikeZone" id="actualZone-4">4</button>
-      <button class="actualZoneBtn strikeZone" id="actualZone-5">5</button>
-      <button class="actualZoneBtn strikeZone" id="actualZone-6">6</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-18">18</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-38">38</button>
-
-      <!-- Row 5 -->
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-39">39</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-19">19</button>
-      <button class="actualZoneBtn strikeZone" id="actualZone-7">7</button>
-      <button class="actualZoneBtn strikeZone" id="actualZone-8">8</button>
-      <button class="actualZoneBtn strikeZone" id="actualZone-9">9</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-20">20</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-40">40</button>
-
-      <!-- Row 6 -->
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-41">41</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-21">21</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-22">22</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-23">23</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-24">24</button>
-      <button class="actualZoneBtn shadowZone" id="actualZone-25">25</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-42">42</button>
-
-      <!-- Row 7 -->
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-43">43</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-44">44</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-45">45</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-46">46</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-47">47</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-48">48</button>
-      <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-49">49</button>
+    <!-- Step 3: Actual Zone selection -->
+    <div id="actualZoneSelection" style="display:none;">
+      <h3>Select Actual Zone</h3>
+      <div id="actualZoneGridContainer">
+        <div id="actualZoneGrid">
+          <!-- Row 1 -->
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-26">26</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-27">27</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-28">28</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-29">29</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-30">30</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-31">31</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-32">32</button>
+          <!-- Row 2 -->
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-33">33</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-10">10</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-11">11</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-12">12</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-13">13</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-14">14</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-34">34</button>
+          <!-- Row 3 -->
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-35">35</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-15">15</button>
+          <button class="actualZoneBtn strikeZone" id="actualZone-1">1</button>
+          <button class="actualZoneBtn strikeZone" id="actualZone-2">2</button>
+          <button class="actualZoneBtn strikeZone" id="actualZone-3">3</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-16">16</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-36">36</button>
+          <!-- Row 4 -->
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-37">37</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-17">17</button>
+          <button class="actualZoneBtn strikeZone" id="actualZone-4">4</button>
+          <button class="actualZoneBtn strikeZone" id="actualZone-5">5</button>
+          <button class="actualZoneBtn strikeZone" id="actualZone-6">6</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-18">18</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-38">38</button>
+          <!-- Row 5 -->
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-39">39</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-19">19</button>
+          <button class="actualZoneBtn strikeZone" id="actualZone-7">7</button>
+          <button class="actualZoneBtn strikeZone" id="actualZone-8">8</button>
+          <button class="actualZoneBtn strikeZone" id="actualZone-9">9</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-20">20</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-40">40</button>
+          <!-- Row 6 -->
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-41">41</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-21">21</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-22">22</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-23">23</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-24">24</button>
+          <button class="actualZoneBtn shadowZone" id="actualZone-25">25</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-42">42</button>
+          <!-- Row 7 -->
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-43">43</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-44">44</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-45">45</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-46">46</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-47">47</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-48">48</button>
+          <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-49">49</button>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
 
-<div id="missMapContainer" style="display:none;">
-  <div id="missMapHeader">
-    <h3>Natural Miss Heatmaps</h3>
-    <div id="missMapControls">
-      <label>Pitch
-        <select id="missMapPitchType"></select>
-      </label>
-      <span id="missMapStatus" style="margin-left:12px;">Select a pitch type to view miss patterns by intended zone.</span>
+    <div id="missMapContainer" style="display:none;">
+      <div id="missMapHeader">
+        <h3>Natural Miss Heatmaps</h3>
+        <div id="missMapControls">
+          <label>Pitch
+            <select id="missMapPitchType"></select>
+          </label>
+          <span id="missMapStatus">Select a pitch type to view miss patterns by intended zone.</span>
+        </div>
+      </div>
+      <div id="missMapCards"></div>
     </div>
-  </div>
-  <div id="missMapCards"></div>
-</div>
-
 
     <!-- Pitch Log for Intended Zone -->
     <div id="intendedZonePitchLog">
@@ -593,9 +657,7 @@
       <ul id="intendedZoneLog"></ul>
     </div>
 
-    <button id="exportIntendedZoneBtn" style="margin-top: 20px;">
-      Export Intended Zone Stats
-    </button>
+    <button id="exportIntendedZoneBtn">Export Intended Zone Stats</button>
   </div>
 
   <!-- TAGGING OPTIONS -->
@@ -610,27 +672,25 @@
     <button id="applyTagBtn">Apply Tag</button>
   </div>
 
-
-
   </div> <!-- closes #liveBPWrapper -->
 </div>   <!-- closes #liveBPMode -->
 
+  </main>
 
-<!-- 4) export buttons row, underneath all three columns -->
-<div id="liveBPActionsWrapper" style="text-align:center; margin-top:1em;">
-  <div id="liveBPActions" style="display:inline-flex; gap:1em;">
-  <button id="exportAtBatBtn" style="margin-top: 20px;">Export At‑Bat Summary</button>
-  <button id="exportBtn" style="margin-top: 20px;">Export Stats</button>
-  <button id="heatMapBtn" style="margin-top: 20px;">Heat Map</button>
-  <button id="nextBatterBtn" style="margin-top: 20px;">Next Batter</button>
-  <button id="tagPitchBtn" style="margin-top: 20px;">Tag Pitch</button>
-</div>
+  <!-- ===== FOOTER / ACTION BAR ===== -->
+  <footer class="bento-footer">
+    <div id="liveBPActionsWrapper">
+      <div id="liveBPActions">
+        <button id="exportBtn">Export Stats</button>
+        <button id="heatMapBtn">Heat Map</button>
+        <button id="nextBatterBtn">Next Batter</button>
+        <button id="tagPitchBtn">Tag Pitch</button>
+      </div>
+    </div>
+  </footer>
+
+</div> <!-- /.bento-app -->
 
   <script src="script.js"></script>
 </body>
 </html>
-
-
-
-
-
