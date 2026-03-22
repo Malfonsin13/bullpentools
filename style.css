@@ -345,6 +345,45 @@ button:active {
   background: #a83d30 !important;
 }
 
+/* Out / Hit / Skip buttons */
+.in-play-out-btn {
+  font-size: var(--text-lg) !important;
+  font-weight: 700 !important;
+  padding: var(--space-lg) var(--space-xxl) !important;
+  min-height: 56px;
+  min-width: 120px;
+}
+
+#inPlayOut {
+  background: #4a9e6e !important;
+  color: white !important;
+  border-color: #3d8a5e !important;
+}
+
+#inPlayOut:hover {
+  background: #3d8a5e !important;
+}
+
+#inPlayHit {
+  background: #c94a3a !important;
+  color: white !important;
+  border-color: #a83d30 !important;
+}
+
+#inPlayHit:hover {
+  background: #a83d30 !important;
+}
+
+#inPlaySkip {
+  background: var(--chrome-highlight) !important;
+  color: var(--text-on-dark) !important;
+  border-color: var(--chrome-border) !important;
+}
+
+#inPlaySkip:hover {
+  background: var(--body-bg) !important;
+}
+
 #completedCounts {
   margin-top: var(--space-lg);
   font-weight: 700;
@@ -592,6 +631,7 @@ button:active {
 #donut-bb-fly { stroke: #5b8fc9; }
 #donut-bb-gb  { stroke: #d4652a; }
 #donut-bb-ld  { stroke: #4a9e6e; }
+#donut-bb-pu  { stroke: #a855c9; }
 
 .donut-value {
   fill: var(--accent-navy);
@@ -1072,6 +1112,24 @@ button:active {
   min-height: auto;
 }
 
+.stats-drawer-toggle.has-insights::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  background: #ffeb3b;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.2);
+  animation: insightPulse 1.8s infinite;
+}
+
+@keyframes insightPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.3); }
+}
+
 .stats-drawer-summary {
   display: flex;
   flex-wrap: wrap;
@@ -1096,6 +1154,148 @@ button:active {
   width: 100%;
   overflow: auto;
 }
+
+/* === DRAWER TAB BAR === */
+.drawer-tab-bar {
+  display: flex;
+  gap: 2px;
+  padding: var(--space-xs) var(--space-md);
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.drawer-tab {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md) !important;
+  margin: 0 !important;
+  font-size: var(--text-xs) !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: rgba(255,255,255,0.06) !important;
+  color: rgba(255,255,255,0.5) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: var(--btn-radius) var(--btn-radius) 0 0 !important;
+  min-height: 36px;
+  box-shadow: none !important;
+}
+
+.drawer-tab:hover {
+  background: rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.8) !important;
+}
+
+.drawer-tab.active {
+  background: rgba(255,255,255,0.12) !important;
+  color: var(--text-on-dark) !important;
+  border-bottom-color: var(--accent-orange) !important;
+}
+
+.drawer-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: 0;
+}
+
+
+/* === INSIGHTS PANEL === */
+.insights-panel {
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.insights-panel h3 {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--text-on-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 var(--space-sm) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.insight-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-orange);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+#insightsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.insight-item {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--btn-radius);
+  font-size: var(--text-xs);
+  color: var(--text-on-dark);
+  background: rgba(255,255,255,0.04);
+  border-left: 3px solid transparent;
+}
+
+.insight-item.warning {
+  border-left-color: var(--accent-orange);
+  background: rgba(250, 70, 22, 0.08);
+}
+
+.insight-item.positive {
+  border-left-color: #4a9e6e;
+  background: rgba(74, 158, 110, 0.08);
+}
+
+.insight-item.info {
+  border-left-color: var(--accent-blue);
+  background: rgba(28, 63, 110, 0.08);
+}
+
+
+/* === OUT TYPE BAR CHART === */
+#outTypeBarChartSvg {
+  padding: var(--space-sm) 0;
+}
+
+#outTypeBarChartSvg svg {
+  width: 100%;
+  display: block;
+}
+
+.bar-label {
+  fill: var(--text-on-dark);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-body);
+}
+
+.bar-count {
+  fill: rgba(255,255,255,0.6);
+  font-size: 10px;
+  font-family: var(--font-body);
+}
+
+
+/* === SEQUENCE SPARKLINE === */
+#sequenceSparkline {
+  margin-top: var(--space-xs);
+}
+
+#sequenceSparkline svg {
+  display: block;
+  width: 100%;
+  height: 28px;
+}
+
 
 /* === USAGE DONUT (pitch mix) === */
 #usageDonutWrapper {
@@ -1781,6 +1981,30 @@ button:active {
     height: 34px;
     font-size: 10px;
     min-height: 34px;
+  }
+
+  /* Out/Hit/Skip buttons — full width stacked on phone */
+  #inPlayOutSelection {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .in-play-out-btn {
+    width: 100% !important;
+    min-height: 64px !important;
+    font-size: var(--text-xl) !important;
+  }
+
+  /* In-play type buttons — 2x2 grid on phone */
+  #inPlaySelection {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-sm);
+  }
+
+  #inPlaySelection h3 {
+    grid-column: 1 / -1;
   }
 
   .kpi-card {
