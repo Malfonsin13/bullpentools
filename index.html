@@ -72,38 +72,73 @@
         </div>
       </div>
       <div id="statsDrawerContent" class="stats-drawer-content">
-        <!-- USAGE DONUT: pitch mix breakdown -->
-        <div id="usageDonutWrapper">
-          <h3>Pitch Mix</h3>
-          <div id="usageDonutChart"></div>
-          <div id="usageDonutLegend"></div>
+        <!-- INSIGHTS PANEL (above tabs) -->
+        <div id="insightsPanel" class="insights-panel" style="display:none;">
+          <h3>Coaching Insights <span id="insightCount" class="insight-badge">0</span></h3>
+          <ul id="insightsList"></ul>
         </div>
 
-        <!-- LEFT PANEL: per-pitch summary -->
-        <div id="sideLeft" class="side-panel">
-          <h3>By Pitch Type</h3>
-          <table class="liveTbl" id="tbl-pitchType">
-            <thead>
-              <tr>
-                <th>Pitch</th><th>Usage%</th><th>IZ%</th><th>OOZ%</th><th>CSW%</th>
-                <th>Strike%</th><th>Swing%</th>
-                <th>Fly%</th><th>GB%</th><th>LD%</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+        <!-- TAB BAR -->
+        <div class="drawer-tab-bar">
+          <button class="drawer-tab active" data-tab="overview">Overview</button>
+          <button class="drawer-tab" data-tab="inplay">In-Play</button>
         </div>
 
-        <!-- RIGHT PANEL: per-batter summary -->
-        <div id="sideRight" class="side-panel">
-          <h3>By Batter</h3>
-          <table class="liveTbl" id="tbl-batter">
-            <thead><tr>
-              <th>Batter</th><th>Early Swing%</th><th>Late Swing%</th>
-              <th>Chase%</th><th>CSW%</th><th>Strike%</th>
-            </tr></thead>
-            <tbody></tbody>
-          </table>
+        <!-- TAB: OVERVIEW -->
+        <div id="drawerTabOverview" class="drawer-tab-content">
+          <!-- USAGE DONUT: pitch mix breakdown -->
+          <div id="usageDonutWrapper">
+            <h3>Pitch Mix</h3>
+            <div id="usageDonutChart"></div>
+            <div id="usageDonutLegend"></div>
+          </div>
+
+          <!-- LEFT PANEL: per-pitch summary -->
+          <div id="sideLeft" class="side-panel">
+            <h3>By Pitch Type</h3>
+            <table class="liveTbl" id="tbl-pitchType">
+              <thead>
+                <tr>
+                  <th>Pitch</th><th>Usage%</th><th>IZ%</th><th>OOZ%</th><th>CSW%</th>
+                  <th>Strike%</th><th>Swing%</th>
+                  <th>Fly%</th><th>GB%</th><th>LD%</th><th>PU%</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <!-- RIGHT PANEL: per-batter summary -->
+          <div id="sideRight" class="side-panel">
+            <h3>By Batter</h3>
+            <table class="liveTbl" id="tbl-batter">
+              <thead><tr>
+                <th>Batter</th><th>Early Swing%</th><th>Late Swing%</th>
+                <th>Chase%</th><th>CSW%</th><th>Strike%</th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB: IN-PLAY -->
+        <div id="drawerTabInPlay" class="drawer-tab-content" style="display:none;">
+          <div id="outTypeBarChart" class="side-panel">
+            <h3>Out Types by Pitch</h3>
+            <div id="outTypeBarChartSvg"></div>
+          </div>
+          <div id="inPlayOutSection" class="side-panel">
+            <h3>In-Play Outcomes</h3>
+            <table class="liveTbl" id="tbl-inPlayOut">
+              <thead>
+                <tr>
+                  <th>Pitch</th><th>BIP</th><th>Out%</th>
+                  <th>GO</th><th>FO</th><th>LO</th><th>PO</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -189,6 +224,7 @@
             <circle class="donut-segment" id="donut-bb-fly" cx="32" cy="32" r="24"/>
             <circle class="donut-segment" id="donut-bb-gb" cx="32" cy="32" r="24"/>
             <circle class="donut-segment" id="donut-bb-ld" cx="32" cy="32" r="24"/>
+            <circle class="donut-segment" id="donut-bb-pu" cx="32" cy="32" r="24"/>
             <text class="donut-value" x="32" y="32" id="donut-val-bb">0</text>
           </svg>
           <span id="stat-ipo" class="donut-label" style="display:none"></span>
@@ -196,7 +232,16 @@
             <span class="bb-legend-item" style="color:#5b8fc9">FB</span>
             <span class="bb-legend-item" style="color:#d4652a">GB</span>
             <span class="bb-legend-item" style="color:#4a9e6e">LD</span>
+            <span class="bb-legend-item" style="color:#a855c9">PU</span>
           </span>
+        </div>
+        <div class="donut-card">
+          <svg class="donut-svg" viewBox="0 0 64 64" aria-hidden="true">
+            <circle class="donut-track" cx="32" cy="32" r="24"/>
+            <circle class="donut-fill" id="donut-bip-out" cx="32" cy="32" r="24"/>
+            <text class="donut-value" x="32" y="32" id="donut-val-bip-out">0</text>
+          </svg>
+          <span id="stat-bip-out" class="donut-label">BIP Out%: <span class="stat-value live-stat-value">0</span></span>
         </div>
       </div>
       <div id="stats-early">
@@ -339,6 +384,15 @@
         <button class="btn" id="groundball">Groundball</button>
         <button class="btn" id="flyball">FlyBall</button>
         <button class="btn" id="linedrive">LineDrive</button>
+        <button class="btn" id="popup">Popup</button>
+      </div>
+
+      <!-- Out / Hit / Skip Selection -->
+      <div id="inPlayOutSelection" style="display:none;">
+        <h3>Out or Hit?</h3>
+        <button class="btn in-play-out-btn" id="inPlayOut">Out</button>
+        <button class="btn in-play-out-btn" id="inPlayHit">Hit</button>
+        <button class="btn in-play-out-btn" id="inPlaySkip">Skip</button>
       </div>
     </div>
 
@@ -462,7 +516,10 @@
 
   <aside id="pitchLogDrawer" class="pitchlog-drawer">
     <button id="pitchLogDrawerToggle" type="button" aria-expanded="false">Pitch Log</button>
-    <div id="pitchLogDrawerHeader">Pitch Log</div>
+    <div id="pitchLogDrawerHeader">
+      Pitch Log
+      <div id="sequenceSparkline"></div>
+    </div>
     <div id="pitchLogDrawerContent">
       <ul id="pitchLog"></ul>
     </div>
