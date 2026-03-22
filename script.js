@@ -23,6 +23,7 @@ let comboPitchTypes = [];
 let maxPotentialPoints = 0;
 
 let isHeatMapMode = false;
+let pendingInPlayType = null;  // holds 'groundball'|'flyball'|'linedrive'|'popup' between steps
 let isIntendedMissMapMode = false;
 let isTaggingMode = false;
 
@@ -797,6 +798,10 @@ function saveCurrentState() {
     pitchTags: JSON.parse(JSON.stringify(pitchTags)),
     pitchData: pitchData.slice(),
     pitchId,
+    pendingInPlayType,
+    atBats: JSON.parse(JSON.stringify(atBats)),
+    atBatNumber,
+    isNewAtBat,
     pitchLog: document.getElementById('pitchLog').innerHTML, // Save the pitch log state
     completedCountLog: document.getElementById('countLog').innerHTML // Save completed count log state
   };
@@ -818,6 +823,10 @@ function restoreState(state) {
   pitchTags = state.pitchTags || {};
   pitchData = state.pitchData.slice();
   pitchId = state.pitchId;
+  pendingInPlayType = state.pendingInPlayType ?? null;
+  if (state.atBats) atBats = JSON.parse(JSON.stringify(state.atBats));
+  if (state.atBatNumber !== undefined) atBatNumber = state.atBatNumber;
+  if (state.isNewAtBat !== undefined) isNewAtBat = state.isNewAtBat;
   updatePitchLogTags();
 }
 
@@ -1172,7 +1181,7 @@ function processOutcomeBasedOnLocation() {
 /* ---------- LIVE STATS ---------- */
 /*  helper â€“ returns an empty counter object for swing, csw, â€¦  */
 function makeCounters () {
-  const base = {}; ['swing','csw','ipo','iz','ooz','strike','fly','gb','ld'].forEach(k=>base[k]=0);
+  const base = {}; ['swing','csw','ipo','iz','ooz','strike','fly','gb','ld','pu','inPlayOuts','inPlayHits','gbOut','fbOut','ldOut','puOut','gbHit','fbHit','ldHit','puHit'].forEach(k=>base[k]=0);
   return { all:{...base}, early:{...base}, late:{...base} };
 }
 
@@ -1193,16 +1202,17 @@ function updateDonut(circleId, textId, value) {
   if (text) text.textContent = v.toFixed(1);
 }
 
-const BB_COLORS = { fly: '#5b8fc9', gb: '#d4652a', ld: '#4a9e6e' };
+const BB_COLORS = { fly: '#5b8fc9', gb: '#d4652a', ld: '#4a9e6e', pu: '#a855c9' };
 
-function updateBattedBallDonut(fly, gb, ld, total) {
+function updateBattedBallDonut(fly, gb, ld, pu, total) {
   const valEl = document.getElementById('donut-val-bb');
   if (valEl) valEl.textContent = String(total);
 
   const segments = [
     { id: 'donut-bb-fly', count: fly },
     { id: 'donut-bb-gb',  count: gb },
-    { id: 'donut-bb-ld',  count: ld }
+    { id: 'donut-bb-ld',  count: ld },
+    { id: 'donut-bb-pu',  count: pu }
   ];
 
   let offset = 0;
@@ -1258,6 +1268,9 @@ function updateLiveStats () {
       if (res.includes('flyball'))        { totals.all.fly++; totals[bucket].fly++; }
       else if (res.includes('groundball')){ totals.all.gb++;  totals[bucket].gb++;  }
       else if (res.includes('linedrive')) { totals.all.ld++;  totals[bucket].ld++;  }
+      else if (res.includes('popup'))     { totals.all.pu++;  totals[bucket].pu++;  }
+      if (p.inPlayOut === true)       { totals.all.inPlayOuts++; totals[bucket].inPlayOuts++; }
+      else if (p.inPlayOut === false) { totals.all.inPlayHits++; totals[bucket].inPlayHits++; }
     }
     if (inIZ)   { totals.all.iz++;     totals[bucket].iz++;    }
     if (inOOZ)  { totals.all.ooz++;    totals[bucket].ooz++;   }
@@ -1289,13 +1302,25 @@ function updateLiveStats () {
   updateDonut('donut-csw',    'donut-val-csw',    pctValue(totals.all.csw,    denoms.all));
   updateDonut('donut-iz',     'donut-val-iz',     pctValue(totals.all.iz,     denoms.all));
   updateDonut('donut-swing',  'donut-val-swing',  pctValue(totals.all.swing,  denoms.all));
-  updateBattedBallDonut(totals.all.fly, totals.all.gb, totals.all.ld, totals.all.ipo);
+  updateBattedBallDonut(totals.all.fly, totals.all.gb, totals.all.ld, totals.all.pu, totals.all.ipo);
+
+  /* ----- BIP Out% donut ----- */
+  const bipTotal = totals.all.inPlayOuts + totals.all.inPlayHits;
+  const bipOutPct = bipTotal > 0 ? (totals.all.inPlayOuts / bipTotal * 100) : 0;
+  updateDonut('donut-bip-out', 'donut-val-bip-out', bipOutPct);
+  setLivePct('stat-bip-out', 'BIP Out%', totals.all.inPlayOuts, bipTotal);
 
   /* ----- tables: still respond to the dropdown filter ----- */
   const aggFiltered = buildAggregators(filtered); // filtered set
   const aggAll      = buildAggregators(allData);  // reference row
 
   renderLiveTables(aggFiltered, aggAll);
+  renderInPlayOutTable(aggFiltered);
+  renderOutTypeBarChart(aggFiltered);
+
+  /* ----- coaching insights ----- */
+  const insights = computeInsights(allData);
+  renderInsights(insights);
 }
 
 function advanceToNextBatter () {
@@ -1338,7 +1363,7 @@ function renderLiveTables(aggFiltered, aggAll) {
   const tpBody = document.querySelector('#tbl-pitchType tbody');
   tpBody.innerHTML = '';
 
-  const pitchCols = ['usagePct','izPct','oozPct','cswPct','strikePct','swingPct','flyPct','gbPct','ldPct'];
+  const pitchCols = ['usagePct','izPct','oozPct','cswPct','strikePct','swingPct','flyPct','gbPct','ldPct','puPct'];
   const pitchMax  = computeColumnMax(aggFiltered.byPitch, pitchCols);
 
   // â¬†ï¸ TOTAL row first (for the *filtered* set)
@@ -1385,6 +1410,342 @@ function renderLiveTables(aggFiltered, aggAll) {
       shadeCellByColumn(cell, pctVal, batterMax[metric]);
     });
   });
+}
+
+/* ---------- DRAWER TAB SWITCHING ---------- */
+document.querySelectorAll('.drawer-tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
+    this.classList.add('active');
+    const target = this.dataset.tab;
+    document.getElementById('drawerTabOverview').style.display = target === 'overview' ? 'flex' : 'none';
+    document.getElementById('drawerTabInPlay').style.display   = target === 'inplay'   ? 'flex' : 'none';
+  });
+});
+
+/* ---------- IN-PLAY OUT TABLE ---------- */
+function renderInPlayOutTable(agg) {
+  const tbody = document.querySelector('#tbl-inPlayOut tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const BB_OUT_LABELS = { gbOut:'GO', fbOut:'FO', ldOut:'LO', puOut:'PO' };
+
+  // Total row first
+  const o = agg.overall;
+  const totalBIP = o.inPlayOuts + o.inPlayHits;
+  const totalOutPct = totalBIP > 0 ? (o.inPlayOuts / totalBIP * 100) : 0;
+  const totalRow = tbody.insertRow();
+  totalRow.classList.add('total-row');
+  [
+    '- All -',
+    String(totalBIP),
+    `${totalOutPct.toFixed(1)}%`,
+    String(o.gbOut),
+    String(o.fbOut),
+    String(o.ldOut),
+    String(o.puOut)
+  ].forEach((txt, i) => {
+    const td = totalRow.insertCell();
+    td.textContent = txt;
+    td.classList.add('total-cell');
+  });
+
+  // Per pitch type
+  agg.byPitch.forEach((stats, pt) => {
+    const bip = stats.inPlayOuts + stats.inPlayHits;
+    if (bip === 0 && stats.fly + stats.gb + stats.ld + stats.pu === 0) return;
+    const outPct = bip > 0 ? (stats.inPlayOuts / bip * 100) : 0;
+    const row = tbody.insertRow();
+    row.insertCell().textContent = (PITCH_LABELS[pt] || pt).toUpperCase();
+    row.insertCell().textContent = String(bip);
+    const outCell = row.insertCell();
+    outCell.textContent = `${outPct.toFixed(1)}%`;
+    if (bip > 0) shadeCellByColumn(outCell, outPct, 100);
+    row.insertCell().textContent = String(stats.gbOut);
+    row.insertCell().textContent = String(stats.fbOut);
+    row.insertCell().textContent = String(stats.ldOut);
+    row.insertCell().textContent = String(stats.puOut);
+  });
+}
+
+/* ---------- OUT TYPE STACKED BAR CHART ---------- */
+const BAR_COLORS = { gbOut: '#d4652a', fbOut: '#5b8fc9', ldOut: '#4a9e6e', puOut: '#a855c9' };
+const BAR_LABELS_MAP = { gbOut: 'GO', fbOut: 'FO', ldOut: 'LO', puOut: 'PO' };
+
+function renderOutTypeBarChart(agg) {
+  const container = document.getElementById('outTypeBarChartSvg');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const types = [];
+  agg.byPitch.forEach((stats, pt) => {
+    const totalOuts = stats.gbOut + stats.fbOut + stats.ldOut + stats.puOut;
+    if (totalOuts > 0) types.push({ pt, stats, totalOuts });
+  });
+  if (types.length === 0) return;
+
+  const maxOuts = Math.max(...types.map(t => t.totalOuts));
+  const barH = 22;
+  const gap = 6;
+  const labelW = 30;
+  const countW = 30;
+  const chartW = 280;
+  const svgW = labelW + chartW + countW + 10;
+  const svgH = types.length * (barH + gap) + gap;
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
+  svg.setAttribute('width', '100%');
+  svg.style.maxWidth = `${svgW}px`;
+
+  types.forEach((item, i) => {
+    const y = gap + i * (barH + gap);
+    // Label
+    const label = document.createElementNS(SVG_NS, 'text');
+    label.setAttribute('x', labelW - 4);
+    label.setAttribute('y', y + barH / 2 + 4);
+    label.setAttribute('text-anchor', 'end');
+    label.setAttribute('class', 'bar-label');
+    label.textContent = (PITCH_LABELS[item.pt] || item.pt).toUpperCase();
+    svg.appendChild(label);
+
+    // Stacked bars
+    let x = labelW;
+    const barW = (item.totalOuts / maxOuts) * chartW;
+    ['gbOut', 'fbOut', 'ldOut', 'puOut'].forEach(key => {
+      const count = item.stats[key];
+      if (count === 0) return;
+      const segW = (count / item.totalOuts) * barW;
+      const rect = document.createElementNS(SVG_NS, 'rect');
+      rect.setAttribute('x', x);
+      rect.setAttribute('y', y);
+      rect.setAttribute('width', segW);
+      rect.setAttribute('height', barH);
+      rect.setAttribute('rx', 2);
+      rect.setAttribute('fill', BAR_COLORS[key]);
+      svg.appendChild(rect);
+      x += segW;
+    });
+
+    // Count
+    const countText = document.createElementNS(SVG_NS, 'text');
+    countText.setAttribute('x', labelW + barW + 6);
+    countText.setAttribute('y', y + barH / 2 + 4);
+    countText.setAttribute('class', 'bar-count');
+    countText.textContent = String(item.totalOuts);
+    svg.appendChild(countText);
+  });
+
+  // Legend row at bottom
+  const legendY = svgH - 2;
+  let lx = labelW;
+  ['gbOut', 'fbOut', 'ldOut', 'puOut'].forEach(key => {
+    const rect = document.createElementNS(SVG_NS, 'rect');
+    rect.setAttribute('x', lx);
+    rect.setAttribute('y', legendY - 8);
+    rect.setAttribute('width', 8);
+    rect.setAttribute('height', 8);
+    rect.setAttribute('rx', 1);
+    rect.setAttribute('fill', BAR_COLORS[key]);
+    svg.appendChild(rect);
+    const txt = document.createElementNS(SVG_NS, 'text');
+    txt.setAttribute('x', lx + 11);
+    txt.setAttribute('y', legendY);
+    txt.setAttribute('class', 'bar-count');
+    txt.textContent = BAR_LABELS_MAP[key];
+    svg.appendChild(txt);
+    lx += 42;
+  });
+
+  container.appendChild(svg);
+}
+
+/* ========== COACHING INSIGHTS ENGINE ========== */
+
+const FASTBALL_TYPES = ['fourSeam', 'twoSeam', 'cutter'];
+
+function computeInsights(data) {
+  const insights = [];
+  if (data.length < 10) return insights;
+
+  const pl = PITCH_LABELS || {};
+
+  // --- 1. Fastball overuse by count ---
+  const countBuckets = {};
+  data.forEach(p => {
+    const key = `${p.prePitchCount.balls}-${p.prePitchCount.strikes}`;
+    if (!countBuckets[key]) countBuckets[key] = { total: 0, fb: 0 };
+    countBuckets[key].total++;
+    if (FASTBALL_TYPES.includes(p.pitchType)) countBuckets[key].fb++;
+  });
+  for (const [count, b] of Object.entries(countBuckets)) {
+    if (b.total >= 4 && (b.fb / b.total) > 0.75) {
+      insights.push({
+        type: 'warning', category: 'sequencing', priority: 2,
+        message: `Heavy fastball in ${count} count (${Math.round(b.fb / b.total * 100)}% FB on ${b.total} pitches)`
+      });
+    }
+  }
+
+  // --- 2. High early-count swing rate ---
+  let earlyPitches = 0, earlySwings = 0;
+  data.forEach(p => {
+    if (p.prePitchCount.strikes < 2) {
+      earlyPitches++;
+      const swung = ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play');
+      if (swung) earlySwings++;
+    }
+  });
+  if (earlyPitches >= 10) {
+    const earlySwingPct = earlySwings / earlyPitches * 100;
+    if (earlySwingPct > 40) {
+      insights.push({
+        type: 'warning', category: 'swing', priority: 2,
+        message: `Hitters jumping early (${earlySwingPct.toFixed(0)}% swing rate <2 strikes)`
+      });
+    }
+  }
+
+  // --- 3. Pitch getting hit hard ---
+  const bipByPitch = {};
+  data.forEach(p => {
+    if (!p.result || !p.result.startsWith('In Play')) return;
+    const pt = p.pitchType;
+    if (!bipByPitch[pt]) bipByPitch[pt] = { outs: 0, hits: 0 };
+    if (p.inPlayOut === true) bipByPitch[pt].outs++;
+    else if (p.inPlayOut === false) bipByPitch[pt].hits++;
+  });
+  for (const [pt, b] of Object.entries(bipByPitch)) {
+    const total = b.outs + b.hits;
+    if (total >= 3 && (b.hits / total) > 0.6) {
+      insights.push({
+        type: 'warning', category: 'contact', priority: 2,
+        message: `${pl[pt] || pt} getting hit hard (${Math.round(b.hits / total * 100)}% non-out on ${total} BIP)`
+      });
+    }
+    if (total >= 3 && (b.outs / total) >= 0.7) {
+      insights.push({
+        type: 'positive', category: 'contact', priority: 1,
+        message: `${pl[pt] || pt} generating outs effectively (${Math.round(b.outs / total * 100)}% out rate on ${total} BIP)`
+      });
+    }
+  }
+
+  // --- 4. Sequencing repetition (3+ consecutive same pitch) ---
+  if (data.length >= 3) {
+    const last = data.slice(-5);
+    let streak = 1;
+    for (let i = last.length - 2; i >= 0; i--) {
+      if (last[i].pitchType === last[last.length - 1].pitchType) streak++;
+      else break;
+    }
+    if (streak >= 3) {
+      const pt = last[last.length - 1].pitchType;
+      insights.push({
+        type: 'warning', category: 'sequencing', priority: 3,
+        message: `${streak}x ${pl[pt] || pt} in a row — consider mixing`
+      });
+    }
+  }
+
+  // --- 5. Location predictability (last 10 pitches) ---
+  const recent = data.slice(-10);
+  if (recent.length >= 8) {
+    const quadrants = { upper: 0, lower: 0, glove: 0, arm: 0 };
+    let valid = 0;
+    recent.forEach(p => {
+      const rc = getZoneRowCol(p.location);
+      if (!rc || rc[0] === -1) return;
+      valid++;
+      if (rc[0] <= 2) quadrants.upper++; else quadrants.lower++;
+      if (rc[1] <= 2) quadrants.glove++; else if (rc[1] >= 4) quadrants.arm++;
+    });
+    if (valid >= 8) {
+      for (const [q, count] of Object.entries(quadrants)) {
+        if (count / valid >= 0.7) {
+          insights.push({
+            type: 'warning', category: 'location', priority: 2,
+            message: `Location pattern: ${Math.round(count / valid * 100)}% ${q} in last ${valid} pitches`
+          });
+        }
+      }
+    }
+  }
+
+  // --- 6. Declining chase rate ---
+  if (data.length >= 20) {
+    let twoStrikePitches = 0, chaseSwings = 0;
+    data.forEach(p => {
+      if (p.prePitchCount.strikes === 2) {
+        const inOOZ = shadowLocations.includes(p.location) || nonCompetitiveLocations.includes(p.location);
+        if (inOOZ) {
+          twoStrikePitches++;
+          const swung = ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play');
+          if (swung) chaseSwings++;
+        }
+      }
+    });
+    if (twoStrikePitches >= 5) {
+      const chasePct = chaseSwings / twoStrikePitches * 100;
+      if (chasePct < 20) {
+        insights.push({
+          type: 'info', category: 'chase', priority: 1,
+          message: `Hitters laying off 2-strike chase pitches (${chasePct.toFixed(0)}% chase rate)`
+        });
+      }
+    }
+  }
+
+  // --- 8. Popup/flyball production on breaking balls ---
+  data.forEach(p => {/* handled in loop 3 already */});
+  const breakingTypes = ['curveBall', 'slider', 'sweeper'];
+  for (const pt of breakingTypes) {
+    const bips = data.filter(p => p.pitchType === pt && p.result && p.result.startsWith('In Play'));
+    if (bips.length >= 3) {
+      const weakContact = bips.filter(p => p.result.includes('popup') || p.result.includes('flyball')).length;
+      if (weakContact / bips.length >= 0.5) {
+        insights.push({
+          type: 'positive', category: 'contact', priority: 1,
+          message: `${pl[pt] || pt} producing weak pop contact (${Math.round(weakContact / bips.length * 100)}% popup+flyball)`
+        });
+      }
+    }
+  }
+
+  // Sort by priority descending
+  insights.sort((a, b) => b.priority - a.priority);
+  return insights;
+}
+
+function renderInsights(insights) {
+  const panel = document.getElementById('insightsPanel');
+  const list = document.getElementById('insightsList');
+  const badge = document.getElementById('insightCount');
+  const toggle = document.getElementById('statsDrawerToggle');
+  if (!panel || !list) return;
+
+  if (insights.length === 0) {
+    panel.style.display = 'none';
+    if (toggle) toggle.classList.remove('has-insights');
+    return;
+  }
+
+  panel.style.display = 'block';
+  badge.textContent = String(insights.length);
+  list.innerHTML = '';
+
+  insights.forEach(ins => {
+    const li = document.createElement('li');
+    li.className = `insight-item ${ins.type}`;
+    li.textContent = ins.message;
+    list.appendChild(li);
+  });
+
+  // Alert dot on drawer toggle
+  if (toggle) {
+    toggle.classList.toggle('has-insights', insights.some(i => i.priority >= 2));
+  }
 }
 
 /* ---------- Pitch Mix Usage Donut ---------- */
@@ -1566,38 +1927,88 @@ function showInPlaySelection() {
 
 document.querySelectorAll("#inPlaySelection .btn").forEach(button => {
   button.addEventListener('click', function() {
-    const inPlayResult = this.id; 
-    // capture previous count
+    pendingInPlayType = this.id;  // store for out/hit step
+    document.getElementById('inPlaySelection').style.display = 'none';
+    document.getElementById('inPlayOutSelection').style.display = 'block';
+  });
+});
+
+/* ---------- OUT / HIT / SKIP ---------- */
+document.querySelectorAll("#inPlayOutSelection .in-play-out-btn").forEach(button => {
+  button.addEventListener('click', function() {
+    const choice = this.id;  // 'inPlayOut', 'inPlayHit', or 'inPlaySkip'
+    let outSuffix = '';
+    let inPlayOut = null;
+    if (choice === 'inPlayOut')  { outSuffix = ' - out'; inPlayOut = true;  }
+    else if (choice === 'inPlayHit') { outSuffix = ' - hit'; inPlayOut = false; }
+    // Skip: no suffix, inPlayOut stays null
+
+    const resultString = `In Play - ${pendingInPlayType}${outSuffix}`;
     const prev = { balls: ballCount, strikes: strikeCount };
-  
-    // record the pitch
+
     pitchCount++;
-    if (mode==="liveBP"||mode==="points") totalPitches++; 
+    if (mode === 'liveBP' || mode === 'points') totalPitches++;
     else totalPitchesBullpen++;
-  
-    // log it as an at-bat finisher:
-    logPitchResult(pitchType, `In Play - ${inPlayResult}`, pitchLocation, '', prev, 'inPlay');
-  
-    // *** NEW: record the at-bat summary ***
-    logAtBatResult("In Play - " + inPlayResult);
-  
-    // and reset for the next pitch sequence
+
+    logPitchResult(pitchType, resultString, pitchLocation, '', prev, 'inPlay', inPlayOut);
+    logAtBatResult(resultString);
+
     isNewAtBat = true;
+    pendingInPlayType = null;
     resetForNextPitch();
     updateLiveStats();
     updateUI();
-    });
   });
+});
 
 // ======== NEW RENDER HELPERS ========
 /**
  * Render the pitch log based on pitchData and the current batter filter.
  * If currentBatterId is null, show all pitches; otherwise only the selected batter.
  */
+/* ---------- SEQUENCE SPARKLINE ---------- */
+function renderSequenceSparkline() {
+  const container = document.getElementById('sequenceSparkline');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const recent = pitchData.slice(-20);
+  if (recent.length < 2) return;
+
+  const svgW = 200;
+  const svgH = 28;
+  const dotR = 3.5;
+  const padX = dotR + 2;
+  const padY = dotR + 2;
+  const plotW = svgW - padX * 2;
+  const plotH = svgH - padY * 2;
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+  recent.forEach((p, i) => {
+    const rc = getZoneRowCol(p.location);
+    if (!rc || rc[0] === -1) return;
+    const x = padX + (i / (recent.length - 1)) * plotW;
+    const y = padY + (rc[0] / 6) * plotH;
+    const circle = document.createElementNS(SVG_NS, 'circle');
+    circle.setAttribute('cx', x);
+    circle.setAttribute('cy', y);
+    circle.setAttribute('r', dotR);
+    circle.setAttribute('fill', PITCH_COLORS[p.pitchType] || '#8a8d93');
+    circle.setAttribute('opacity', '0.85');
+    svg.appendChild(circle);
+  });
+
+  container.appendChild(svg);
+}
+
 function renderPitchLog() {
   const ul = document.getElementById('pitchLog');
   if (!ul) return;
   ul.innerHTML = '';
+  renderSequenceSparkline();
 
   // null â†’ â€œAll battersâ€
   const wantId = currentBatterId;
@@ -1670,7 +2081,7 @@ function renderAtBatLog() {
   });
 }
 
-function logPitchResult(pitchType, result, location, scenarioEmojis = '', previousCount = null, outcome = '') {
+function logPitchResult(pitchType, result, location, scenarioEmojis = '', previousCount = null, outcome = '', inPlayOut = null) {
   // only push data; rendering is handled elsewhere
   if (previousCount === null) {
     // If previousCount is not provided, set it to current counts before the pitch
@@ -1688,7 +2099,8 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '', previo
     postPitchCount: { balls: ballCount, strikes: strikeCount },
     pitchNumber: pitchCount,
     atBatNumber: atBatNumber,
-    outcome: outcome
+    outcome: outcome,
+    inPlayOut: inPlayOut       // true = out, false = hit, null = unknown/skip
   };
 
   pitchData.push(pitchEntry);
@@ -1838,7 +2250,7 @@ function updatePitchLogTags() {
 
 function resetForNextPitch(resetCounts = true) {
   // close every sub-panel that might be open
-  ['pitchLocationSelection','outcomeSelection','inPlaySelection']
+  ['pitchLocationSelection','outcomeSelection','inPlaySelection','inPlayOutSelection']
     .forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
@@ -1877,6 +2289,7 @@ function showPitchTypeSelection() {
   document.getElementById('pitchTypeSelection').style.display = 'block';
   document.getElementById('outcomeSelection').style.display = 'none';
   document.getElementById('inPlaySelection').style.display = 'none';
+  document.getElementById('inPlayOutSelection').style.display = 'none';
   document.getElementById('kBtn').style.display = 'none';
   document.getElementById('noKBtn').style.display = 'none';
   document.getElementById('strikeBtn').style.display = 'inline-block';
@@ -2035,6 +2448,7 @@ function showHeatMap() {
   document.getElementById('pitchLocationSelection').style.display = 'none';
   document.getElementById('outcomeSelection').style.display = 'none';
   document.getElementById('inPlaySelection').style.display = 'none';
+  document.getElementById('inPlayOutSelection').style.display = 'none';
   // Show heatmap grid
   document.getElementById('heatmapGrid').style.display = 'block';
   // Compute counts and update colors
@@ -3039,6 +3453,7 @@ function metricCount(stats, metric) {
     case 'flyPct'       : return stats.fly;
     case 'gbPct'        : return stats.gb;
     case 'ldPct'        : return stats.ld;
+    case 'puPct'        : return stats.pu;
     case 'earlySwingPct': return stats.earlySwing;
     case 'lateSwingPct' : return stats.lateSwing;
     case 'chasePct'     : return stats.oozSwing;
@@ -3075,7 +3490,10 @@ function initStats () {
     pitches:0, swing:0, csw:0, strike:0,
     iz:0, ooz:0,            // all O-O-Z pitches
     oozSwing:0,             // swings at O-O-Z pitches
-    fly:0, gb:0, ld:0,
+    fly:0, gb:0, ld:0, pu:0,
+    inPlayOuts:0, inPlayHits:0,
+    gbOut:0, fbOut:0, ldOut:0, puOut:0,
+    gbHit:0, fbHit:0, ldHit:0, puHit:0,
     earlySwing:0, lateSwing:0,
     earlyPitches:0, latePitches:0
   };
@@ -3133,9 +3551,29 @@ function accumulate(stats, p) {
   }
 
  if (p.result && p.result.startsWith('In Play')) {
-   if (p.result.includes('flyball'))     stats.fly++;
-   else if (p.result.includes('groundball')) stats.gb++;
-   else if (p.result.includes('linedrive'))   stats.ld++;
+   const isFly = p.result.includes('flyball');
+   const isGB  = p.result.includes('groundball');
+   const isLD  = p.result.includes('linedrive');
+   const isPU  = p.result.includes('popup');
+
+   if (isFly)      stats.fly++;
+   else if (isGB)   stats.gb++;
+   else if (isLD)   stats.ld++;
+   else if (isPU)   stats.pu++;
+
+   if (p.inPlayOut === true) {
+     stats.inPlayOuts++;
+     if (isGB)       stats.gbOut++;
+     else if (isFly) stats.fbOut++;
+     else if (isLD)  stats.ldOut++;
+     else if (isPU)  stats.puOut++;
+   } else if (p.inPlayOut === false) {
+     stats.inPlayHits++;
+     if (isGB)       stats.gbHit++;
+     else if (isFly) stats.fbHit++;
+     else if (isLD)  stats.ldHit++;
+     else if (isPU)  stats.puHit++;
+   }
  }
 }
   
@@ -3174,6 +3612,8 @@ function buildAggregators (dataArr) {
     flyPct        : pct(s.fly       , s.pitches),
     gbPct         : pct(s.gb        , s.pitches),
     ldPct         : pct(s.ld        , s.pitches),
+    puPct         : pct(s.pu        , s.pitches),
+    inPlayOutPct  : pct(s.inPlayOuts, s.inPlayOuts + s.inPlayHits),
     earlySwingPct : pct(s.earlySwing, s.earlyPitches),
     lateSwingPct  : pct(s.lateSwing , s.latePitches),
     chasePct      : pct(s.oozSwing , s.swing)   // correct â€“ swings / swings
@@ -3361,6 +3801,40 @@ function exportLiveBPStats() {
     statsText += `% Strike Zone Pitches: ${strikeZonePercentage.toFixed(2)}%\n`;
   });
 
+  // In-Play Out Stats
+  let totalBIP = 0, totalIPOuts = 0, totalIPHits = 0;
+  let goCount = 0, foCount = 0, loCount = 0, poCount = 0;
+  pitchData.forEach(p => {
+    if (p.result && p.result.startsWith('In Play')) {
+      totalBIP++;
+      if (p.inPlayOut === true) {
+        totalIPOuts++;
+        if (p.result.includes('groundball')) goCount++;
+        else if (p.result.includes('flyball')) foCount++;
+        else if (p.result.includes('linedrive')) loCount++;
+        else if (p.result.includes('popup')) poCount++;
+      } else if (p.inPlayOut === false) {
+        totalIPHits++;
+      }
+    }
+  });
+  statsText += `\nBalls In Play: ${totalBIP}\n`;
+  if (totalIPOuts + totalIPHits > 0) {
+    statsText += `BIP Out%: ${((totalIPOuts / (totalIPOuts + totalIPHits)) * 100).toFixed(1)}%\n`;
+    statsText += `In-Play Outs: ${totalIPOuts} (GO: ${goCount}, FO: ${foCount}, LO: ${loCount}, PO: ${poCount})\n`;
+    statsText += `In-Play Hits: ${totalIPHits}\n`;
+  }
+
+  // Active Coaching Insights
+  const exportInsights = computeInsights(pitchData);
+  if (exportInsights.length > 0) {
+    statsText += `\nCoaching Insights:\n`;
+    exportInsights.forEach(ins => {
+      const icon = ins.type === 'warning' ? '!' : ins.type === 'positive' ? '+' : '-';
+      statsText += `  [${icon}] ${ins.message}\n`;
+    });
+  }
+
   statsText += `\nPitch Log By At-Bat:\n`;
   const atBatResultsByNumber = new Map(atBats.map(ab => [ab.atBatNumber, ab]));
   const groupedPitches = new Map();
@@ -3432,6 +3906,7 @@ document.addEventListener('DOMContentLoaded', function() {
   toggleMode();
   document.getElementById('pitchLocationSelection').style.display = 'none';
   document.getElementById('outcomeSelection').style.display = 'none';
+  document.getElementById('inPlayOutSelection').style.display = 'none';
   document.getElementById('pitchTypeSelection').style.display = 'block';
   document.getElementById('heatmapGrid').style.display = 'none';
   document.getElementById('taggingOptions').style.display = 'none';
