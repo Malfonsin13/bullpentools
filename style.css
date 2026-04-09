@@ -870,6 +870,7 @@ button:active {
 #intendedZoneGridContainer,
 #actualZoneGridContainer {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   width: 100%;
@@ -1293,9 +1294,165 @@ button:active {
 #sequenceSparkline svg {
   display: block;
   width: 100%;
-  height: 28px;
+  height: 52px;
 }
 
+
+/* === HEATMAP FILTER TOGGLE BUTTONS === */
+.filterBtnGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.filterToggleBtn {
+  padding: 2px 8px;
+  font-size: 11px;
+  border: 1px solid #444;
+  border-radius: 3px;
+  background: transparent;
+  color: #aaa;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.filterToggleBtn.active {
+  background: #e07840;
+  color: #fff;
+  border-color: #e07840;
+}
+.filterToggleBtn:hover:not(.active) {
+  border-color: #777;
+  color: #fff;
+}
+
+/* === RE-TAG PITCH PANEL === */
+#retagPitchPanel {
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(480px, 95vw);
+  max-height: 55vh;
+  background: var(--color-surface, #1e2128);
+  border: 1px solid #444;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+#retagPitchHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #333;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+#retagCloseBtn {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+#retagCloseBtn:hover { color: #fff; }
+#retagPitchList {
+  overflow-y: auto;
+  flex: 1;
+}
+.retagPitchItem {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  border-bottom: 1px solid #2a2d33;
+}
+.retagPitchItem:hover, .retagPitchItem.selected {
+  background: #2a2d33;
+}
+.retagNum    { color: #888; min-width: 28px; }
+.retagType   { font-weight: 600; min-width: 28px; }
+.retagResult { color: #aaa; flex: 1; }
+.retagZone   { color: #888; }
+.retagBatter { color: #aaa; font-style: italic; }
+#retagTypeSelection {
+  padding: 10px 12px;
+  border-top: 1px solid #333;
+  flex-shrink: 0;
+}
+#retagTypeSelection p { margin: 0 0 6px; font-size: 12px; color: #aaa; }
+#retagPitchTypeBtns {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.retagTypeBtn {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #2a2d33;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #ddd;
+  cursor: pointer;
+}
+.retagTypeBtn:hover {
+  background: #e07840;
+  border-color: #e07840;
+  color: #fff;
+}
+
+/* === GRID POV TOGGLE === */
+.pitcher-pov {
+  transform: scaleX(-1);
+}
+.pitcher-pov .locationBtn,
+.pitcher-pov .heatmapBtn,
+.pitcher-pov .intendedZoneBtn,
+.pitcher-pov .actualZoneBtn {
+  transform: scaleX(-1);
+}
+
+.povToggleBtn {
+  display: block;
+  margin: 0 auto 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  background: transparent;
+  color: #aaa;
+  border: 1px solid #444;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.povToggleBtn:hover {
+  color: #fff;
+  border-color: #777;
+}
+
+.homePlateWrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 6px;
+}
+.homePlateIndicator {
+  display: block;
+  transition: transform 0.2s ease;
+}
+.homePlateIndicator.pitcher-pov {
+  transform: rotate(180deg);
+}
+.homePlatePoly {
+  fill: #c8c8c8;
+  stroke: #888;
+  stroke-width: 1.5;
+}
 
 /* === USAGE DONUT (pitch mix) === */
 #usageDonutWrapper {
