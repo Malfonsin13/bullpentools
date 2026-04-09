@@ -306,6 +306,7 @@
       <div id="pitchLocationSelection" style="display:none;">
         <h3>Select Pitch Location</h3>
         <div id="pitchLocationContainer">
+          <button class="povToggleBtn" onclick="toggleGridPOV()">⇄ Catcher POV</button>
           <div id="pitchLocationGrid">
             <!-- Row 1 -->
             <button class="locationBtn nonCompetitiveZone" id="location-26">26</button>
@@ -364,6 +365,11 @@
             <button class="locationBtn nonCompetitiveZone" id="location-48">48</button>
             <button class="locationBtn nonCompetitiveZone" id="location-49">49</button>
           </div>
+          <div class="homePlateWrapper">
+            <svg class="homePlateIndicator" viewBox="0 0 60 46" width="40" height="31">
+              <polygon points="0,0 60,0 60,26 30,46 0,26" class="homePlatePoly"/>
+            </svg>
+          </div>
         </div>
       </div>
 
@@ -407,19 +413,20 @@
           </select>
         </label>
         <label>Pitch
-          <select id="filterPitch">
-            <option value="all">All</option>
-          </select>
+          <div id="pitchFilterBtns" class="filterBtnGroup">
+            <button class="filterToggleBtn active" data-value="all">All</button>
+          </div>
         </label>
         <label>Result
-          <select id="filterResult">
-            <option value="all">All results</option>
-            <option value="strike">Strike</option>
-            <option value="ball">Ball</option>
-            <option value="swing">Swing</option>
-            <option value="inPlay">In Play</option>
-            <option value="hbp">HBP</option>
-          </select>
+          <div id="resultFilterBtns" class="filterBtnGroup">
+            <button class="filterToggleBtn active" data-value="all">All</button>
+            <button class="filterToggleBtn" data-value="ball">Ball</button>
+            <button class="filterToggleBtn" data-value="calledStrike">CS</button>
+            <button class="filterToggleBtn" data-value="whiff">Whiff</button>
+            <button class="filterToggleBtn" data-value="foul">Foul</button>
+            <button class="filterToggleBtn" data-value="inPlay">BIP</button>
+            <button class="filterToggleBtn" data-value="hbp">HBP</button>
+          </div>
         </label>
         <label>Batter
           <select id="filterBatter">
@@ -430,6 +437,7 @@
 
       <h3>Heat Map</h3>
       <div id="heatmapContainer">
+        <button class="povToggleBtn" onclick="toggleGridPOV()">⇄ Catcher POV</button>
         <div id="heatmap">
           <!-- Row 1 -->
           <button class="heatmapBtn nonCompetitiveZone" id="heatmap-26">26</button>
@@ -487,6 +495,11 @@
           <button class="heatmapBtn nonCompetitiveZone" id="heatmap-47">47</button>
           <button class="heatmapBtn nonCompetitiveZone" id="heatmap-48">48</button>
           <button class="heatmapBtn nonCompetitiveZone" id="heatmap-49">49</button>
+        </div>
+        <div class="homePlateWrapper">
+          <svg class="homePlateIndicator" viewBox="0 0 60 46" width="40" height="31">
+            <polygon points="0,0 60,0 60,26 30,46 0,26" class="homePlatePoly"/>
+          </svg>
         </div>
       </div>
     </div>
@@ -569,6 +582,7 @@
     <div id="intendedZoneSelection" style="display:none;">
       <h3>Select Intended Zone</h3>
       <div id="intendedZoneGridContainer">
+        <button class="povToggleBtn" onclick="toggleGridPOV()">⇄ Catcher POV</button>
         <div id="intendedZoneGrid">
           <!-- Row 1 -->
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-26">26</button>
@@ -627,6 +641,11 @@
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-48">48</button>
           <button class="intendedZoneBtn nonCompetitiveZone" id="intendedZone-49">49</button>
         </div>
+        <div class="homePlateWrapper">
+          <svg class="homePlateIndicator" viewBox="0 0 60 46" width="40" height="31">
+            <polygon points="0,0 60,0 60,26 30,46 0,26" class="homePlatePoly"/>
+          </svg>
+        </div>
       </div>
     </div>
 
@@ -634,6 +653,7 @@
     <div id="actualZoneSelection" style="display:none;">
       <h3>Select Actual Zone</h3>
       <div id="actualZoneGridContainer">
+        <button class="povToggleBtn" onclick="toggleGridPOV()">⇄ Catcher POV</button>
         <div id="actualZoneGrid">
           <!-- Row 1 -->
           <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-26">26</button>
@@ -692,6 +712,11 @@
           <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-48">48</button>
           <button class="actualZoneBtn nonCompetitiveZone" id="actualZone-49">49</button>
         </div>
+        <div class="homePlateWrapper">
+          <svg class="homePlateIndicator" viewBox="0 0 60 46" width="40" height="31">
+            <polygon points="0,0 60,0 60,26 30,46 0,26" class="homePlatePoly"/>
+          </svg>
+        </div>
       </div>
     </div>
 
@@ -732,6 +757,28 @@
   </div> <!-- closes #liveBPWrapper -->
 </div>   <!-- closes #liveBPMode -->
 
+  <!-- ===== RE-TAG PITCH PANEL ===== -->
+  <div id="retagPitchPanel" style="display:none;">
+    <div id="retagPitchHeader">
+      <span>Select a pitch to re-tag</span>
+      <button id="retagCloseBtn">&#x2715;</button>
+    </div>
+    <div id="retagPitchList"></div>
+    <div id="retagTypeSelection" style="display:none;">
+      <p>New pitch type:</p>
+      <div id="retagPitchTypeBtns">
+        <button class="retagTypeBtn" data-type="fourSeam">4S</button>
+        <button class="retagTypeBtn" data-type="twoSeam">2S</button>
+        <button class="retagTypeBtn" data-type="cutter">CT</button>
+        <button class="retagTypeBtn" data-type="curveBall">CB</button>
+        <button class="retagTypeBtn" data-type="slider">SL</button>
+        <button class="retagTypeBtn" data-type="sweeper">SW</button>
+        <button class="retagTypeBtn" data-type="changeup">CH</button>
+        <button class="retagTypeBtn" data-type="splitter">SP</button>
+      </div>
+    </div>
+  </div>
+
   </main>
 
   <!-- ===== FOOTER / ACTION BAR ===== -->
@@ -742,6 +789,7 @@
         <button id="heatMapBtn">Heat Map</button>
         <button id="nextBatterBtn">Next Batter</button>
         <button id="tagPitchBtn">Tag Pitch</button>
+        <button id="retagPitchBtn">Re-Tag Pitch</button>
       </div>
     </div>
   </footer>
