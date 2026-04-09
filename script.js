@@ -43,10 +43,16 @@ let batters = [];              // [{id,name,hand}]
 let currentBatterId = null;    // id of batter selected in dropdown
 let batterAutoId = 1;          // simple incremental id
 
-/* ---------- NEW â€“ PITCHER STATE ---------- */
+/* ---------- NEW â€” PITCHER STATE ---------- */
 let pitchers          = [];        // [{id,name,hand}]
 let currentPitcherId  = null;      // id of pitcher currently on the mound
 let pitcherAutoId     = 1;         // simple incremental id
+
+/* ---------- GRID POV ---------- */
+let gridPOV = localStorage.getItem('gridPOV') || 'catcher';
+
+/* ---------- RE-TAG STATE ---------- */
+let retagSelectedPitchId = null;
 
 /* ---------- PER-PITCH STORAGE  ---------- */
 /* All pitches for every batter live here.  */
@@ -727,15 +733,17 @@ function exportIntendedZoneStats() {
 }
 
 function updateHeatMap () {
-  const fCount   = document.getElementById('filterCount').value;   // all | early | late
-  const fPitch   = document.getElementById('filterPitch').value;   // all | pitchType
-  const fBatter  = document.getElementById('filterBatter').value;  // all | LH | RH | id:<n>
-  const fResult  = document.getElementById('filterResult').value;  // all | strike | â€¦
+  const activePitch  = [...document.querySelectorAll('#pitchFilterBtns  .filterToggleBtn.active')].map(b => b.dataset.value);
+  const activeResult = [...document.querySelectorAll('#resultFilterBtns .filterToggleBtn.active')].map(b => b.dataset.value);
+  const fPitchAll  = activePitch.includes('all')  || activePitch.length  === 0;
+  const fResultAll = activeResult.includes('all') || activeResult.length === 0;
+  const fCount  = document.getElementById('filterCount').value;
+  const fBatter = document.getElementById('filterBatter').value;
 
   const locationCounts = Array(50).fill(0);
 
   pitchData.forEach(p => {
-    if (fPitch !== 'all' && p.pitchType !== fPitch) return;
+    if (!fPitchAll  && !activePitch.includes(p.pitchType)) return;
 
     // Batter filter
     if (fBatter !== 'all') {
@@ -756,16 +764,7 @@ function updateHeatMap () {
     if (fCount !== 'all' && bucket !== fCount) return;
 
     // Result/outcome filter
-    if (fResult !== 'all') {
-      const m = {
-        strike: ['whiff','calledStrike','foul','strike'],
-        ball  : ['ball'],
-        swing : ['whiff','foul','inPlay'],   // treat inPlay as swing
-        inPlay: ['inPlay'],
-        hbp   : ['hbp']
-      };
-      if (!m[fResult].includes(p.outcome)) return;
-    }
+    if (!fResultAll && !activeResult.includes(p.outcome)) return;
 
     locationCounts[p.location]++;
   });
@@ -1966,6 +1965,69 @@ document.querySelectorAll("#inPlayOutSelection .in-play-out-btn").forEach(button
  * Render the pitch log based on pitchData and the current batter filter.
  * If currentBatterId is null, show all pitches; otherwise only the selected batter.
  */
+/* ---------- RE-TAG PITCH ---------- */
+function renderRetagPitchList() {
+  const list = document.getElementById('retagPitchList');
+  if (!list) return;
+  list.innerHTML = '';
+  if (pitchData.length === 0) {
+    list.innerHTML = '<p style="padding:12px;color:#888;font-size:12px;">No pitches logged yet.</p>';
+    return;
+  }
+  [...pitchData].reverse().forEach(p => {
+    const batter = batters.find(b => b.id === p.batterId);
+    const div = document.createElement('div');
+    div.className = 'retagPitchItem';
+    div.innerHTML =
+      `<span class="retagNum">#${p.pitchNumber}</span>` +
+      `<span class="retagType">${(PITCH_LABELS[p.pitchType] || p.pitchType).toUpperCase()}</span>` +
+      `<span class="retagResult">${p.result}</span>` +
+      `<span class="retagZone">Zn ${p.location}</span>` +
+      (batter ? `<span class="retagBatter">${batter.name}</span>` : '');
+    div.addEventListener('click', () => {
+      retagSelectedPitchId = p.pitchId;
+      list.querySelectorAll('.retagPitchItem').forEach(el => el.classList.remove('selected'));
+      div.classList.add('selected');
+      document.getElementById('retagTypeSelection').style.display = 'block';
+    });
+    list.appendChild(div);
+  });
+}
+
+function retagPitch(newType) {
+  const p = pitchData.find(x => x.pitchId === retagSelectedPitchId);
+  if (!p) return;
+  p.pitchType = newType;
+  addPitchTypeToFilter(newType);
+  updateLiveStats();
+  updateHeatMap();
+  renderPitchLog();
+  renderAtBatLog();
+  document.getElementById('retagPitchPanel').style.display = 'none';
+  retagSelectedPitchId = null;
+}
+
+/* ---------- GRID POV TOGGLE ---------- */
+function applyGridPOV() {
+  const isPitcher = gridPOV === 'pitcher';
+  ['pitchLocationGrid', 'heatmap', 'intendedZoneGrid', 'actualZoneGrid'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('pitcher-pov', isPitcher);
+  });
+  document.querySelectorAll('.homePlateIndicator').forEach(el => {
+    el.classList.toggle('pitcher-pov', isPitcher);
+  });
+  document.querySelectorAll('.povToggleBtn').forEach(btn => {
+    btn.textContent = isPitcher ? '⇄ Pitcher POV' : '⇄ Catcher POV';
+  });
+}
+
+function toggleGridPOV() {
+  gridPOV = gridPOV === 'catcher' ? 'pitcher' : 'catcher';
+  localStorage.setItem('gridPOV', gridPOV);
+  applyGridPOV();
+}
+
 /* ---------- SEQUENCE SPARKLINE ---------- */
 function renderSequenceSparkline() {
   const container = document.getElementById('sequenceSparkline');
@@ -1975,29 +2037,48 @@ function renderSequenceSparkline() {
   const recent = pitchData.slice(-20);
   if (recent.length < 2) return;
 
-  const svgW = 200;
-  const svgH = 28;
-  const dotR = 3.5;
-  const padX = dotR + 2;
-  const padY = dotR + 2;
-  const plotW = svgW - padX * 2;
-  const plotH = svgH - padY * 2;
+  const svgW = 220, svgH = 52;
+  const padX = 18, padXR = 5, dotR = 3.5;
+  const plotW = svgW - padX - padXR;
+  const asLineY = 16, gsLineY = 36;
+
+  const SPARKLINE_COLORS = { fastball: '#d94f4f', breaking: '#4a90d9', offspeed: '#8a8d93' };
+
+  function zoneToY(zoneId) {
+    const [row, col] = getZoneRowCol(zoneId);
+    if (row === -1) return (asLineY + gsLineY) / 2;
+    if (col <= 1 && row >= 1 && row <= 5) return asLineY;
+    if (col >= 5 && row >= 1 && row <= 5) return gsLineY;
+    return [5, 11, 22, 26, 30, 41, 47][row] ?? 26;
+  }
 
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
 
+  for (const [lineY, label] of [[asLineY, 'AS'], [gsLineY, 'GS']]) {
+    const line = document.createElementNS(SVG_NS, 'line');
+    line.setAttribute('x1', padX); line.setAttribute('x2', svgW - padXR);
+    line.setAttribute('y1', lineY); line.setAttribute('y2', lineY);
+    line.setAttribute('stroke', '#555'); line.setAttribute('stroke-width', '0.75');
+    svg.appendChild(line);
+
+    const text = document.createElementNS(SVG_NS, 'text');
+    text.setAttribute('x', '2'); text.setAttribute('y', lineY + 3.5);
+    text.setAttribute('font-size', '7'); text.setAttribute('fill', '#888');
+    text.setAttribute('font-family', 'sans-serif');
+    text.textContent = label;
+    svg.appendChild(text);
+  }
+
   recent.forEach((p, i) => {
-    const rc = getZoneRowCol(p.location);
-    if (!rc || rc[0] === -1) return;
     const x = padX + (i / (recent.length - 1)) * plotW;
-    const y = padY + (rc[0] / 6) * plotH;
+    const y = zoneToY(p.location);
+    const color = SPARKLINE_COLORS[PITCH_FAMILY[p.pitchType]] || '#8a8d93';
     const circle = document.createElementNS(SVG_NS, 'circle');
-    circle.setAttribute('cx', x);
-    circle.setAttribute('cy', y);
-    circle.setAttribute('r', dotR);
-    circle.setAttribute('fill', PITCH_COLORS[p.pitchType] || '#8a8d93');
-    circle.setAttribute('opacity', '0.85');
+    circle.setAttribute('cx', x); circle.setAttribute('cy', y);
+    circle.setAttribute('r', dotR); circle.setAttribute('fill', color);
+    circle.setAttribute('opacity', '0.9');
     svg.appendChild(circle);
   });
 
@@ -2132,14 +2213,30 @@ function enterTaggingMode() {
 }
 
 function addPitchTypeToFilter(pt) {
-  const fpSel = document.getElementById('filterPitch');
-  if (!fpSel) return;
-  if ([...fpSel.options].some(o => o.value === pt)) return;
+  const container = document.getElementById('pitchFilterBtns');
+  if (!container || container.querySelector(`[data-value="${pt}"]`)) return;
+  const btn = document.createElement('button');
+  btn.className = 'filterToggleBtn';
+  btn.dataset.value = pt;
+  btn.textContent = (PITCH_LABELS[pt] || pt).toUpperCase();
+  btn.addEventListener('click', () => handleFilterToggle(btn, 'pitchFilterBtns'));
+  container.appendChild(btn);
+}
 
-  const opt = document.createElement('option');
-  opt.value = pt;
-  opt.textContent = pt.toUpperCase();
-  fpSel.appendChild(opt);
+function handleFilterToggle(btn, groupId) {
+  const container = document.getElementById(groupId);
+  const allBtn = container.querySelector('[data-value="all"]');
+  if (btn.dataset.value === 'all') {
+    container.querySelectorAll('.filterToggleBtn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  } else {
+    btn.classList.toggle('active');
+    const anySpecificActive = [...container.querySelectorAll('.filterToggleBtn')]
+      .filter(b => b.dataset.value !== 'all')
+      .some(b => b.classList.contains('active'));
+    if (allBtn) allBtn.classList.toggle('active', !anySpecificActive);
+  }
+  updateHeatMap();
 }
 
 function exitTaggingMode() {
@@ -3664,8 +3761,12 @@ document.getElementById('heatMapBtn').addEventListener('click', function() {
   }
 });
 
-['filterCount','filterPitch','filterBatter','filterResult']
+['filterCount','filterBatter']
   .forEach(id => document.getElementById(id)?.addEventListener('change', updateHeatMap));
+
+document.querySelectorAll('#resultFilterBtns .filterToggleBtn').forEach(btn => {
+  btn.addEventListener('click', () => handleFilterToggle(btn, 'resultFilterBtns'));
+});
 
 /**
  * Append a summary of the current atâ€‘bat to the atBatLog and record it
@@ -3914,6 +4015,22 @@ document.addEventListener('DOMContentLoaded', function() {
   // NEW: render logs on page load based on current data (initially empty)
   renderPitchLog();
   renderAtBatLog();
+  applyGridPOV();
+
+  // Re-tag pitch
+  document.getElementById('retagPitchBtn').addEventListener('click', () => {
+    retagSelectedPitchId = null;
+    document.getElementById('retagTypeSelection').style.display = 'none';
+    renderRetagPitchList();
+    document.getElementById('retagPitchPanel').style.display = 'block';
+  });
+  document.getElementById('retagCloseBtn').addEventListener('click', () => {
+    document.getElementById('retagPitchPanel').style.display = 'none';
+    retagSelectedPitchId = null;
+  });
+  document.querySelectorAll('.retagTypeBtn').forEach(btn => {
+    btn.addEventListener('click', () => retagPitch(btn.dataset.type));
+  });
 });
 
 
