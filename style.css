@@ -1378,10 +1378,11 @@ button:active {
   background: #2a2d33;
 }
 .retagNum    { color: #888; min-width: 28px; }
-.retagType   { font-weight: 600; min-width: 28px; }
+.retagType   { font-weight: 600; min-width: 28px; color: #ddd; }
 .retagResult { color: #aaa; flex: 1; }
 .retagZone   { color: #888; }
 .retagBatter { color: #aaa; font-style: italic; }
+
 #retagTypeSelection {
   padding: 10px 12px;
   border-top: 1px solid #333;
@@ -1633,6 +1634,27 @@ button:active {
   font-weight: 700;
   text-transform: uppercase;
   cursor: default;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ab-hand-toggle {
+  min-height: unset;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  margin: 0;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  text-transform: none;
+  box-shadow: none;
+}
+.ab-hand-toggle:hover {
+  background: rgba(255,255,255,0.18);
+  box-shadow: none;
 }
 
 #pitchLog li.selectable {
@@ -1653,6 +1675,11 @@ button:active {
   padding: var(--space-md);
   overflow: visible;
   min-height: auto;
+}
+
+.side-panel--full {
+  width: 100%;
+  flex-shrink: 0;
 }
 
 .side-panel h3 {
