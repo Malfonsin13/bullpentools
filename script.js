@@ -32,8 +32,8 @@ let missMapSelectedPitchType = 'all';
 const EMOJI_FIRE = '\u{1F525}';
 const EMOJI_SKULL = '\u{1F480}';
 
-// --------- NEW â€“ ATâ€‘BAT SUMMARY ---------
-// This array stores summary information for each completed atâ€‘bat when running
+// --------- NEW â€“ ATâ€'BAT SUMMARY ---------
+// This array stores summary information for each completed atâ€'bat when running
 // in Live BP or Points mode.  Each entry looks like:
 // { atBatNumber, batterId, result, pitchCount }
 let atBats = [];
@@ -562,6 +562,37 @@ function getDistanceBetweenZones(zoneIdA, zoneIdB) {
   return dist;
 }
 
+function getPitcherHand(pitcherId) {
+  return pitchers.find(p => p.id === pitcherId)?.hand ?? 'RH';
+}
+
+// Per-pitch override wins; falls back to the batter's registered hand.
+function getBatterHand(p) {
+  return p.handOverride ?? batters.find(b => b.id === p.batterId)?.hand ?? '';
+}
+
+function setAbHand(atBatNumber, newHand) {
+  pitchData.forEach(p => {
+    if (p.atBatNumber === atBatNumber) p.handOverride = newHand;
+  });
+  const abEntry = atBats.find(ab => ab.atBatNumber === atBatNumber);
+  if (abEntry) abEntry.handOverride = newHand;
+  renderPitchLog();
+  renderAtBatLog();
+  updateHeatMap();
+  updateLiveStats();
+}
+
+// RH pitcher: arm side = catcher's left = low columns (≤2); LH pitcher: arm side = high columns (≥4).
+// This is consistent regardless of gridPOV because CSS scaleX(-1) remaps click targets symmetrically.
+function isArmSideCol(col, pitcherHand) {
+  return pitcherHand === 'RH' ? col <= 2 : col >= 4;
+}
+
+function isGloveSideCol(col, pitcherHand) {
+  return pitcherHand === 'RH' ? col >= 4 : col <= 2;
+}
+
 function resetIntendedZoneMode() {
   intendedZoneModePitchCount = 0;
   intendedZoneTotalExactHits = 0;
@@ -747,8 +778,8 @@ function updateHeatMap () {
 
     // Batter filter
     if (fBatter !== 'all') {
-      if (fBatter === 'LH' || fBatter === 'RH') {
-        const hand = batters.find(b => b.id === p.batterId)?.hand;
+      if (fBatter === 'L' || fBatter === 'R') {
+        const hand = getBatterHand(p);
         if (hand !== fBatter) return;
       } else if (fBatter.startsWith('id:')) {
         const wantId = Number(fBatter.slice(3));
@@ -855,7 +886,7 @@ function updateBatterDropdown () {
 
   /* â‡¢ NEW: empty option shows every batter */
   const allOpt = document.createElement('option');
-  allOpt.value = '';                   // empty string â†’ â€œallâ€
+  allOpt.value = '';                   // empty string â†' â€œallâ€
   allOpt.textContent = '- All Batters -';
   sel.appendChild(allOpt);
 
@@ -935,7 +966,7 @@ document.querySelectorAll("#outcomeSelection .btn").forEach(button => {
     actionLog.push(saveCurrentState());
     processOutcome(outcome);
 
-    // if it wasnâ€™t an Inâ€‘Play subâ€‘flow, go right back to pitchâ€‘type
+    // if it wasnâ€™t an Inâ€'Play subâ€'flow, go right back to pitchâ€'type
     if (outcome !== 'inPlay' && outcome !== 'hbp') {
       document.getElementById('outcomeSelection').style.display   = 'none';
       document.getElementById('inPlaySelection').style.display    = 'none';
@@ -1409,6 +1440,35 @@ function renderLiveTables(aggFiltered, aggAll) {
       shadeCellByColumn(cell, pctVal, batterMax[metric]);
     });
   });
+
+  /* ---------- LHH / RHH SPLITS ---------- */
+  const hsBody = document.querySelector('#tbl-handSplit tbody');
+  if (hsBody) {
+    hsBody.innerHTML = '';
+    const handCols = ['izPct','cswPct','strikePct','swingPct','chasePct'];
+    const handMax  = computeColumnMax(aggFiltered.byHand, handCols);
+    const HAND_LABELS = { L: 'LHH', R: 'RHH', unknown: '?' };
+
+    // render in a fixed order: L then R
+    ['L', 'R'].forEach(hKey => {
+      const stats = aggFiltered.byHand.get(hKey);
+      if (!stats) return;
+      const row = hsBody.insertRow();
+      row.insertCell().textContent = HAND_LABELS[hKey] ?? hKey;
+      row.insertCell().textContent = stats.pitches;
+      handCols.forEach(metric => {
+        const pctVal   = stats[metric];
+        const rawCount = metricCount(stats, metric);
+        const cell     = row.insertCell();
+        cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
+        shadeCellByColumn(cell, pctVal, handMax[metric]);
+      });
+    });
+
+    // show/hide the section based on whether there's any hand data
+    const section = document.getElementById('handSplitSection');
+    if (section) section.style.display = aggFiltered.byHand.size > 0 ? '' : 'none';
+  }
 }
 
 /* ---------- DRAWER TAB SWITCHING ---------- */
@@ -1652,13 +1712,15 @@ function computeInsights(data) {
   const recent = data.slice(-10);
   if (recent.length >= 8) {
     const quadrants = { upper: 0, lower: 0, glove: 0, arm: 0 };
+    const insightPitcherHand = getPitcherHand(currentPitcherId);
     let valid = 0;
     recent.forEach(p => {
       const rc = getZoneRowCol(p.location);
       if (!rc || rc[0] === -1) return;
       valid++;
       if (rc[0] <= 2) quadrants.upper++; else quadrants.lower++;
-      if (rc[1] <= 2) quadrants.glove++; else if (rc[1] >= 4) quadrants.arm++;
+      if (isArmSideCol(rc[1], insightPitcherHand)) quadrants.arm++;
+      else if (isGloveSideCol(rc[1], insightPitcherHand)) quadrants.glove++;
     });
     if (valid >= 8) {
       for (const [q, count] of Object.entries(quadrants)) {
@@ -2044,11 +2106,16 @@ function renderSequenceSparkline() {
 
   const SPARKLINE_COLORS = { fastball: '#d94f4f', breaking: '#4a90d9', offspeed: '#8a8d93' };
 
-  function zoneToY(zoneId) {
-    const [row, col] = getZoneRowCol(zoneId);
+  function zoneToY(p) {
+    const [row, col] = getZoneRowCol(p.location);
+    const hand = getPitcherHand(p.pitcherId);
     if (row === -1) return (asLineY + gsLineY) / 2;
-    if (col <= 1 && row >= 1 && row <= 5) return asLineY;
-    if (col >= 5 && row >= 1 && row <= 5) return gsLineY;
+    if (row >= 1 && row <= 5) {
+      const outerArm   = hand === 'RH' ? col <= 1 : col >= 5;
+      const outerGlove = hand === 'RH' ? col >= 5 : col <= 1;
+      if (outerArm)   return asLineY;
+      if (outerGlove) return gsLineY;
+    }
     return [5, 11, 22, 26, 30, 41, 47][row] ?? 26;
   }
 
@@ -2073,7 +2140,7 @@ function renderSequenceSparkline() {
 
   recent.forEach((p, i) => {
     const x = padX + (i / (recent.length - 1)) * plotW;
-    const y = zoneToY(p.location);
+    const y = zoneToY(p);
     const color = SPARKLINE_COLORS[PITCH_FAMILY[p.pitchType]] || '#8a8d93';
     const circle = document.createElementNS(SVG_NS, 'circle');
     circle.setAttribute('cx', x); circle.setAttribute('cy', y);
@@ -2091,7 +2158,7 @@ function renderPitchLog() {
   ul.innerHTML = '';
   renderSequenceSparkline();
 
-  // null â†’ â€œAll battersâ€
+  // null â†' â€œAll battersâ€
   const wantId = currentBatterId;
   let lastAtBatNumber = null;
 
@@ -2101,7 +2168,12 @@ function renderPitchLog() {
     if (p.atBatNumber !== lastAtBatNumber) {
       const divider = document.createElement('li');
       divider.classList.add('atbat-divider');
-      divider.textContent = `At-Bat #${p.atBatNumber}`;
+      const abBatter = batters.find(b => b.id === p.batterId);
+      const abHand = getBatterHand(p);
+      const nameLabel = abBatter ? ` — ${abBatter.name}` : '';
+      divider.innerHTML =
+        `At-Bat #${p.atBatNumber}${nameLabel}` +
+        (abBatter ? ` <button class="ab-hand-toggle" data-abnum="${p.atBatNumber}">${abHand || '?'}</button>` : '');
       ul.appendChild(divider);
       lastAtBatNumber = p.atBatNumber;
     }
@@ -2149,14 +2221,14 @@ function renderAtBatLog() {
   if (!list) return;
   list.innerHTML = '';
 
-  const wantId = currentBatterId; // null â†’ all
+  const wantId = currentBatterId; // null â†' all
   atBats.forEach(ab => {
     if (wantId && ab.batterId !== wantId) return;
 
     const li = document.createElement('li');
     const batter = batters.find(b => b.id === ab.batterId);
     const name  = batter ? batter.name : 'Unknown';
-    const hand  = batter ? batter.hand : '';
+    const hand  = ab.handOverride ?? (batter ? batter.hand : '');
     li.innerText = `#${ab.atBatNumber} - ${name}${hand ? ' (' + hand + ')' : ''} - ${ab.result} (${ab.pitchCount} pitches)`;
     list.appendChild(li);
   });
@@ -2514,7 +2586,7 @@ function checkRaceCondition() {
   // LiveBP/Points race wins handled inside processOutcome() when the pitch *reaches* 2 strikes.
   // Bullpen race win on 2 strikes handled in the strikeBtn handler.
   // Putaway awards only on K button.
-  // â†’ Only auto-complete the bullpen â€œ2 balls, 0 strikesâ€ case here.
+  // â†' Only auto-complete the bullpen â€œ2 balls, 0 strikesâ€ case here.
   if (mode === "bullpen" && ballCount === 2 && strikeCount === 0) {
     logCount(strikeCount, ballCount, false);
     resetCount();
@@ -2740,7 +2812,7 @@ function getMissArrowColor(count, max) {
   return `rgb(${r},${g},${b})`;
 }
 
-// Helper: simple whiteâ†’red heat for cells
+// Helper: simple whiteâ†'red heat for cells
 function getHeatMapColor(value, max) {
   if (!max) return 'rgb(245,245,245)';
   const ratio = value / max;
@@ -2749,7 +2821,7 @@ function getHeatMapColor(value, max) {
   return `rgb(255,${g},${b})`;
 }
 
-// Helper: classify a zone â†’ CSS class already used elsewhere
+// Helper: classify a zone â†' CSS class already used elsewhere
 function zoneCssClass(zoneId) {
   if (strikeLocations.includes(zoneId)) return 'strikeZone';
   if (shadowLocations.includes(zoneId)) return 'shadowZone';
@@ -2989,7 +3061,7 @@ function renderMissSummaryCards() {
   );
   if (!filtered.length) { status.innerText = 'No pitches recorded for that pitch type yet.'; return; }
 
-  // A) All pitches â†’ one card per pitch TYPE (unchanged behavior)
+  // A) All pitches â†' one card per pitch TYPE (unchanged behavior)
   if (missMapSelectedPitchType === 'all') {
     const byType = {};
     filtered.forEach(p => { (byType[p.pitchType] ||= []).push(p); });
@@ -3006,13 +3078,13 @@ function renderMissSummaryCards() {
     return;
   }
 
-  // B) Single pitch type â†’ one card per pitch (make intended/actual obvious + arrow)
+  // B) Single pitch type â†' one card per pitch (make intended/actual obvious + arrow)
   filtered.forEach(pitch => {
     const card   = document.createElement('div'); card.className = 'miss-summary-card';
     const header = document.createElement('div'); header.className = 'miss-summary-header';
     const title  = document.createElement('span'); title.textContent = `Pitch #${pitch.pitchNumber}`;
     const meta   = document.createElement('span'); meta.className = 'miss-summary-meta';
-    meta.textContent = `${pitch.pitchType.toUpperCase()} â€“ Intended ${pitch.intendedZone} â†’ Actual ${pitch.actualZone}`;
+    meta.textContent = `${pitch.pitchType.toUpperCase()} â€“ Intended ${pitch.intendedZone} â†' Actual ${pitch.actualZone}`;
     header.appendChild(title); header.appendChild(meta); card.appendChild(header);
 
     const wrapper = document.createElement('div'); wrapper.className = 'miss-mini-wrapper';
@@ -3539,7 +3611,7 @@ function computeColumnMax(map, columns) {
 }
 
 
-/* --- map %-metric â†’ its raw count so we can show â€œ(n)â€ ----------- */
+/* --- map %-metric â†' its raw count so we can show â€œ(n)â€ ----------- */
 function metricCount(stats, metric) {
   switch (metric) {
     case 'izPct'        : return stats.iz;
@@ -3567,8 +3639,8 @@ function updateHeatmapBatterFilter () {
   sel.innerHTML = '';
 
   sel.appendChild(new Option('All', 'all'));
-  sel.appendChild(new Option('LH only', 'LH'));
-  sel.appendChild(new Option('RH only', 'RH'));
+  sel.appendChild(new Option('LHH only', 'L'));
+  sel.appendChild(new Option('RHH only', 'R'));
 
   batters.forEach(b => {
     const label = `${b.name} (${b.hand})`;
@@ -3605,13 +3677,13 @@ function accumulate(stats, p) {
                    .includes(p.outcome);
   const isCSW = ['whiff','calledStrike'].includes(p.outcome);
 
-  // Robust preâ€‘pitch strikes:
+  // Robust preâ€'pitch strikes:
   // Prefer prePitchCount.strikes. If missing, infer from postPitchCount and outcome.
   let preStrikes;
   if (p.prePitchCount && typeof p.prePitchCount.strikes === 'number') {
     preStrikes = p.prePitchCount.strikes;
   } else if (p.postPitchCount && typeof p.postPitchCount.strikes === 'number') {
-    // If the pitch produced a strike, post = pre+1 (except 2â€‘strike fouls keep post=2).
+    // If the pitch produced a strike, post = pre+1 (except 2â€'strike fouls keep post=2).
     const madeStrike = isStrike;
     if (!madeStrike) {
       preStrikes = p.postPitchCount.strikes; // ball/HBP/inPlay-without strike counted
@@ -3677,13 +3749,15 @@ function accumulate(stats, p) {
 function pct (num, den) { return den ? (num/den*100) : 0; }
 
 function buildAggregators (dataArr) {
-  const byPitch  = new Map();   // pitchType â†’ stats object
-  const byBatter = new Map();   // batterId  â†’ stats object
+  const byPitch  = new Map();   // pitchType â†' stats object
+  const byBatter = new Map();   // batterId  â†' stats object
+  const byHand   = new Map();   // 'L' | 'R' â†' stats object
   const overall  = initStats();
 
   dataArr.forEach(p => {
     const pKey = p.pitchType || 'UNK';
     const bKey = p.batterId  ?? 'ALL';
+    const hKey = getBatterHand(p) || 'unknown';
 
     // overall
     accumulate(overall, p);
@@ -3697,6 +3771,11 @@ function buildAggregators (dataArr) {
     let sBat = byBatter.get(bKey) ?? initStats();
     accumulate(sBat, p);
     byBatter.set(bKey, sBat);
+
+    // by batter handedness
+    let sHand = byHand.get(hKey) ?? initStats();
+    accumulate(sHand, p);
+    byHand.set(hKey, sHand);
   });
 
   // â†³ add ready-made percentages so the table renderer stays dumb
@@ -3719,13 +3798,15 @@ function buildAggregators (dataArr) {
   addPcts(overall);
   [...byPitch.values()].forEach(addPcts);
   [...byBatter.values()].forEach(addPcts);
+  [...byHand.values()].forEach(addPcts);
 
   // usage% = pitch-type pitches / total pitches
   const totalP = overall.pitches;
   byPitch.forEach(s => { s.usagePct = pct(s.pitches, totalP); });
+  byHand.forEach(s => { s.usagePct = pct(s.pitches, totalP); });
   overall.usagePct = totalP ? 100 : 0;
 
-  return { overall, byPitch, byBatter };
+  return { overall, byPitch, byBatter, byHand };
 }
 
 function logCount(strikes, balls, isK, isWalk = false) {
@@ -3769,10 +3850,10 @@ document.querySelectorAll('#resultFilterBtns .filterToggleBtn').forEach(btn => {
 });
 
 /**
- * Append a summary of the current atâ€‘bat to the atBatLog and record it
+ * Append a summary of the current atâ€'bat to the atBatLog and record it
  * in the atBats array.  The pitch count is computed by counting
  * pitchData entries with the same atBatNumber.
- * @param {string} result â€“ The final result of the atâ€‘bat
+ * @param {string} result â€“ The final result of the atâ€'bat
  *   (e.g. "Strikeout", "Walk", "HBP", "In Play â€“ groundball")
  */
 function logAtBatResult(result) {
@@ -3951,7 +4032,7 @@ function exportLiveBPStats() {
     const batter = batters.find(b => b.id === firstPitch?.batterId);
     const pitcher = pitchers.find(p => p.id === firstPitch?.pitcherId);
     const abSummary = atBatResultsByNumber.get(abNum);
-    const batterLabel = batter ? `${batter.name}${batter.hand ? ` (${batter.hand})` : ''}` : 'Unknown';
+    const batterLabel = batter ? `${batter.name}${firstPitch ? ` (${getBatterHand(firstPitch)})` : batter.hand ? ` (${batter.hand})` : ''}` : 'Unknown';
     const pitcherLabel = pitcher ? `${pitcher.name}${pitcher.hand ? ` (${pitcher.hand})` : ''}` : 'Unknown';
     const resultLabel = abSummary ? abSummary.result : 'In Progress';
 
@@ -4016,6 +4097,16 @@ document.addEventListener('DOMContentLoaded', function() {
   renderPitchLog();
   renderAtBatLog();
   applyGridPOV();
+
+  // AB hand toggle — delegated so it works after every renderPitchLog rebuild
+  document.getElementById('pitchLog').addEventListener('click', e => {
+    const btn = e.target.closest('.ab-hand-toggle');
+    if (!btn) return;
+    e.stopPropagation();
+    const abNum = Number(btn.dataset.abnum);
+    const curHand = btn.textContent.trim();
+    setAbHand(abNum, curHand === 'L' ? 'R' : 'L');
+  });
 
   // Re-tag pitch
   document.getElementById('retagPitchBtn').addEventListener('click', () => {
