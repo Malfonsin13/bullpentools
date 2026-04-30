@@ -90,6 +90,10 @@
 /* === GLOBAL RESET === */
 *, *::before, *::after { box-sizing: border-box; }
 
+html {
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -101,6 +105,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
   text-align: center;
+  overscroll-behavior: none;
 }
 
 ul {
@@ -700,13 +705,24 @@ button:active {
   background: white;
   border: 1px solid var(--panel-border);
   border-radius: 6px;
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
   box-shadow: var(--bevel-both), var(--panel-raised);
   text-align: center;
-  min-width: 110px;
+  min-width: 80px;
   flex: 1;
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   font-weight: 600;
+}
+
+.new-session-btn {
+  background: var(--accent-navy);
+  color: var(--text-on-dark);
+  border: 1px solid #0a1c30;
+  border-radius: var(--btn-radius);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  padding: var(--space-xs) var(--space-md);
+  cursor: pointer;
 }
 
 .kpi-card--hero {
@@ -2192,13 +2208,13 @@ button:active {
   }
 
   .kpi-card {
-    min-width: 80px;
-    padding: var(--space-sm);
-    font-size: var(--text-xs);
+    min-width: 60px;
+    padding: var(--space-xs) var(--space-sm);
+    font-size: 0.65rem;
   }
 
   .kpi-card--hero {
-    font-size: var(--text-base);
+    font-size: var(--text-sm);
   }
 
   #statsDrawerContent .side-panel {
