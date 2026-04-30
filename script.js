@@ -119,6 +119,73 @@ const zoneGridOrder = [
 ];
 
 
+/* ---------- SESSION PERSISTENCE ---------- */
+function saveSession() {
+  try {
+    localStorage.setItem('bullpenSession', JSON.stringify({
+      pitchData, atBats, batters, pitchers,
+      currentBatterId, currentPitcherId,
+      pitchId, batterAutoId, pitcherAutoId, atBatNumber,
+      pitchTags, mode,
+      pitchCount, strikeCount, ballCount, raceWins,
+      totalPitches, totalPitchesBullpen, totalStrikesBullpen, totalStrikesLiveBP,
+      foulsAfterTwoStrikes, isNewAtBat, pitchCountInAtBat,
+    }));
+  } catch (e) { console.warn('saveSession failed:', e); }
+}
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem('bullpenSession');
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    pitchData          = s.pitchData          || [];
+    atBats             = s.atBats             || [];
+    batters            = s.batters            || [];
+    pitchers           = s.pitchers           || [];
+    currentBatterId    = s.currentBatterId    ?? null;
+    currentPitcherId   = s.currentPitcherId   ?? null;
+    pitchId            = s.pitchId            ?? 0;
+    batterAutoId       = s.batterAutoId       ?? 1;
+    pitcherAutoId      = s.pitcherAutoId      ?? 1;
+    atBatNumber        = s.atBatNumber        ?? 1;
+    pitchTags          = s.pitchTags          || {};
+    mode               = s.mode               || 'liveBP';
+    pitchCount         = s.pitchCount         ?? 0;
+    strikeCount        = s.strikeCount        ?? 0;
+    ballCount          = s.ballCount          ?? 0;
+    raceWins           = s.raceWins           ?? 0;
+    totalPitches       = s.totalPitches       ?? 0;
+    totalPitchesBullpen   = s.totalPitchesBullpen   ?? 0;
+    totalStrikesBullpen   = s.totalStrikesBullpen   ?? 0;
+    totalStrikesLiveBP    = s.totalStrikesLiveBP    ?? 0;
+    foulsAfterTwoStrikes  = s.foulsAfterTwoStrikes  ?? 0;
+    isNewAtBat            = s.isNewAtBat            ?? false;
+    pitchCountInAtBat     = s.pitchCountInAtBat     ?? 0;
+  } catch (e) { console.warn('loadSession failed:', e); }
+}
+
+function clearSession() {
+  if (!confirm('Start a new session? All current data will be cleared.')) return;
+  localStorage.removeItem('bullpenSession');
+  location.reload();
+}
+
+/* ---------- 2K CONVERSION ---------- */
+function compute2KConversion(data) {
+  const reached  = new Set();
+  const converted = new Set();
+  data.forEach(p => {
+    if (p.prePitchCount && p.prePitchCount.strikes === 2) {
+      reached.add(p.atBatNumber);
+      if (['whiff', 'calledStrike'].includes(p.outcome)) {
+        converted.add(p.atBatNumber);
+      }
+    }
+  });
+  return { reached: reached.size, converted: converted.size };
+}
+
 // Save the pitch log state
 document.getElementById('bullpenModeBtn').addEventListener('click', function() {
   mode = "bullpen";
@@ -193,7 +260,12 @@ document.getElementById('addPitcherBtn').addEventListener('click', () => {
 
 document.getElementById('pitcherSelect').addEventListener('change', e => {
   const v = e.target.value;
-  currentPitcherId = v === '' ? null : Number(v);   // null = no filter
+  currentPitcherId = v === '' ? null : Number(v);
+  updateLiveStats();
+  updateHeatMap();
+  renderPitchLog();
+  renderAtBatLog();
+  updateUI();
 });
 
 /* === ADD: simple helpers (place near top of script.js) === */
@@ -876,8 +948,9 @@ function addBatter(name, hand){
     currentBatterId = id;
   }
   updateBatterDropdown();
-  updateHeatmapBatterFilter(); 
-}                             
+  updateHeatmapBatterFilter();
+  saveSession();
+}
 
 /* --- updateBatterDropdown() --- */
 function updateBatterDropdown () {
@@ -909,6 +982,7 @@ function addPitcher (name, hand) {
   if (currentPitcherId === null) currentPitcherId = id;
 
   updatePitcherDropdown();
+  saveSession();
 }
 
 function updatePitcherDropdown () {
@@ -916,7 +990,7 @@ function updatePitcherDropdown () {
   sel.innerHTML = '';
 
   const optAll = document.createElement('option');
-  optAll.value = ''; optAll.textContent = '- Select Pitcher -';
+  optAll.value = ''; optAll.textContent = '- All Pitchers -';
   sel.appendChild(optAll);
 
   pitchers.forEach(p => {
@@ -1267,11 +1341,16 @@ function updateLiveStats () {
   }
 
   /* ----- choose the two datasets ----- */
-  const filtered = pitchData.filter(p=>{
-    if (currentBatterId && p.batterId !== currentBatterId) return false;
-    return true;                                  // honours the dropdown
+  // allData: selected pitcher's pitches across all batters (headline stats)
+  const allData = pitchData.filter(p => {
+    if (currentPitcherId && p.pitcherId !== currentPitcherId) return false;
+    return true;
   });
-  const allData = pitchData;                      // full log, no filter
+  // filtered: same pitcher, further narrowed to selected batter (table stats)
+  const filtered = allData.filter(p => {
+    if (currentBatterId && p.batterId !== currentBatterId) return false;
+    return true;
+  });
 
   /* ----- build counters from ALL DATA (for the headline row) ----- */
   const totals = makeCounters();
@@ -2159,11 +2238,13 @@ function renderPitchLog() {
   renderSequenceSparkline();
 
   // null â†' â€œAll battersâ€
-  const wantId = currentBatterId;
+  const wantBatterId  = currentBatterId;
+  const wantPitcherId = currentPitcherId;
   let lastAtBatNumber = null;
 
   pitchData.forEach(p => {
-    if (wantId && p.batterId !== wantId) return;
+    if (wantBatterId  && p.batterId  !== wantBatterId)  return;
+    if (wantPitcherId && p.pitcherId !== wantPitcherId) return;
 
     if (p.atBatNumber !== lastAtBatNumber) {
       const divider = document.createElement('li');
@@ -2221,9 +2302,13 @@ function renderAtBatLog() {
   if (!list) return;
   list.innerHTML = '';
 
-  const wantId = currentBatterId; // null â†' all
+  const wantBatterId  = currentBatterId;
+  const pitcherAbNums = currentPitcherId
+    ? new Set(pitchData.filter(p => p.pitcherId === currentPitcherId).map(p => p.atBatNumber))
+    : null;
   atBats.forEach(ab => {
-    if (wantId && ab.batterId !== wantId) return;
+    if (wantBatterId  && ab.batterId !== wantBatterId)  return;
+    if (pitcherAbNums && !pitcherAbNums.has(ab.atBatNumber)) return;
 
     const li = document.createElement('li');
     const batter = batters.find(b => b.id === ab.batterId);
@@ -2506,33 +2591,52 @@ function updateUI() {
     const strikeValue = strikePercentageElement.querySelector('.stat-value');
     if (strikeValue) strikeValue.style.color = getTigersPercentColor(strikePercentageFromLog);
   } else if (mode === "liveBP" || mode === "points" || mode === "intendedZone") {
-    const qualifiedAtBats = getQualifiedAtBatCount(3);
-    const winPct = qualifiedAtBats > 0 ? (raceWins / qualifiedAtBats) * 100 : 0;
-    const raceWinsIcons = raceWins > 0 ? fireEmoji.repeat(raceWins) : '';
+    // Pitcher-filtered data for KPI row (all batters, selected pitcher only)
+    const kpiData = currentPitcherId
+      ? pitchData.filter(p => p.pitcherId === currentPitcherId)
+      : pitchData;
+    const kpiTotal = kpiData.length;
+    const kpiStrikes = kpiData.filter(p =>
+      ['whiff','calledStrike','foul','strike','inPlay'].includes(p.outcome)
+    ).length;
+    const kpiStrikePct = kpiTotal > 0 ? (kpiStrikes / kpiTotal) * 100 : 0;
+    const kpiRaceWins = kpiData.filter(p =>
+      p.prePitchCount?.strikes === 2 && ['whiff','calledStrike'].includes(p.outcome)
+    ).length;
+    const kpiAbNums = new Set(kpiData.map(p => p.atBatNumber));
+    const kpiQualifiedAbs = atBats.filter(ab =>
+      kpiAbNums.has(ab.atBatNumber) && (Number(ab.pitchCount) || 0) >= 3
+    ).length;
+    const winPct = kpiQualifiedAbs > 0 ? (kpiRaceWins / kpiQualifiedAbs) * 100 : 0;
+    const raceWinsIcons = kpiRaceWins > 0 ? fireEmoji.repeat(kpiRaceWins) : '';
     const raceWinsSummary = `${raceWinsIcons}${raceWinsIcons ? ' ' : ''}(${winPct.toFixed(0)}%)`;
+    const { reached, converted } = compute2KConversion(kpiData);
 
     document.getElementById('totalPitchesLiveBP').innerHTML =
-      `Total Pitches: <span class="stat-value">${totalPitches}</span>`;
+      `Total Pitches: <span class="stat-value">${kpiTotal}</span>`;
     document.getElementById('currentCountLiveBP').innerHTML =
       `Current Count: <span class="stat-value">${ballCount}-${strikeCount}</span>`;
     document.getElementById('raceWinsLiveBP').innerHTML =
       `Race Wins: <span class="stat-value">${raceWinsSummary}</span>`;
+    const twoKEl = document.getElementById('twoKConvLiveBP');
+    if (twoKEl) twoKEl.innerHTML = `2K Conv: <span class="stat-value">${EMOJI_SKULL} ${converted}/${reached}</span>`;
 
     const strikePercentageElementLiveBP = document.getElementById('strikePercentageLiveBP');
     strikePercentageElementLiveBP.innerHTML =
-      `Strike %: <span class="stat-value">${strikePercentageFromLog.toFixed(2)}</span>`;
+      `Strike %: <span class="stat-value">${kpiStrikePct.toFixed(2)}</span>`;
     const strikeValue = strikePercentageElementLiveBP.querySelector('.stat-value');
-    if (strikeValue) strikeValue.style.color = getTigersPercentColor(strikePercentageFromLog);
+    if (strikeValue) strikeValue.style.color = getTigersPercentColor(kpiStrikePct);
 
     updateStatsDrawerSummary(
       `Count: ${ballCount}-${strikeCount}`,
-      `Pitches: ${totalPitches}`,
-      `Strike%: ${strikePercentageFromLog.toFixed(2)}`
+      `Pitches: ${kpiTotal}`,
+      `Strike%: ${kpiStrikePct.toFixed(2)}`
     );
   }
 
   const shouldDisplayUndo = actionLog.length > 0;
   document.getElementById('undoBtn').style.display = shouldDisplayUndo ? 'inline-block' : 'none';
+  saveSession();
 }
 
 function getPercentageColor(percentage) {
@@ -3871,9 +3975,19 @@ function logAtBatResult(result) {
 }
 
 function exportLiveBPStats() {
-  let totalPitches = pitchData.length;
-  let totalBattersFaced = atBatNumber - 1; // Since atBatNumber increments after each completed at-bat
-  let totalRaceWins = raceWins;
+  // Apply pitcher + batter filter for export
+  const exportData = pitchData.filter(p => {
+    if (currentPitcherId && p.pitcherId !== currentPitcherId) return false;
+    if (currentBatterId  && p.batterId  !== currentBatterId)  return false;
+    return true;
+  });
+
+  let totalPitches = exportData.length;
+  const exportAbNums = new Set(exportData.map(p => p.atBatNumber));
+  let totalBattersFaced = exportAbNums.size;
+  let totalRaceWins = exportData.filter(p =>
+    p.prePitchCount?.strikes === 2 && ['whiff','calledStrike'].includes(p.outcome)
+  ).length;
   let totalStrikes = 0;
   let totalStrikeouts = 0;
   let totalWalks = 0;
@@ -3885,7 +3999,7 @@ function exportLiveBPStats() {
 
   let pitchTypeStats = {};
 
-  pitchData.forEach(pitch => {
+  exportData.forEach(pitch => {
     let pitchType = pitch.pitchType || 'unknown';
     let outcome = pitch.outcome;
     let location = pitch.location;
@@ -3986,7 +4100,7 @@ function exportLiveBPStats() {
   // In-Play Out Stats
   let totalBIP = 0, totalIPOuts = 0, totalIPHits = 0;
   let goCount = 0, foCount = 0, loCount = 0, poCount = 0;
-  pitchData.forEach(p => {
+  exportData.forEach(p => {
     if (p.result && p.result.startsWith('In Play')) {
       totalBIP++;
       if (p.inPlayOut === true) {
@@ -4008,7 +4122,7 @@ function exportLiveBPStats() {
   }
 
   // Active Coaching Insights
-  const exportInsights = computeInsights(pitchData);
+  const exportInsights = computeInsights(exportData);
   if (exportInsights.length > 0) {
     statsText += `\nCoaching Insights:\n`;
     exportInsights.forEach(ins => {
@@ -4020,7 +4134,7 @@ function exportLiveBPStats() {
   statsText += `\nPitch Log By At-Bat:\n`;
   const atBatResultsByNumber = new Map(atBats.map(ab => [ab.atBatNumber, ab]));
   const groupedPitches = new Map();
-  pitchData.forEach(pitch => {
+  exportData.forEach(pitch => {
     const abNum = pitch.atBatNumber ?? 0;
     if (!groupedPitches.has(abNum)) groupedPitches.set(abNum, []);
     groupedPitches.get(abNum).push(pitch);
@@ -4050,7 +4164,7 @@ function exportLiveBPStats() {
   // Add tagged pitches information
   statsText += `\nTagged Pitches:\n`;
 
-  pitchData.forEach(pitch => {
+  exportData.forEach(pitch => {
     let pitchId = pitch.pitchId.toString();
     if (pitchTags[pitchId]) {
       let tagData = pitchTags[pitchId];
@@ -4083,7 +4197,20 @@ function exportLiveBPStats() {
   });
 }
 
+// Prevent pull-to-refresh on mobile Safari (overscroll-behavior in CSS handles modern browsers)
+document.addEventListener('touchmove', function(e) {
+  if ((document.scrollingElement || document.documentElement).scrollTop === 0 &&
+      e.touches[0].clientY > 0) {
+    e.preventDefault();
+  }
+}, { passive: false });
+
+document.getElementById('newSessionBtn').addEventListener('click', clearSession);
+
 document.addEventListener('DOMContentLoaded', function() {
+  // Restore previous session before initialising UI
+  loadSession();
+
   // Ensure the correct UI is visible as soon as the DOM is ready
   toggleMode();
   document.getElementById('pitchLocationSelection').style.display = 'none';
@@ -4093,9 +4220,15 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('heatmapGrid').style.display = 'none';
   document.getElementById('taggingOptions').style.display = 'none';
   updateHeatmapBatterFilter();
+  updateBatterDropdown();
+  updatePitcherDropdown();
+  // Re-populate the pitch-type filter buttons from restored pitch data
+  pitchData.forEach(p => p.pitchType && addPitchTypeToFilter(p.pitchType));
   // NEW: render logs on page load based on current data (initially empty)
   renderPitchLog();
   renderAtBatLog();
+  updateLiveStats();
+  updateUI();
   applyGridPOV();
 
   // AB hand toggle — delegated so it works after every renderPitchLog rebuild
