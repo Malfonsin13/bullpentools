@@ -848,15 +848,16 @@ function updateHeatMap () {
   pitchData.forEach(p => {
     if (!fPitchAll  && !activePitch.includes(p.pitchType)) return;
 
-    // Batter filter
-    if (fBatter !== 'all') {
-      if (fBatter === 'L' || fBatter === 'R') {
-        const hand = getBatterHand(p);
-        if (hand !== fBatter) return;
-      } else if (fBatter.startsWith('id:')) {
-        const wantId = Number(fBatter.slice(3));
-        if (p.batterId !== wantId) return;
-      }
+    // Pitcher filter — honour main pitcher dropdown
+    if (currentPitcherId && p.pitcherId !== currentPitcherId) return;
+
+    // Batter filter — if a specific batter is selected in the main dropdown use that;
+    // otherwise fall back to the heatmap L/R selector
+    if (currentBatterId !== null) {
+      if (p.batterId !== currentBatterId) return;
+    } else if (fBatter !== 'all') {
+      const hand = getBatterHand(p);
+      if (hand !== fBatter) return;
     }
 
     // Count bucket filter
@@ -2175,7 +2176,10 @@ function renderSequenceSparkline() {
   if (!container) return;
   container.innerHTML = '';
 
-  const recent = pitchData.slice(-20);
+  const pitcherPitches = currentPitcherId
+    ? pitchData.filter(p => p.pitcherId === currentPitcherId)
+    : pitchData;
+  const recent = pitcherPitches.slice(-20);
   if (recent.length < 2) return;
 
   const svgW = 220, svgH = 52;
@@ -3745,11 +3749,6 @@ function updateHeatmapBatterFilter () {
   sel.appendChild(new Option('All', 'all'));
   sel.appendChild(new Option('LHH only', 'L'));
   sel.appendChild(new Option('RHH only', 'R'));
-
-  batters.forEach(b => {
-    const label = `${b.name} (${b.hand})`;
-    sel.appendChild(new Option(label, `id:${b.id}`));
-  });
 
   // restore previous selection if still present
   const hasPrev = [...sel.options].some(o => o.value === prev);
