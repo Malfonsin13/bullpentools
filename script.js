@@ -4197,14 +4197,6 @@ function exportLiveBPStats() {
   });
 }
 
-// Prevent pull-to-refresh on mobile Safari (overscroll-behavior in CSS handles modern browsers)
-document.addEventListener('touchmove', function(e) {
-  if ((document.scrollingElement || document.documentElement).scrollTop === 0 &&
-      e.touches[0].clientY > 0) {
-    e.preventDefault();
-  }
-}, { passive: false });
-
 document.getElementById('newSessionBtn').addEventListener('click', clearSession);
 
 document.addEventListener('DOMContentLoaded', function() {
