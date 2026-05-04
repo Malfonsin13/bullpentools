@@ -189,6 +189,13 @@
           <span class="btn-short">Add</span>
         </button>
         <select id="pitcherSelect"></select>
+        <input id="pitcherLimitInput" placeholder="Inn/P e.g. 4/60" style="width:100px">
+        <button id="setPitcherLimitBtn" class="add-entry-btn">Set Limit</button>
+        <label class="auto-inn-label" title="Auto-end inning when 3 outs are recorded">
+          <input type="checkbox" id="autoEndInningToggle" class="auto-inn-check">
+          <span class="auto-inn-slider"></span>
+          <span class="auto-inn-text">3 outs</span>
+        </label>
       </div>
     </div>
   </div>
@@ -520,21 +527,33 @@
   <div id="pitchLogSummary" class="bento-kpi-cards">
     <h3>Pitch Log</h3>
     <div class="kpi-card">
-      <div id="totalPitchesLiveBP">Total Pitches: 0</div>
+      <div class="kpi-label">Total Pitches</div>
+      <div class="kpi-value" id="totalPitchesLiveBP">0</div>
     </div>
     <div class="kpi-card kpi-card--hero">
-      <div id="currentCountLiveBP">Current Count: 0-0</div>
+      <div class="kpi-label">Current Count</div>
+      <div class="kpi-value" id="currentCountLiveBP">0-0</div>
     </div>
     <div class="kpi-card">
-      <div id="raceWinsLiveBP">Race Wins:</div>
+      <div class="kpi-label">Race Wins</div>
+      <div class="kpi-value" id="raceWinsLiveBP">—</div>
     </div>
     <div class="kpi-card">
-      <div id="twoKConvLiveBP">2K Conv: &#x1F480; 0/0</div>
+      <div class="kpi-label">2K Conv</div>
+      <div class="kpi-value" id="twoKConvLiveBP">&#x1F480; 0/0</div>
     </div>
     <div class="kpi-card">
-      <div id="strikePercentageLiveBP">Strike %: 0</div>
+      <div class="kpi-label">Strike %</div>
+      <div class="kpi-value" id="strikePercentageLiveBP">0</div>
+    </div>
+    <div class="kpi-card" id="inningKpiCard">
+      <div class="kpi-label">Inning</div>
+      <div class="kpi-value" id="inningKpiLiveBP">1 — 0p</div>
     </div>
   </div>
+
+  <!-- Workload Alert Banner -->
+  <div id="workloadAlert" class="workload-alert" style="display:none;"></div>
 
   <!-- At-Bat Summary -->
   <div id="atBatSummary">
@@ -550,6 +569,7 @@
     </div>
     <div id="pitchLogDrawerContent">
       <ul id="pitchLog"></ul>
+      <div id="inningBarChart" class="inning-bar-chart"></div>
     </div>
   </aside>
 </div> <!-- /#mainPanel -->
@@ -803,6 +823,7 @@
         <button id="exportBtn">Export Stats</button>
         <button id="heatMapBtn">Heat Map</button>
         <button id="nextBatterBtn">Next Batter</button>
+        <button id="endInningBtn" class="end-inning-btn">End Inning</button>
         <button id="tagPitchBtn">Tag Pitch</button>
         <button id="retagPitchBtn">Re-Tag Pitch</button>
         <button id="newSessionBtn" class="new-session-btn">New Session</button>
@@ -813,5 +834,8 @@
 </div> <!-- /.bento-app -->
 
   <script src="script.js"></script>
+
+  <!-- Batter Scouting Toast -->
+  <div id="batterToast" class="batter-toast" style="display:none;"></div>
 </body>
 </html>
