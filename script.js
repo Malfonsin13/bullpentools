@@ -44,9 +44,16 @@ let currentBatterId = null;    // id of batter selected in dropdown
 let batterAutoId = 1;          // simple incremental id
 
 /* ---------- NEW â€” PITCHER STATE ---------- */
-let pitchers          = [];        // [{id,name,hand}]
+let pitchers          = [];        // [{id,name,hand,limits}]
 let currentPitcherId  = null;      // id of pitcher currently on the mound
 let pitcherAutoId     = 1;         // simple incremental id
+
+/* ---------- INNING STATE ---------- */
+let currentInning  = 1;
+let innings        = [];           // [{inningNumber, pitchCount, pitcherId}]
+let workloadAlertShownAtPitchId = -1;
+let workloadAlertDismissPitchId = -1;
+let autoEndInningOn = false;       // auto-end inning on 3 recorded outs
 
 /* ---------- GRID POV ---------- */
 let gridPOV = localStorage.getItem('gridPOV') || 'catcher';
@@ -130,6 +137,9 @@ function saveSession() {
       pitchCount, strikeCount, ballCount, raceWins,
       totalPitches, totalPitchesBullpen, totalStrikesBullpen, totalStrikesLiveBP,
       foulsAfterTwoStrikes, isNewAtBat, pitchCountInAtBat,
+      currentInning, innings,
+      workloadAlertShownAtPitchId, workloadAlertDismissPitchId,
+      autoEndInningOn,
     }));
   } catch (e) { console.warn('saveSession failed:', e); }
 }
@@ -162,6 +172,11 @@ function loadSession() {
     foulsAfterTwoStrikes  = s.foulsAfterTwoStrikes  ?? 0;
     isNewAtBat            = s.isNewAtBat            ?? false;
     pitchCountInAtBat     = s.pitchCountInAtBat     ?? 0;
+    currentInning              = s.currentInning              ?? 1;
+    innings                    = s.innings                    || [];
+    workloadAlertShownAtPitchId = s.workloadAlertShownAtPitchId ?? -1;
+    workloadAlertDismissPitchId = s.workloadAlertDismissPitchId ?? -1;
+    autoEndInningOn             = s.autoEndInningOn             ?? false;
   } catch (e) { console.warn('loadSession failed:', e); }
 }
 
@@ -184,6 +199,302 @@ function compute2KConversion(data) {
     }
   });
   return { reached: reached.size, converted: converted.size };
+}
+
+/* ---------- INNING HELPERS ---------- */
+
+function currentInningPitchCount() {
+  return pitchData.filter(p =>
+    p.inning === currentInning &&
+    (!currentPitcherId || p.pitcherId === currentPitcherId)
+  ).length;
+}
+
+function countOutsInCurrentInning() {
+  // Get AB numbers that have pitches in current inning for current pitcher
+  const innAbNums = new Set(
+    pitchData
+      .filter(p => p.inning === currentInning && (!currentPitcherId || p.pitcherId === currentPitcherId))
+      .map(p => p.atBatNumber)
+  );
+  return atBats.filter(ab => {
+    if (!innAbNums.has(ab.atBatNumber)) return false;
+    const r = ab.result || '';
+    return r === 'Strikeout' || r.includes('- out');
+  }).length;
+}
+
+function endInning() {
+  actionLog.push(saveCurrentState()); // save before any mutation so End Inning is undoable
+  const ip = currentInningPitchCount();
+  innings.push({ inningNumber: currentInning, pitchCount: ip, pitcherId: currentPitcherId });
+  currentInning++;
+  // Reset alert tracking so new inning starts fresh
+  workloadAlertShownAtPitchId = -1;
+  workloadAlertDismissPitchId = -1;
+  _lastAlertedInnPitchCount = 0;
+  // Post-inning removal suggestion if pitcher threw 31+
+  if (ip >= 31) {
+    triggerWorkloadAlert(`🔴 Pitcher threw ${ip}p last inning — consider removing`, 'stop');
+  }
+  renderInningBarChart();
+  updateUI();
+  saveSession();
+}
+
+/* ---------- WORKLOAD ALERT ---------- */
+
+function triggerWorkloadAlert(message, level) {
+  const el = document.getElementById('workloadAlert');
+  if (!el) return;
+  workloadAlertShownAtPitchId = pitchId;
+  workloadAlertDismissPitchId = pitchId + 1;
+  el.textContent = message;
+  el.className = `workload-alert workload-alert--${level}`;
+  el.style.display = 'block';
+}
+
+function updateWorkloadAlert() {
+  const el = document.getElementById('workloadAlert');
+  if (!el) return;
+  if (pitchId >= workloadAlertDismissPitchId && workloadAlertDismissPitchId !== -1) {
+    el.style.display = 'none';
+  }
+}
+
+// Track the inning pitch count at which each threshold was last alerted
+let _lastAlertedInnPitchCount = 0;
+
+function checkAndTriggerWorkloadAlerts() {
+  const ip = currentInningPitchCount();
+
+  // Determine highest-priority inning threshold message
+  let innMsg = null, innLevel = null;
+  if (ip >= 35) { innMsg = `🚨 HARD LIMIT — ${ip} pitches this inning`; innLevel = 'hard'; }
+  else if (ip >= 31) { innMsg = `🔴 31+ pitches — DO NOT start a new at-bat`; innLevel = 'stop'; }
+  else if (ip >= 29) { innMsg = `⚠️ 29+ pitches — NO new at-bat this inning`; innLevel = 'warn'; }
+  else if (ip >= 25) { innMsg = `🟡 ${ip} pitches in inning — approaching 29-pitch threshold`; innLevel = 'watch'; }
+
+  // Only fire if we've crossed a new threshold boundary
+  const threshold = ip >= 35 ? 35 : ip >= 31 ? 31 : ip >= 29 ? 29 : ip >= 25 ? 25 : 0;
+  const dailyAlert = checkDailyLimits();
+
+  if (dailyAlert) {
+    // Daily limits take highest priority
+    triggerWorkloadAlert(dailyAlert.message, dailyAlert.level);
+  } else if (innMsg && threshold > _lastAlertedInnPitchCount) {
+    _lastAlertedInnPitchCount = threshold;
+    triggerWorkloadAlert(innMsg, innLevel);
+  }
+}
+
+function checkDailyLimits() {
+  if (!currentPitcherId) return null;
+  const pitcher = pitchers.find(p => p.id === currentPitcherId);
+  if (!pitcher || !pitcher.limits) return null;
+  const { innings: innLimit, pitches: pitchLimit } = pitcher.limits;
+  const pPitches = pitchData.filter(p => p.pitcherId === currentPitcherId).length;
+  const pInnings = innings.filter(i => i.pitcherId === currentPitcherId).length;
+  const pitchRem = pitchLimit - pPitches;
+  const innRem   = innLimit  - pInnings;
+  // Reached limit
+  if (pPitches >= pitchLimit || pInnings >= innLimit) {
+    return { level: 'stop', message: `🔴 ${pitcher.name} reached daily limit (${pInnings}/${innLimit} inn, ${pPitches}/${pitchLimit}p)` };
+  }
+  // Warn: within 10 pitches OR on final inning (only after at least 1 inning completed)
+  if (pitchRem <= 10 || (innRem === 1 && pInnings > 0)) {
+    return { level: 'warn', message: `⚠️ ${pitcher.name} near limit — ${innRem} inn / ${pitchRem}p remaining` };
+  }
+  // Watch: within 20 pitches OR 2nd-to-last inning (only after some usage AND not starting state)
+  if (pitchRem <= 20 || (innRem <= 2 && pInnings > 0 && innRem < innLimit)) {
+    return { level: 'watch', message: `🟡 ${pitcher.name} approaching limit — ${innRem} inn / ${pitchRem}p remaining` };
+  }
+  return null;
+}
+
+/* ---------- PITCHER LIMITS ---------- */
+
+function setPitcherLimit() {
+  if (!currentPitcherId) { alert('Select a pitcher first'); return; }
+  const raw = (document.getElementById('pitcherLimitInput') || {}).value || '';
+  const parts = raw.trim().split('/');
+  if (parts.length !== 2) { alert('Format: Inn/Pitches  e.g. 4/60'); return; }
+  const innLimit   = parseInt(parts[0], 10);
+  const pitchLimit = parseInt(parts[1], 10);
+  if (!innLimit || !pitchLimit || innLimit <= 0 || pitchLimit <= 0) {
+    alert('Enter valid numbers, e.g. 4/60'); return;
+  }
+  const pitcher = pitchers.find(p => p.id === currentPitcherId);
+  if (pitcher) {
+    pitcher.limits = { innings: innLimit, pitches: pitchLimit };
+    saveSession();
+    updateUI();
+  }
+}
+
+/* ---------- INNING BAR CHART ---------- */
+
+function renderInningBarChart() {
+  const container = document.getElementById('inningBarChart');
+  if (!container) return;
+
+  // Build list: completed innings (filtered to current pitcher) + live current inning
+  const completedInnings = innings.filter(i => !currentPitcherId || i.pitcherId === currentPitcherId);
+  const liveCount = currentInningPitchCount();
+
+  if (completedInnings.length === 0 && liveCount === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const HARD = 35;
+  const ticks = [
+    { val: 25, label: '25', cls: '' },
+    { val: 29, label: '29', cls: '' },
+    { val: 31, label: '31', cls: '' },
+    { val: 35, label: '35', cls: 'inn-tick--hard' }
+  ];
+
+  function fillClass(count, isLive) {
+    if (isLive) return 'inn-fill--live';
+    if (count >= 31) return 'inn-fill--stop';
+    if (count >= 29) return 'inn-fill--warn';
+    if (count >= 25) return 'inn-fill--watch';
+    return 'inn-fill--ok';
+  }
+
+  function statusEmoji(count, isLive) {
+    if (isLive) return '▶';
+    if (count >= 31) return '🔴';
+    if (count >= 25) return '⚠';
+    return '✓';
+  }
+
+  let html = '';
+
+  // Completed innings
+  completedInnings.forEach(inn => {
+    const pct = Math.min(inn.pitchCount / HARD * 100, 100).toFixed(1);
+    const fc  = fillClass(inn.pitchCount, false);
+    const st  = statusEmoji(inn.pitchCount, false);
+    html += `<div class="inn-row">
+      <span class="inn-label">INN ${inn.inningNumber}</span>
+      <div class="inn-track">
+        <div class="inn-fill ${fc}" style="width:${pct}%">${inn.pitchCount}p</div>
+        ${ticks.map(t => `<span class="inn-tick ${t.cls}" style="left:${(t.val/HARD*100).toFixed(1)}%" title="${t.label}p"></span><span class="inn-tick-label ${t.cls}" style="left:${(t.val/HARD*100).toFixed(1)}%">${t.label}</span>`).join('')}
+      </div>
+      <span class="inn-status">${st}</span>
+    </div>`;
+  });
+
+  // Live current inning
+  if (liveCount > 0 || completedInnings.length === 0) {
+    const pct = Math.min(liveCount / HARD * 100, 100).toFixed(1);
+    html += `<div class="inn-row">
+      <span class="inn-label">INN ${currentInning}</span>
+      <div class="inn-track">
+        <div class="inn-fill inn-fill--live" style="width:${pct}%">${liveCount}p</div>
+        ${ticks.map(t => `<span class="inn-tick ${t.cls}" style="left:${(t.val/HARD*100).toFixed(1)}%" title="${t.label}p"></span><span class="inn-tick-label ${t.cls}" style="left:${(t.val/HARD*100).toFixed(1)}%">${t.label}</span>`).join('')}
+      </div>
+      <span class="inn-status">▶</span>
+    </div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+/* ---------- BATTER SCOUTING TOAST ---------- */
+
+function computeBatterInsights(batterId) {
+  const lines = [];
+  const bp = pitchData.filter(p => p.batterId === batterId);
+  if (bp.length < 3) return lines;
+
+  // 1. First-pitch patterns (0-0 count, min 3 PA) — aggressive AND passive
+  const zeroZero = bp.filter(p => p.prePitchCount && p.prePitchCount.balls === 0 && p.prePitchCount.strikes === 0);
+  if (zeroZero.length >= 3) {
+    const swings = zeroZero.filter(p => ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play'));
+    const swingRate = swings.length / zeroZero.length;
+    if (swingRate >= 0.50) {
+      lines.push(`${(swingRate*100).toFixed(0)}% first-pitch swing rate — get a strike early`);
+    } else if (swingRate <= 0.20) {
+      lines.push(`Takes ${((1 - swingRate)*100).toFixed(0)}% of first pitches — challenge with early strikes`);
+    }
+  }
+
+  // 2. Chase pitch: per pitch type, ≥3 chases OOZ or ≥2 chases in non-comp on any count
+  const byType = {};
+  bp.forEach(p => {
+    const inOOZ = shadowLocations.includes(p.location) || nonCompetitiveLocations.includes(p.location);
+    if (!inOOZ) return;
+    const swung = ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play');
+    if (!swung) return;
+    const isNonComp = nonCompetitiveLocations.includes(p.location);
+    if (!byType[p.pitchType]) byType[p.pitchType] = { ooz: 0, nonComp: 0 };
+    byType[p.pitchType].ooz++;
+    if (isNonComp) byType[p.pitchType].nonComp++;
+  });
+  Object.entries(byType).forEach(([pt, counts]) => {
+    if (counts.ooz >= 3 || counts.nonComp >= 2) {
+      const label = (PITCH_LABELS && PITCH_LABELS[pt]) ? PITCH_LABELS[pt] : pt.toUpperCase();
+      lines.push(`Chasing ${label} out of zone (${counts.ooz}x) — keep using it`);
+    }
+  });
+
+  // 2b. Per-pitch-type IZ passivity (low swing rate on pitches in the strike zone)
+  const byTypeIZ = {};
+  bp.forEach(p => {
+    if (!strikeLocations.includes(p.location)) return;
+    if (!byTypeIZ[p.pitchType]) byTypeIZ[p.pitchType] = { seen: 0, swings: 0 };
+    byTypeIZ[p.pitchType].seen++;
+    const swung = ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play');
+    if (swung) byTypeIZ[p.pitchType].swings++;
+  });
+  Object.entries(byTypeIZ).forEach(([pt, stats]) => {
+    if (stats.seen >= 3 && stats.swings / stats.seen <= 0.25) {
+      const label = (PITCH_LABELS && PITCH_LABELS[pt]) ? PITCH_LABELS[pt] : pt.toUpperCase();
+      lines.push(`Not attacking ${label} in the zone (${stats.swings}/${stats.seen} swings) — keep attacking with it`);
+    }
+  });
+
+  // 3. Early count passivity (before 2 strikes, ≥6 pitches)
+  const earlyCount = bp.filter(p => p.prePitchCount && p.prePitchCount.strikes < 2);
+  if (earlyCount.length >= 6) {
+    const earlySwings = earlyCount.filter(p => ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play'));
+    const earlyRate = earlySwings.length / earlyCount.length;
+    if (earlyRate <= 0.25) {
+      lines.push(`Very patient before 2 strikes (${(earlyRate*100).toFixed(0)}% swing rate) — attack the zone early`);
+    }
+  }
+
+  // 4. Session summary — always include if ≥1 completed AB
+  const batterABNums = new Set(bp.map(p => p.atBatNumber));
+  const batterABs = atBats.filter(ab => ab.batterId === batterId && batterABNums.has(ab.atBatNumber));
+  if (batterABs.length >= 1) {
+    const ks  = batterABs.filter(ab => ab.result === 'strikeout').length;
+    const bbs = batterABs.filter(ab => ab.result === 'walk').length;
+    lines.push(`${ks}K / ${bbs}BB so far`);
+  }
+
+  return lines;
+}
+
+function showBatterToast(batterId) {
+  if (!batterId) return;
+  const batter = batters.find(b => b.id === batterId);
+  if (!batter) return;
+  const lines = computeBatterInsights(batterId);
+  if (!lines.length) return;
+  const el = document.getElementById('batterToast');
+  if (!el) return;
+  el.innerHTML = `<strong>${batter.name} (${batter.hand})</strong><ul>${lines.map(l => `<li>${l}</li>`).join('')}</ul>`;
+  el.style.display = 'block';
+  requestAnimationFrame(() => el.classList.add('visible'));
+  clearTimeout(el._dismissTimer);
+  el._dismissTimer = setTimeout(() => {
+    el.classList.remove('visible');
+    setTimeout(() => { el.style.display = 'none'; }, 350);
+  }, 4000);
 }
 
 // Save the pitch log state
@@ -261,11 +572,34 @@ document.getElementById('addPitcherBtn').addEventListener('click', () => {
 document.getElementById('pitcherSelect').addEventListener('change', e => {
   const v = e.target.value;
   currentPitcherId = v === '' ? null : Number(v);
+  // Populate the limit input with the selected pitcher's existing limits (if any)
+  const limitInput = document.getElementById('pitcherLimitInput');
+  if (limitInput) {
+    if (currentPitcherId) {
+      const p = pitchers.find(x => x.id === currentPitcherId);
+      limitInput.value = (p && p.limits) ? `${p.limits.innings}/${p.limits.pitches}` : '';
+    } else {
+      limitInput.value = '';
+    }
+  }
+  // Reset per-inning alert tracking and clear the banner when switching pitchers
+  _lastAlertedInnPitchCount = 0;
+  workloadAlertShownAtPitchId = -1;
+  workloadAlertDismissPitchId = -1;
+  const _alertEl = document.getElementById('workloadAlert');
+  if (_alertEl) _alertEl.style.display = 'none';
   updateLiveStats();
   updateHeatMap();
   renderPitchLog();
   renderAtBatLog();
   updateUI();
+});
+
+document.getElementById('setPitcherLimitBtn') && document.getElementById('setPitcherLimitBtn').addEventListener('click', setPitcherLimit);
+document.getElementById('endInningBtn') && document.getElementById('endInningBtn').addEventListener('click', endInning);
+document.getElementById('autoEndInningToggle') && document.getElementById('autoEndInningToggle').addEventListener('change', e => {
+  autoEndInningOn = e.target.checked;
+  saveSession();
 });
 
 /* === ADD: simple helpers (place near top of script.js) === */
@@ -905,6 +1239,12 @@ function saveCurrentState() {
     atBats: JSON.parse(JSON.stringify(atBats)),
     atBatNumber,
     isNewAtBat,
+    currentBatterId,
+    currentInning,
+    innings: JSON.parse(JSON.stringify(innings)),
+    workloadAlertShownAtPitchId,
+    workloadAlertDismissPitchId,
+    _lastAlertedInnPitchCount,
     pitchLog: document.getElementById('pitchLog').innerHTML, // Save the pitch log state
     completedCountLog: document.getElementById('countLog').innerHTML // Save completed count log state
   };
@@ -930,6 +1270,17 @@ function restoreState(state) {
   if (state.atBats) atBats = JSON.parse(JSON.stringify(state.atBats));
   if (state.atBatNumber !== undefined) atBatNumber = state.atBatNumber;
   if (state.isNewAtBat !== undefined) isNewAtBat = state.isNewAtBat;
+  if (state.currentBatterId !== undefined) {
+    currentBatterId = state.currentBatterId;
+    const bs = document.getElementById('batterSelect');
+    if (bs) bs.value = currentBatterId || '';
+  }
+  if (state.currentInning !== undefined) currentInning = state.currentInning;
+  if (state.innings) innings = JSON.parse(JSON.stringify(state.innings));
+  if (state.workloadAlertShownAtPitchId !== undefined) workloadAlertShownAtPitchId = state.workloadAlertShownAtPitchId;
+  if (state.workloadAlertDismissPitchId !== undefined) workloadAlertDismissPitchId = state.workloadAlertDismissPitchId;
+  if (state._lastAlertedInnPitchCount !== undefined) _lastAlertedInnPitchCount = state._lastAlertedInnPitchCount;
+  renderInningBarChart();
   updatePitchLogTags();
 }
 
@@ -977,7 +1328,7 @@ function updateBatterDropdown () {
 
 function addPitcher (name, hand) {
   const id = pitcherAutoId++;
-  pitchers.push({ id, name, hand });
+  pitchers.push({ id, name, hand, limits: null });
 
   // default the very first pitcher we add
   if (currentPitcherId === null) currentPitcherId = id;
@@ -1444,6 +1795,9 @@ function advanceToNextBatter () {
   const sel = document.getElementById('batterSelect');
   if (sel) sel.value = currentBatterId;
 
+  // show batter scouting toast for the incoming batter
+  showBatterToast(currentBatterId);
+
   // update any UI that depends on the selection
   updateLiveStats();
   updateHeatMap();
@@ -1854,6 +2208,106 @@ function computeInsights(data) {
     }
   }
 
+  // --- 9. Chase-pitch insight (2-strike OOZ chases by pitch type) ---
+  const pitchChaseMap = {};
+  data.forEach(p => {
+    const inOOZ = shadowLocations.includes(p.location) || nonCompetitiveLocations.includes(p.location);
+    if (!inOOZ) return;
+    const swung = ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play');
+    if (!swung) return;
+    const isNonComp = nonCompetitiveLocations.includes(p.location);
+    if (!pitchChaseMap[p.pitchType]) pitchChaseMap[p.pitchType] = { ooz: 0, nonComp: 0 };
+    pitchChaseMap[p.pitchType].ooz++;
+    if (isNonComp) pitchChaseMap[p.pitchType].nonComp++;
+  });
+  Object.entries(pitchChaseMap).forEach(([pt, counts]) => {
+    if (counts.ooz >= 3 || counts.nonComp >= 2) {
+      const label = (pl[pt] || pt).toUpperCase();
+      insights.push({
+        type: 'positive', category: 'chase', priority: 2,
+        message: `Batters chasing ${label} out of zone (${counts.ooz}x) — keep using it late in counts`
+      });
+    }
+  });
+
+  // --- 10. Tipping detection (gap-based: secondary = breaking balls + off-speed) ---
+  const secondaryTypesT = ['slider','curveBall','sweeper','slurve','knuckleCurve','cutter','changeup','splitter'];
+  const fastballTypesT  = ['fourSeam','twoSeam','sinker'];
+  const uniqueBatterIds = new Set(data.map(p => p.batterId).filter(Boolean));
+
+  function _swingRates(subset) {
+    const fbs       = subset.filter(p => fastballTypesT.includes(p.pitchType));
+    const fbSwings  = fbs.filter(p => ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play'));
+    const secIZ     = subset.filter(p => secondaryTypesT.includes(p.pitchType) && strikeLocations.includes(p.location));
+    const secSwings = secIZ.filter(p => ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play'));
+    return {
+      fbRate:   fbs.length   >= 3 ? fbSwings.length  / fbs.length   : null,
+      secRate:  secIZ.length >= 3 ? secSwings.length / secIZ.length : null,
+      fbCount:  fbs.length,
+      secCount: secIZ.length,
+    };
+  }
+
+  // Primary: full outing, ≥5 batters, gap ≥ 25pp
+  if (uniqueBatterIds.size >= 5) {
+    const r = _swingRates(data);
+    if (r.fbRate !== null && r.secRate !== null && r.fbCount >= 5 && r.secCount >= 5) {
+      const gap = r.fbRate - r.secRate;
+      if (gap >= 0.25 && r.fbRate >= 0.50) {
+        insights.push({
+          type: 'warning', category: 'tipping', priority: 3,
+          message: `⚠️ Possible tip-off: batters attacking ${(r.fbRate*100).toFixed(0)}% of fastballs but only ${(r.secRate*100).toFixed(0)}% of secondary pitches in zone across ${uniqueBatterIds.size} batters — check delivery differences`
+        });
+      }
+    }
+  }
+
+  // Secondary: current inning, ≥3 batters, gap ≥ 20pp
+  const lastInnData    = data.filter(p => p.inning === currentInning);
+  const lastInnBatters = new Set(lastInnData.map(p => p.batterId).filter(Boolean));
+  if (!insights.some(i => i.category === 'tipping') && lastInnBatters.size >= 3) {
+    const r = _swingRates(lastInnData);
+    if (r.fbRate !== null && r.secRate !== null && r.fbCount >= 3 && r.secCount >= 3) {
+      const gap = r.fbRate - r.secRate;
+      if (gap >= 0.20 && r.fbRate >= 0.45) {
+        insights.push({
+          type: 'warning', category: 'tipping', priority: 2,
+          message: `⚠️ Tipping pattern this inning: ${(r.fbRate*100).toFixed(0)}% FB swing rate vs ${(r.secRate*100).toFixed(0)}% secondary IZ swing rate across ${lastInnBatters.size} batters`
+        });
+      }
+    }
+  }
+
+  // Collapse signal: secondary swing rate this inning ≥15pp below full-outing baseline
+  if (!insights.some(i => i.category === 'tipping') && lastInnBatters.size >= 3) {
+    const fullR = _swingRates(data);
+    const innR  = _swingRates(lastInnData);
+    if (fullR.secRate !== null && innR.secRate !== null && fullR.secCount >= 5 && innR.secCount >= 3) {
+      const drop = fullR.secRate - innR.secRate;
+      if (drop >= 0.15) {
+        insights.push({
+          type: 'warning', category: 'tipping', priority: 2,
+          message: `⚠️ Batters attacking secondary pitches at only ${(innR.secRate*100).toFixed(0)}% this inning vs ${(fullR.secRate*100).toFixed(0)}% overall — possible adjustment or tip`
+        });
+      }
+    }
+  }
+
+  // Tertiary: shadow-zone takes (any count), ≥2 per batter, ≥3 batters
+  const shadowTakesByBatter = {};
+  data.forEach(p => {
+    if (shadowLocations.includes(p.location) && p.outcome === 'ball' && p.batterId) {
+      shadowTakesByBatter[p.batterId] = (shadowTakesByBatter[p.batterId] || 0) + 1;
+    }
+  });
+  const battersWith2ShadowTakes = Object.values(shadowTakesByBatter).filter(n => n >= 2).length;
+  if (battersWith2ShadowTakes >= 3 && !insights.some(i => i.category === 'tipping')) {
+    insights.push({
+      type: 'warning', category: 'tipping', priority: 2,
+      message: `⚠️ Multiple batters taking shadow-zone pitches repeatedly — they may have a read on your release point`
+    });
+  }
+
   // Sort by priority descending
   insights.sort((a, b) => b.priority - a.priority);
   return insights;
@@ -2244,11 +2698,26 @@ function renderPitchLog() {
   // null â†' â€œAll battersâ€
   const wantBatterId  = currentBatterId;
   const wantPitcherId = currentPitcherId;
+  // Build a set of completed inning numbers for quick lookup
+  const completedInningNums = new Set(
+    innings.filter(i => !currentPitcherId || i.pitcherId === currentPitcherId).map(i => i.inningNumber)
+  );
+
   let lastAtBatNumber = null;
+  let lastInningNum   = null;
 
   pitchData.forEach(p => {
     if (wantBatterId  && p.batterId  !== wantBatterId)  return;
     if (wantPitcherId && p.pitcherId !== wantPitcherId) return;
+
+    // Insert end-of-inning divider when crossing into a new inning (and old one is completed)
+    if (lastInningNum !== null && p.inning !== lastInningNum && completedInningNums.has(lastInningNum)) {
+      const innDiv = document.createElement('li');
+      innDiv.classList.add('inning-end-divider');
+      innDiv.textContent = '— End of Inn ' + lastInningNum + ' —';
+      ul.appendChild(innDiv);
+    }
+    lastInningNum = p.inning;
 
     if (p.atBatNumber !== lastAtBatNumber) {
       const divider = document.createElement('li');
@@ -2295,6 +2764,8 @@ function renderPitchLog() {
       item.addEventListener('click', togglePitchSelection);
     });
   }
+  // Update inning bar chart whenever pitch log re-renders
+  renderInningBarChart();
 }
 
 /**
@@ -2306,13 +2777,36 @@ function renderAtBatLog() {
   if (!list) return;
   list.innerHTML = '';
 
+  // Map each at-bat number to its inning (first pitch of that AB)
+  const abInningMap = {};
+  pitchData.forEach(p => {
+    if (!(p.atBatNumber in abInningMap)) abInningMap[p.atBatNumber] = p.inning ?? null;
+  });
+
+  // Set of completed inning numbers (filtered to current pitcher)
+  const completedInningNums = new Set(
+    innings.filter(i => !currentPitcherId || i.pitcherId === currentPitcherId).map(i => i.inningNumber)
+  );
+
   const wantBatterId  = currentBatterId;
   const pitcherAbNums = currentPitcherId
     ? new Set(pitchData.filter(p => p.pitcherId === currentPitcherId).map(p => p.atBatNumber))
     : null;
+  let lastAbInning = null;
+
   atBats.forEach(ab => {
     if (wantBatterId  && ab.batterId !== wantBatterId)  return;
     if (pitcherAbNums && !pitcherAbNums.has(ab.atBatNumber)) return;
+
+    const abInn = abInningMap[ab.atBatNumber] ?? null;
+    // Insert end-of-inning divider when inning changes between at-bats
+    if (lastAbInning !== null && abInn !== lastAbInning && completedInningNums.has(lastAbInning)) {
+      const innDiv = document.createElement('li');
+      innDiv.classList.add('inning-end-divider');
+      innDiv.textContent = `— End of Inn ${lastAbInning} —`;
+      list.appendChild(innDiv);
+    }
+    lastAbInning = abInn;
 
     const li = document.createElement('li');
     const batter = batters.find(b => b.id === ab.batterId);
@@ -2341,6 +2835,7 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '', previo
     postPitchCount: { balls: ballCount, strikes: strikeCount },
     pitchNumber: pitchCount,
     atBatNumber: atBatNumber,
+    inning: currentInning,
     outcome: outcome,
     inPlayOut: inPlayOut       // true = out, false = hit, null = unknown/skip
   };
@@ -2348,6 +2843,8 @@ function logPitchResult(pitchType, result, location, scenarioEmojis = '', previo
   pitchData.push(pitchEntry);
   pitchId++;
   addPitchTypeToFilter(pitchType);
+  // check workload thresholds after pitch is recorded
+  checkAndTriggerWorkloadAlerts();
   // re-render after adding pitch
   renderPitchLog();
 }
@@ -2607,29 +3104,39 @@ function updateUI() {
     const kpiRaceWins = kpiData.filter(p =>
       p.prePitchCount?.strikes === 2 && ['whiff','calledStrike'].includes(p.outcome)
     ).length;
-    const kpiAbNums = new Set(kpiData.map(p => p.atBatNumber));
-    const kpiQualifiedAbs = atBats.filter(ab =>
-      kpiAbNums.has(ab.atBatNumber) && (Number(ab.pitchCount) || 0) >= 3
-    ).length;
-    const winPct = kpiQualifiedAbs > 0 ? (kpiRaceWins / kpiQualifiedAbs) * 100 : 0;
-    const raceWinsIcons = kpiRaceWins > 0 ? fireEmoji.repeat(kpiRaceWins) : '';
-    const raceWinsSummary = `${raceWinsIcons}${raceWinsIcons ? ' ' : ''}(${winPct.toFixed(0)}%)`;
+    // Opportunities = at-bats where a 2-strike count was reached
+    const absWith2Strikes = new Set(
+      kpiData.filter(p => p.prePitchCount?.strikes === 2).map(p => p.atBatNumber)
+    ).size;
+    const winPct = absWith2Strikes > 0 ? (kpiRaceWins / absWith2Strikes) * 100 : 0;
+    const raceWinsSummary = `${fireEmoji} ${kpiRaceWins}/${absWith2Strikes} (${winPct.toFixed(0)}%)`;
     const { reached, converted } = compute2KConversion(kpiData);
+    const twoKPct = reached > 0 ? (converted / reached * 100).toFixed(0) : 0;
 
-    document.getElementById('totalPitchesLiveBP').innerHTML =
-      `Total Pitches: <span class="stat-value">${kpiTotal}</span>`;
-    document.getElementById('currentCountLiveBP').innerHTML =
-      `Current Count: <span class="stat-value">${ballCount}-${strikeCount}</span>`;
-    document.getElementById('raceWinsLiveBP').innerHTML =
-      `Race Wins: <span class="stat-value">${raceWinsSummary}</span>`;
+    document.getElementById('totalPitchesLiveBP').textContent = kpiTotal;
+    document.getElementById('currentCountLiveBP').textContent = `${ballCount}-${strikeCount}`;
+    document.getElementById('raceWinsLiveBP').innerHTML = raceWinsSummary;
     const twoKEl = document.getElementById('twoKConvLiveBP');
-    if (twoKEl) twoKEl.innerHTML = `2K Conv: <span class="stat-value">${EMOJI_SKULL} ${converted}/${reached}</span>`;
+    if (twoKEl) twoKEl.textContent = `${EMOJI_SKULL} ${converted}/${reached} (${twoKPct}%)`;
 
     const strikePercentageElementLiveBP = document.getElementById('strikePercentageLiveBP');
-    strikePercentageElementLiveBP.innerHTML =
-      `Strike %: <span class="stat-value">${kpiStrikePct.toFixed(2)}</span>`;
-    const strikeValue = strikePercentageElementLiveBP.querySelector('.stat-value');
-    if (strikeValue) strikeValue.style.color = getTigersPercentColor(kpiStrikePct);
+    strikePercentageElementLiveBP.textContent = kpiStrikePct.toFixed(2);
+    strikePercentageElementLiveBP.style.color = getTigersPercentColor(kpiStrikePct);
+
+    // Inning KPI card
+    const innP = currentInningPitchCount();
+    const innEl = document.getElementById('inningKpiLiveBP');
+    if (innEl) innEl.textContent = `${currentInning} — ${innP}p`;
+    const innCard = document.getElementById('inningKpiCard');
+    if (innCard) {
+      innCard.classList.remove('inn-ok','inn-watch','inn-warn','inn-stop');
+      innCard.classList.add(innP >= 31 ? 'inn-stop' : innP >= 29 ? 'inn-warn' : innP >= 25 ? 'inn-watch' : 'inn-ok');
+    }
+
+    // Workload alert dismissal check
+    updateWorkloadAlert();
+    // Inning bar chart
+    renderInningBarChart();
 
     updateStatsDrawerSummary(
       `Count: ${ballCount}-${strikeCount}`,
@@ -2665,10 +3172,9 @@ function updateCurrentCount() {
   let currentCountDisplay = mode === "bullpen" || mode === "putaway" ? 'currentCount' : 'currentCountLiveBP';
   if (currentCountDisplay === 'currentCount') {
     document.getElementById(currentCountDisplay).innerHTML = `Current Count: <span class="stat-value">${ballCount}-${strikeCount}</span>`;
-  } else if (mode === "points") {
-    document.getElementById(currentCountDisplay).innerHTML = `Current Count: <span class="stat-value">${ballCount}-${strikeCount}</span>`;
   } else {
-    document.getElementById(currentCountDisplay).innerText = `Current Count: ${ballCount}-${strikeCount}`;
+    // liveBP / points / intendedZone — element is now just the value div
+    document.getElementById(currentCountDisplay).textContent = `${ballCount}-${strikeCount}`;
   }
 }
 
@@ -3967,6 +4473,16 @@ function logAtBatResult(result) {
     pitchCount: pitchData.filter(p => p.atBatNumber === atBatNumber).length
   };
   atBats.push(summary);
+
+  // Auto-end inning when 3 outs recorded (if toggle enabled)
+  if (autoEndInningOn) {
+    const isOut = result === 'Strikeout' || result.includes('- out');
+    if (isOut && countOutsInCurrentInning() >= 3) {
+      endInning();
+    }
+  }
+
+  // advanceToNextBatter handles showBatterToast internally
   advanceToNextBatter();
 
   // Repaint list based on current batter filter
@@ -4213,6 +4729,9 @@ document.addEventListener('DOMContentLoaded', function() {
   updateHeatmapBatterFilter();
   updateBatterDropdown();
   updatePitcherDropdown();
+  // Restore toggle state
+  const autoToggleEl = document.getElementById('autoEndInningToggle');
+  if (autoToggleEl) autoToggleEl.checked = autoEndInningOn;
   // Re-populate the pitch-type filter buttons from restored pitch data
   pitchData.forEach(p => p.pitchType && addPitchTypeToFilter(p.pitchType));
   // NEW: render logs on page load based on current data (initially empty)
