@@ -2497,6 +2497,34 @@ button:active {
   pointer-events: none;
 }
 .inn-tick--hard { background: rgba(183,28,28,0.7); }
+/* Stacked multi-pitcher bar */
+.inn-fill-stack {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  display: flex;
+  flex-direction: row;
+  border-radius: 3px;
+  overflow: hidden;
+  transition: width 0.3s;
+}
+.inn-seg {
+  height: 100%;
+  flex-shrink: 0;
+}
+.inn-fill-count {
+  position: absolute;
+  left: 4px;
+  top: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 2;
+}
 .inn-tick-label {
   position: absolute;
   top: -13px;
