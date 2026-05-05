@@ -338,15 +338,6 @@ function renderInningBarChart() {
   const container = document.getElementById('inningBarChart');
   if (!container) return;
 
-  // Build list: completed innings (filtered to current pitcher) + live current inning
-  const completedInnings = innings.filter(i => !currentPitcherId || i.pitcherId === currentPitcherId);
-  const liveCount = currentInningPitchCount();
-
-  if (completedInnings.length === 0 && liveCount === 0) {
-    container.innerHTML = '';
-    return;
-  }
-
   const HARD = 35;
   const ticks = [
     { val: 25, label: '25', cls: '' },
@@ -355,50 +346,108 @@ function renderInningBarChart() {
     { val: 35, label: '35', cls: 'inn-tick--hard' }
   ];
 
-  function fillClass(count, isLive) {
-    if (isLive) return 'inn-fill--live';
+  // Assign a consistent color per pitcher based on their position in the pitchers array
+  const PALETTE = ['#1565c0','#6a1b9a','#00695c','#e65100','#4e342e','#37474f'];
+  const pitcherColorMap = {};
+  pitchers.forEach((p, i) => { pitcherColorMap[p.id] = PALETTE[i % PALETTE.length]; });
+
+  // Gather every inning number that has any data (pitchData + innings[] + current live)
+  const allInnNums = new Set([...pitchData.map(p => p.inning).filter(Boolean)]);
+  innings.forEach(inn => allInnNums.add(inn.inningNumber));
+  allInnNums.add(currentInning);
+  const sortedInnings = [...allInnNums].sort((a, b) => a - b);
+
+  function fillClass(count) {
     if (count >= 31) return 'inn-fill--stop';
     if (count >= 29) return 'inn-fill--warn';
     if (count >= 25) return 'inn-fill--watch';
     return 'inn-fill--ok';
   }
 
-  function statusEmoji(count, isLive) {
-    if (isLive) return '▶';
+  function statusEmoji(count, live) {
+    if (live) return '▶';
     if (count >= 31) return '🔴';
     if (count >= 25) return '⚠';
     return '✓';
   }
 
+  function makeTicks() {
+    return ticks.map(t =>
+      `<span class="inn-tick ${t.cls}" style="left:${(t.val/HARD*100).toFixed(1)}%"></span>` +
+      `<span class="inn-tick-label${t.cls ? ' ' + t.cls : ''}" style="left:${(t.val/HARD*100).toFixed(1)}%">${t.label}</span>`
+    ).join('');
+  }
+
   let html = '';
 
-  // Completed innings
-  completedInnings.forEach(inn => {
-    const pct = Math.min(inn.pitchCount / HARD * 100, 100).toFixed(1);
-    const fc  = fillClass(inn.pitchCount, false);
-    const st  = statusEmoji(inn.pitchCount, false);
-    html += `<div class="inn-row">
-      <span class="inn-label">INN ${inn.inningNumber}</span>
-      <div class="inn-track">
-        <div class="inn-fill ${fc}" style="width:${pct}%">${inn.pitchCount}p</div>
-        ${ticks.map(t => `<span class="inn-tick ${t.cls}" style="left:${(t.val/HARD*100).toFixed(1)}%" title="${t.label}p"></span><span class="inn-tick-label ${t.cls}" style="left:${(t.val/HARD*100).toFixed(1)}%">${t.label}</span>`).join('')}
-      </div>
-      <span class="inn-status">${st}</span>
-    </div>`;
-  });
+  sortedInnings.forEach(innNum => {
+    const isLive      = innNum === currentInning;
+    const isCompleted = innings.some(i => i.inningNumber === innNum);
 
-  // Live current inning
-  if (liveCount > 0 || completedInnings.length === 0) {
-    const pct = Math.min(liveCount / HARD * 100, 100).toFixed(1);
-    html += `<div class="inn-row">
-      <span class="inn-label">INN ${currentInning}</span>
-      <div class="inn-track">
-        <div class="inn-fill inn-fill--live" style="width:${pct}%">${liveCount}p</div>
-        ${ticks.map(t => `<span class="inn-tick ${t.cls}" style="left:${(t.val/HARD*100).toFixed(1)}%" title="${t.label}p"></span><span class="inn-tick-label ${t.cls}" style="left:${(t.val/HARD*100).toFixed(1)}%">${t.label}</span>`).join('')}
-      </div>
-      <span class="inn-status">▶</span>
-    </div>`;
-  }
+    if (currentPitcherId) {
+      // ── Single pitcher view: show this pitcher's pitches per inning ──────
+      const count = pitchData.filter(p => p.inning === innNum && p.pitcherId === currentPitcherId).length;
+      if (count === 0 && !isLive) return; // pitcher didn't appear in this inning
+
+      const pct = Math.min(count / HARD * 100, 100).toFixed(1);
+      const fc  = isLive && !isCompleted ? 'inn-fill--live' : fillClass(count);
+      const st  = statusEmoji(count, isLive && !isCompleted);
+
+      html += `<div class="inn-row">
+        <span class="inn-label">INN ${innNum}</span>
+        <div class="inn-track">
+          <div class="inn-fill ${fc}" style="width:${pct}%">${count}p</div>
+          ${makeTicks()}
+        </div>
+        <span class="inn-status">${st}</span>
+      </div>`;
+
+    } else {
+      // ── All pitchers view: total pitches, stacked bar per pitcher ────────
+      const pitcherCounts = {};
+      pitchData.filter(p => p.inning === innNum).forEach(p => {
+        if (p.pitcherId != null) pitcherCounts[p.pitcherId] = (pitcherCounts[p.pitcherId] || 0) + 1;
+      });
+      const total       = Object.values(pitcherCounts).reduce((s, n) => s + n, 0);
+      const numPitchers = Object.keys(pitcherCounts).length;
+
+      if (total === 0 && !isLive) return;
+
+      const totalPct = Math.min(total / HARD * 100, 100).toFixed(1);
+      const st       = statusEmoji(total, isLive && !isCompleted);
+
+      let barHtml = '';
+      if (total === 0) {
+        // Nothing thrown yet — show empty live bar
+        barHtml = `<div class="inn-fill inn-fill--live" style="width:0%">0p</div>`;
+      } else if (numPitchers > 1) {
+        // Multiple pitchers — stacked color segments
+        const segs = Object.entries(pitcherCounts).map(([pid, cnt]) => {
+          const sharePct = (cnt / total * 100).toFixed(1);
+          const color    = pitcherColorMap[parseInt(pid)] || '#607d8b';
+          const pName    = pitchers.find(p => p.id === parseInt(pid))?.name || `P${pid}`;
+          return `<div class="inn-seg" style="width:${sharePct}%;background:${color};" title="${pName}: ${cnt}p"></div>`;
+        }).join('');
+        barHtml = `<div class="inn-fill-stack" style="width:${totalPct}%">${segs}</div><span class="inn-fill-count">${total}p</span>`;
+      } else {
+        // Only one pitcher in this inning — single bar colored by pitcher
+        const [pid] = Object.keys(pitcherCounts);
+        const fc    = isLive && !isCompleted ? 'inn-fill--live' : fillClass(total);
+        const color = (pid && !(isLive && !isCompleted)) ? (pitcherColorMap[parseInt(pid)] || null) : null;
+        const style = color ? `width:${totalPct}%;background:${color};` : `width:${totalPct}%`;
+        barHtml = `<div class="inn-fill ${fc}" style="${style}">${total}p</div>`;
+      }
+
+      html += `<div class="inn-row">
+        <span class="inn-label">INN ${innNum}</span>
+        <div class="inn-track">
+          ${barHtml}
+          ${makeTicks()}
+        </div>
+        <span class="inn-status">${st}</span>
+      </div>`;
+    }
+  });
 
   container.innerHTML = html;
 }
