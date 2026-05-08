@@ -99,8 +99,8 @@
             <table class="liveTbl" id="tbl-pitchType">
               <thead>
                 <tr>
-                  <th>Pitch</th><th>Usage%</th><th>IZ%</th><th>OOZ%</th><th>CSW%</th>
-                  <th>Strike%</th><th>Swing%</th>
+                  <th>Pitch</th><th>Usage%</th><th>IZ%</th><th>OOZ%</th><th>NonComp%</th><th>CSW%</th>
+                  <th>Strike%</th><th>Swing%</th><th>Chase%</th><th>Whiff%</th><th>IZ Whiff%</th>
                   <th>Fly%</th><th>GB%</th><th>LD%</th><th>PU%</th>
                 </tr>
               </thead>
@@ -115,6 +115,7 @@
               <thead><tr>
                 <th>Batter</th><th>Early Swing%</th><th>Late Swing%</th>
                 <th>Chase%</th><th>CSW%</th><th>Strike%</th>
+                <th>Whiff%</th><th>Whiff Hard%</th><th>Whiff BB%</th><th>Whiff Soft%</th><th>IZ Whiff%</th>
               </tr></thead>
               <tbody></tbody>
             </table>
@@ -127,6 +128,7 @@
               <thead><tr>
                 <th>Hand</th><th>Pitches</th><th>IZ%</th><th>CSW%</th>
                 <th>Strike%</th><th>Swing%</th><th>Chase%</th>
+                <th>Ahead%</th><th>Behind%</th>
               </tr></thead>
               <tbody></tbody>
             </table>
@@ -526,7 +528,7 @@
   <!-- Pitch Log Summary -->
   <div id="pitchLogSummary" class="bento-kpi-cards">
     <h3>Pitch Log</h3>
-    <div class="kpi-card">
+    <div class="kpi-card" id="totalPitchesKpiCard">
       <div class="kpi-label">Total Pitches</div>
       <div class="kpi-value" id="totalPitchesLiveBP">0</div>
     </div>
