@@ -1662,7 +1662,8 @@ button:active {
   background: rgba(255,255,255,0.1);
 }
 
-#pitchLog li.atbat-divider {
+#pitchLog li.atbat-divider,
+#pitchLog li.ab-group-header {
   margin-top: var(--space-md);
   background: transparent;
   border: 1px dashed rgba(255,255,255,0.2);
@@ -1670,10 +1671,29 @@ button:active {
   font-size: var(--text-xs);
   font-weight: 700;
   text-transform: uppercase;
-  cursor: default;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
+  user-select: none;
+}
+#pitchLog li.ab-group-header:hover { background: rgba(255,255,255,0.04); }
+#pitchLog li.ab-group-header .ab-chevron {
+  display: inline-block;
+  width: 10px;
+  font-size: 10px;
+  transition: transform 0.2s ease;
+}
+#pitchLog li.ab-group-header .ab-summary {
+  font-weight: 500;
+  text-transform: none;
+  color: rgba(255,255,255,0.75);
+  margin-left: auto;
+}
+#pitchLog li.ab-pitch {
+  padding-left: var(--space-md);
+  font-size: var(--text-xs);
+  transition: opacity 0.2s ease;
 }
 .ab-hand-toggle {
   min-height: unset;
@@ -2384,14 +2404,31 @@ button:active {
 }
 @keyframes alertPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
 
-/* ---------- Inning KPI Card ---------- */
+/* ---------- Inning KPI Card (tier coloring) ---------- */
+#inningKpiCard { transition: background 0.3s ease; }
 #inningKpiCard.inn-watch { background: #fff8e1; }
-#inningKpiCard.inn-warn  { background: #e65100; }
-#inningKpiCard.inn-stop  { background: #c62828; }
+#inningKpiCard.inn-warn  { background: #ffb74d; }
+#inningKpiCard.inn-stop  { background: #ef5350; }
+#inningKpiCard.inn-hard  { background: #b71c1c; }
 #inningKpiCard.inn-warn .kpi-label,
 #inningKpiCard.inn-warn .kpi-value,
 #inningKpiCard.inn-stop .kpi-label,
-#inningKpiCard.inn-stop .kpi-value { color: #fff; }
+#inningKpiCard.inn-stop .kpi-value,
+#inningKpiCard.inn-hard .kpi-label,
+#inningKpiCard.inn-hard .kpi-value { color: #fff; }
+
+/* ---------- Total Pitches KPI Card (tier coloring vs daily limit) ---------- */
+#totalPitchesKpiCard { transition: background 0.3s ease; }
+#totalPitchesKpiCard.total-watch { background: #fff8e1; }
+#totalPitchesKpiCard.total-warn  { background: #ffb74d; }
+#totalPitchesKpiCard.total-stop  { background: #ef5350; }
+#totalPitchesKpiCard.total-hard  { background: #b71c1c; }
+#totalPitchesKpiCard.total-warn .kpi-label,
+#totalPitchesKpiCard.total-warn .kpi-value,
+#totalPitchesKpiCard.total-stop .kpi-label,
+#totalPitchesKpiCard.total-stop .kpi-value,
+#totalPitchesKpiCard.total-hard .kpi-label,
+#totalPitchesKpiCard.total-hard .kpi-value { color: #fff; }
 
 /* ---------- Auto-End Inning Toggle ---------- */
 .auto-inn-label {
