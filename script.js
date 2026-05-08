@@ -54,6 +54,7 @@ let innings        = [];           // [{inningNumber, pitchCount, pitcherId}]
 let workloadAlertShownAtPitchId = -1;
 let workloadAlertDismissPitchId = -1;
 let autoEndInningOn = false;       // auto-end inning on 3 recorded outs
+let _fatigueFlagFired = new Set(); // pitcherIds that have already triggered the fatigue flag this session
 
 /* ---------- GRID POV ---------- */
 let gridPOV = localStorage.getItem('gridPOV') || 'catcher';
@@ -233,6 +234,8 @@ function endInning() {
   workloadAlertShownAtPitchId = -1;
   workloadAlertDismissPitchId = -1;
   _lastAlertedInnPitchCount = 0;
+  const _innAlertEl = document.getElementById('workloadAlert');
+  if (_innAlertEl) _innAlertEl.style.display = 'none';
   // Post-inning removal suggestion if pitcher threw 31+
   if (ip >= 31) {
     triggerWorkloadAlert(`🔴 Pitcher threw ${ip}p last inning — consider removing`, 'stop');
@@ -539,11 +542,13 @@ function showBatterToast(batterId) {
   el.innerHTML = `<strong>${batter.name} (${batter.hand})</strong><ul>${lines.map(l => `<li>${l}</li>`).join('')}</ul>`;
   el.style.display = 'block';
   requestAnimationFrame(() => el.classList.add('visible'));
-  clearTimeout(el._dismissTimer);
-  el._dismissTimer = setTimeout(() => {
-    el.classList.remove('visible');
-    setTimeout(() => { el.style.display = 'none'; }, 350);
-  }, 4000);
+}
+
+function dismissBatterToast() {
+  const el = document.getElementById('batterToast');
+  if (!el || !el.classList.contains('visible')) return;  // only act if actually showing
+  el.classList.remove('visible');
+  setTimeout(() => { el.style.display = 'none'; }, 350);
 }
 
 // Save the pitch log state
@@ -635,6 +640,7 @@ document.getElementById('pitcherSelect').addEventListener('change', e => {
   _lastAlertedInnPitchCount = 0;
   workloadAlertShownAtPitchId = -1;
   workloadAlertDismissPitchId = -1;
+  _fatigueFlagFired = new Set();
   const _alertEl = document.getElementById('workloadAlert');
   if (_alertEl) _alertEl.style.display = 'none';
   updateLiveStats();
@@ -952,6 +958,7 @@ document.querySelectorAll('#pitchLocationSelection .locationBtn').forEach(button
 
 document.querySelectorAll("#pitchTypeSelection .btn").forEach(button => {
   button.addEventListener('click', function() {
+    dismissBatterToast();
     pitchType = this.id;
     actionLog.push(saveCurrentState());
     if (mode === 'points') {
@@ -1697,7 +1704,60 @@ function makeCounters () {
 
 const DONUT_C = 2 * Math.PI * 24; // 150.796 — circumference for r=24
 
-function updateDonut(circleId, textId, value) {
+// MLB benchmarks for donut outer-ring color rating.
+// `inverse:true` flips the color sense (higher = bad, e.g., NonComp%).
+const MLB_DONUT_BENCHMARKS = {
+  strikePct:  { mean: 62,   sd: 6, inverse: false },
+  cswPct:     { mean: 25.3, sd: 4, inverse: false },
+  izPct:      { mean: 47.3, sd: 5, inverse: false },
+  swingPct:   { mean: 47.6, sd: 5, inverse: false },
+  bipOutPct:  { mean: 70,   sd: 6, inverse: false },
+  nonCompPct: { mean: 18,   sd: 4, inverse: true  }
+};
+
+function donutBenchColor(value, metricKey) {
+  const b = MLB_DONUT_BENCHMARKS[metricKey];
+  if (!b) return null;
+  const z = (value - b.mean) / b.sd;
+  // |z| <= 1 → white (within ±1 SD)
+  if (Math.abs(z) <= 1) return '#ffffff';
+  const above = z > 1;
+  // For inverse metrics (lower = better), flip the meaning
+  if (b.inverse) return above ? '#ef4444' : '#22c55e';
+  return above ? '#22c55e' : '#ef4444';
+}
+
+// Inject (or update) the MLB-benchmark outer ring on a donut card.
+function applyDonutBenchRing(circleId, value, metricKey) {
+  if (!metricKey) return;
+  const fill = document.getElementById(circleId);
+  if (!fill) return;
+  const svg = fill.closest('svg');
+  if (!svg) return;
+  const ringId = `${circleId}-bench`;
+  let ring = document.getElementById(ringId);
+  if (!ring) {
+    ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    ring.setAttribute('id', ringId);
+    ring.setAttribute('cx', '32');
+    ring.setAttribute('cy', '32');
+    ring.setAttribute('r', '30');
+    ring.setAttribute('fill', 'none');
+    ring.setAttribute('stroke-width', '1.8');
+    ring.setAttribute('class', 'donut-bench-ring');
+    svg.appendChild(ring);
+  }
+  const color = donutBenchColor(value, metricKey);
+  if (color) {
+    ring.setAttribute('stroke', color);
+    const b = MLB_DONUT_BENCHMARKS[metricKey];
+    ring.setAttribute('aria-label', `vs MLB avg ${b.mean}% (±${b.sd} SD)`);
+  } else {
+    ring.setAttribute('stroke', 'transparent');
+  }
+}
+
+function updateDonut(circleId, textId, value, metricKey) {
   const circle = document.getElementById(circleId);
   const text   = document.getElementById(textId);
   if (!circle) return;
@@ -1705,6 +1765,7 @@ function updateDonut(circleId, textId, value) {
   circle.style.strokeDashoffset = DONUT_C * (1 - v / 100);
   circle.style.stroke = getTigersPercentColor(v);
   if (text) text.textContent = v.toFixed(1);
+  applyDonutBenchRing(circleId, v, metricKey);
 }
 
 const BB_COLORS = { fly: '#5b8fc9', gb: '#d4652a', ld: '#4a9e6e', pu: '#a855c9' };
@@ -1808,16 +1869,16 @@ function updateLiveStats () {
   setLivePct('stat-late-strike', 'Strike%', totals.late.strike, denoms.late);
 
   /* ----- update donut arcs ----- */
-  updateDonut('donut-strike', 'donut-val-strike', pctValue(totals.all.strike, denoms.all));
-  updateDonut('donut-csw',    'donut-val-csw',    pctValue(totals.all.csw,    denoms.all));
-  updateDonut('donut-iz',     'donut-val-iz',     pctValue(totals.all.iz,     denoms.all));
-  updateDonut('donut-swing',  'donut-val-swing',  pctValue(totals.all.swing,  denoms.all));
+  updateDonut('donut-strike', 'donut-val-strike', pctValue(totals.all.strike, denoms.all), 'strikePct');
+  updateDonut('donut-csw',    'donut-val-csw',    pctValue(totals.all.csw,    denoms.all), 'cswPct');
+  updateDonut('donut-iz',     'donut-val-iz',     pctValue(totals.all.iz,     denoms.all), 'izPct');
+  updateDonut('donut-swing',  'donut-val-swing',  pctValue(totals.all.swing,  denoms.all), 'swingPct');
   updateBattedBallDonut(totals.all.fly, totals.all.gb, totals.all.ld, totals.all.pu, totals.all.ipo);
 
   /* ----- BIP Out% donut ----- */
   const bipTotal = totals.all.inPlayOuts + totals.all.inPlayHits;
   const bipOutPct = bipTotal > 0 ? (totals.all.inPlayOuts / bipTotal * 100) : 0;
-  updateDonut('donut-bip-out', 'donut-val-bip-out', bipOutPct);
+  updateDonut('donut-bip-out', 'donut-val-bip-out', bipOutPct, 'bipOutPct');
   setLivePct('stat-bip-out', 'BIP Out%', totals.all.inPlayOuts, bipTotal);
 
   /* ----- tables: still respond to the dropdown filter ----- */
@@ -1876,7 +1937,7 @@ function renderLiveTables(aggFiltered, aggAll) {
   const tpBody = document.querySelector('#tbl-pitchType tbody');
   tpBody.innerHTML = '';
 
-  const pitchCols = ['usagePct','izPct','oozPct','cswPct','strikePct','swingPct','flyPct','gbPct','ldPct','puPct'];
+  const pitchCols = ['usagePct','izPct','oozPct','nonCompPct','cswPct','strikePct','swingPct','chasePct','whiffPct','izWhiffPct','flyPct','gbPct','ldPct','puPct'];
   const pitchMax  = computeColumnMax(aggFiltered.byPitch, pitchCols);
 
   // â¬†ï¸ TOTAL row first (for the *filtered* set)
@@ -1902,7 +1963,7 @@ function renderLiveTables(aggFiltered, aggAll) {
   const btBody = document.querySelector('#tbl-batter tbody');
   btBody.innerHTML = '';
 
-  const batterCols = ['earlySwingPct','lateSwingPct','chasePct','cswPct','strikePct'];
+  const batterCols = ['earlySwingPct','lateSwingPct','chasePct','cswPct','strikePct','whiffPct','whiffHardPct','whiffBreakPct','whiffSoftPct','izWhiffPct'];
   const batterMax  = computeColumnMax(aggFiltered.byBatter, batterCols);
 
   // â¬†ï¸ TOTAL row first (for the *filtered* set)
@@ -1928,9 +1989,26 @@ function renderLiveTables(aggFiltered, aggAll) {
   const hsBody = document.querySelector('#tbl-handSplit tbody');
   if (hsBody) {
     hsBody.innerHTML = '';
-    const handCols = ['izPct','cswPct','strikePct','swingPct','chasePct'];
+    const handCols = ['izPct','cswPct','strikePct','swingPct','chasePct','aheadPct','behindPct'];
     const handMax  = computeColumnMax(aggFiltered.byHand, handCols);
     const HAND_LABELS = { L: 'LHH', R: 'RHH', unknown: '?' };
+
+    // total row first (mirrors pitchType / batter tables)
+    const totalRow = hsBody.insertRow();
+    totalRow.classList.add('total-row');
+    const totalLabelCell = totalRow.insertCell();
+    totalLabelCell.textContent = '- All -';
+    totalLabelCell.classList.add('total-cell');
+    const totalPitchesCell = totalRow.insertCell();
+    totalPitchesCell.textContent = aggFiltered.overall.pitches;
+    totalPitchesCell.classList.add('total-cell');
+    handCols.forEach(metric => {
+      const pctVal   = Number(aggFiltered.overall[metric]) || 0;
+      const rawCount = metricCount(aggFiltered.overall, metric);
+      const td       = totalRow.insertCell();
+      td.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
+      td.classList.add('total-cell');
+    });
 
     // render in a fixed order: L then R
     ['L', 'R'].forEach(hKey => {
@@ -2105,7 +2183,10 @@ function renderOutTypeBarChart(agg) {
 
 /* ========== COACHING INSIGHTS ENGINE ========== */
 
-const FASTBALL_TYPES = ['fourSeam', 'twoSeam', 'cutter'];
+const FASTBALL_TYPES  = ['fourSeam', 'twoSeam', 'cutter'];
+const HARD_TYPES      = ['fourSeam', 'twoSeam', 'sinker', 'cutter'];
+const BREAKING_TYPES  = ['slider', 'curveBall', 'sweeper', 'slurve', 'knuckleCurve'];
+const SOFT_TYPES      = ['changeup', 'splitter'];
 
 function computeInsights(data) {
   const insights = [];
@@ -2113,21 +2194,44 @@ function computeInsights(data) {
 
   const pl = PITCH_LABELS || {};
 
-  // --- 1. Fastball overuse by count ---
-  const countBuckets = {};
+  // --- 1. Fastball usage by count group (SD-based thresholds) ---
+  const HITTERS_COUNTS  = new Set(['1-0','2-0','3-0','2-1','3-1']);
+  const PITCHERS_COUNTS = new Set(['0-1','0-2','1-2','2-2']);
+
+  let hFB=0, hTotal=0, pFB=0, pTotal=0, eFB=0, eTotal=0;
   data.forEach(p => {
-    const key = `${p.prePitchCount.balls}-${p.prePitchCount.strikes}`;
-    if (!countBuckets[key]) countBuckets[key] = { total: 0, fb: 0 };
-    countBuckets[key].total++;
-    if (FASTBALL_TYPES.includes(p.pitchType)) countBuckets[key].fb++;
+    const key  = `${p.prePitchCount.balls}-${p.prePitchCount.strikes}`;
+    const isFB = FASTBALL_TYPES.includes(p.pitchType);
+    if (HITTERS_COUNTS.has(key))  { hTotal++; if (isFB) hFB++; }
+    if (PITCHERS_COUNTS.has(key)) { pTotal++; if (isFB) pFB++; }
+    if (p.prePitchCount.strikes < 2) { eTotal++; if (isFB) eFB++; }
   });
-  for (const [count, b] of Object.entries(countBuckets)) {
-    if (b.total >= 4 && (b.fb / b.total) > 0.75) {
-      insights.push({
-        type: 'warning', category: 'sequencing', priority: 2,
-        message: `Heavy fastball in ${count} count (${Math.round(b.fb / b.total * 100)}% FB on ${b.total} pitches)`
-      });
-    }
+
+  // Hitter's counts: mean=36%, T1=61%, T2=86%
+  if (hTotal >= 6) {
+    const r = hFB / hTotal * 100;
+    if (r > 86) insights.push({ type:'warning', category:'sequencing', priority:3,
+      message:`Very heavy fastball in hitter's counts (${r.toFixed(0)}% — MLB avg 36%) — batters sitting on it` });
+    else if (r > 61) insights.push({ type:'warning', category:'sequencing', priority:2,
+      message:`Heavy fastball in hitter's counts (${r.toFixed(0)}% — MLB avg 36%)` });
+  }
+
+  // Pitcher's counts: mean=30%, T1=49%, T2=68%
+  if (pTotal >= 6) {
+    const r = pFB / pTotal * 100;
+    if (r > 68) insights.push({ type:'warning', category:'sequencing', priority:3,
+      message:`Heavy fastball even when ahead in the count (${r.toFixed(0)}% — MLB avg 30%) — missing secondary pitch usage` });
+    else if (r > 49) insights.push({ type:'warning', category:'sequencing', priority:2,
+      message:`Higher than average fastball usage in pitcher's counts (${r.toFixed(0)}% — MLB avg 30%)` });
+  }
+
+  // Early (less than 2 strikes): mean=32%, T1=54%, T2=75%
+  if (eTotal >= 8) {
+    const r = eFB / eTotal * 100;
+    if (r > 75) insights.push({ type:'warning', category:'sequencing', priority:3,
+      message:`Very heavy fastball before 2 strikes (${r.toFixed(0)}% — MLB avg 32%)` });
+    else if (r > 54) insights.push({ type:'warning', category:'sequencing', priority:2,
+      message:`Above average fastball usage before 2 strikes (${r.toFixed(0)}% — MLB avg 32%)` });
   }
 
   // --- 2. High early-count swing rate ---
@@ -2141,11 +2245,12 @@ function computeInsights(data) {
   });
   if (earlyPitches >= 10) {
     const earlySwingPct = earlySwings / earlyPitches * 100;
-    if (earlySwingPct > 40) {
-      insights.push({
-        type: 'warning', category: 'swing', priority: 2,
-        message: `Hitters jumping early (${earlySwingPct.toFixed(0)}% swing rate <2 strikes)`
-      });
+    if (earlySwingPct > 54) {
+      insights.push({ type:'warning', category:'swing', priority:3,
+        message:`Hitters very aggressive early (${earlySwingPct.toFixed(0)}% swing <2 strikes — MLB avg 42%)` });
+    } else if (earlySwingPct > 48) {
+      insights.push({ type:'warning', category:'swing', priority:2,
+        message:`Hitters jumping early (${earlySwingPct.toFixed(0)}% swing <2 strikes — MLB avg 42%)` });
     }
   }
 
@@ -2230,13 +2335,14 @@ function computeInsights(data) {
         }
       }
     });
-    if (twoStrikePitches >= 5) {
+    if (twoStrikePitches >= 6) {
       const chasePct = chaseSwings / twoStrikePitches * 100;
-      if (chasePct < 20) {
-        insights.push({
-          type: 'info', category: 'chase', priority: 1,
-          message: `Hitters laying off 2-strike chase pitches (${chasePct.toFixed(0)}% chase rate)`
-        });
+      if (chasePct < 13) {
+        insights.push({ type:'warning', category:'chase', priority:3,
+          message:`Hitters very disciplined on 2-strike chase pitches (${chasePct.toFixed(0)}% — MLB avg 39%)` });
+      } else if (chasePct < 26) {
+        insights.push({ type:'info', category:'chase', priority:1,
+          message:`Hitters laying off 2-strike chase pitches (${chasePct.toFixed(0)}% — MLB avg 39%)` });
       }
     }
   }
@@ -2279,66 +2385,149 @@ function computeInsights(data) {
     }
   });
 
-  // --- 10. Tipping detection (gap-based: secondary = breaking balls + off-speed) ---
-  const secondaryTypesT = ['slider','curveBall','sweeper','slurve','knuckleCurve','cutter','changeup','splitter'];
-  const fastballTypesT  = ['fourSeam','twoSeam','sinker'];
+  // --- 10a. 2-strike putaway effectiveness (SwStrk% per pitch type) ---
+  // SwStrk% = whiffs / total pitches (MLB avg 13.8% on 2 strikes, T1 hi=21.3%, T1 lo=6.3%)
+  const twoKPitches = data.filter(p => p.prePitchCount?.strikes === 2);
+  if (twoKPitches.length >= 10) {
+    const by2K = {};
+    twoKPitches.forEach(p => {
+      const pt = p.pitchType;
+      if (!by2K[pt]) by2K[pt] = { total: 0, whiff: 0 };
+      by2K[pt].total++;
+      if (p.outcome === 'whiff') by2K[pt].whiff++;
+    });
+
+    const entries = Object.entries(by2K).filter(([, b]) => b.total >= 4);
+    entries.sort((a, b) => b[1].total - a[1].total);
+
+    entries.forEach(([pt, b]) => {
+      const rate  = b.whiff / b.total * 100;
+      const label = pl[pt] || pt;
+      const usage = Math.round(b.total / twoKPitches.length * 100);
+      if (rate > 21.3) {
+        insights.push({ type:'positive', category:'putaway', priority:2,
+          message:`${label} is working on 2 strikes (${rate.toFixed(0)}% SwStrk, ${usage}% usage — MLB avg 14%)` });
+      } else if (rate < 6.3 && b.total >= 5) {
+        insights.push({ type:'warning', category:'putaway', priority:2,
+          message:`${label} not generating misses on 2 strikes (${rate.toFixed(0)}% SwStrk, ${b.total} pitches — MLB avg 14%)` });
+      }
+    });
+  }
+
+  // --- 10c. NonComp% by pitch type (wasted pitches) ---
+  const byPtNonComp = {};
+  data.forEach(p => {
+    const pt = p.pitchType;
+    if (!byPtNonComp[pt]) byPtNonComp[pt] = { total: 0, nc: 0 };
+    byPtNonComp[pt].total++;
+    if (nonCompetitiveLocations.includes(p.location)) byPtNonComp[pt].nc++;
+  });
+  Object.entries(byPtNonComp).forEach(([pt, b]) => {
+    if (b.total < 6) return;
+    const r = b.nc / b.total * 100;
+    // T1 = 25%, T2 = 32% (above MLB ~16-21%)
+    if (r > 32) insights.push({ type:'warning', category:'command', priority:3,
+      message:`${pl[pt]||pt}: ${r.toFixed(0)}% non-competitive (${b.nc}/${b.total}) — wasting pitches` });
+    else if (r > 25) insights.push({ type:'warning', category:'command', priority:2,
+      message:`${pl[pt]||pt}: ${r.toFixed(0)}% non-competitive (${b.nc}/${b.total})` });
+  });
+
+  // --- 10d. NonComp% on 2-strike counts (burning putaway counts) ---
+  if (twoKPitches.length >= 8) {
+    const ncCount = twoKPitches.filter(p => nonCompetitiveLocations.includes(p.location)).length;
+    const r = ncCount / twoKPitches.length * 100;
+    if (r > 30) insights.push({ type:'warning', category:'command', priority:3,
+      message:`${r.toFixed(0)}% non-competitive on 2 strikes (${ncCount}/${twoKPitches.length}) — burning putaway counts` });
+    else if (r > 23) insights.push({ type:'warning', category:'command', priority:2,
+      message:`${r.toFixed(0)}% non-competitive on 2 strikes (${ncCount}/${twoKPitches.length})` });
+  }
+
+  // --- 10b. Tipping detection (3-pivot: HARD vs BREAKING / OFFSPEED / SECONDARY_ALL) ---
+  // Buckets per user spec: HARD = 4S/2S/CT, BREAKING = CB/SL/SW, OFFSPEED = CH/SPL
+  const TIP_HARD     = ['fourSeam', 'twoSeam', 'cutter'];
+  const TIP_BREAKING = ['curveBall', 'slider', 'sweeper', 'slurve', 'knuckleCurve'];
+  const TIP_OFFSPEED = ['changeup', 'splitter'];
+  const TIP_SECONDARY = [...TIP_BREAKING, ...TIP_OFFSPEED];
   const uniqueBatterIds = new Set(data.map(p => p.batterId).filter(Boolean));
 
-  function _swingRates(subset) {
-    const fbs       = subset.filter(p => fastballTypesT.includes(p.pitchType));
-    const fbSwings  = fbs.filter(p => ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play'));
-    const secIZ     = subset.filter(p => secondaryTypesT.includes(p.pitchType) && strikeLocations.includes(p.location));
-    const secSwings = secIZ.filter(p => ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play'));
+  const isSwingPitch = p => ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play');
+
+  function _swingRatesByZone(subset, types) {
+    const inBucket   = subset.filter(p => types.includes(p.pitchType));
+    const iz         = inBucket.filter(p => strikeLocations.includes(p.location));
+    const shadow     = inBucket.filter(p => shadowLocations.includes(p.location));
+    const izSwings     = iz.filter(isSwingPitch);
+    const shadowSwings = shadow.filter(isSwingPitch);
     return {
-      fbRate:   fbs.length   >= 3 ? fbSwings.length  / fbs.length   : null,
-      secRate:  secIZ.length >= 3 ? secSwings.length / secIZ.length : null,
-      fbCount:  fbs.length,
-      secCount: secIZ.length,
+      izCount:     iz.length,
+      shadowCount: shadow.length,
+      izRate:      iz.length     >= 3 ? izSwings.length     / iz.length     : null,
+      shadowRate:  shadow.length >= 3 ? shadowSwings.length / shadow.length : null
     };
   }
 
-  // Primary: full outing, ≥5 batters, gap ≥ 25pp
-  if (uniqueBatterIds.size >= 5) {
-    const r = _swingRates(data);
-    if (r.fbRate !== null && r.secRate !== null && r.fbCount >= 5 && r.secCount >= 5) {
-      const gap = r.fbRate - r.secRate;
-      if (gap >= 0.25 && r.fbRate >= 0.50) {
-        insights.push({
-          type: 'warning', category: 'tipping', priority: 3,
-          message: `⚠️ Possible tip-off: batters attacking ${(r.fbRate*100).toFixed(0)}% of fastballs but only ${(r.secRate*100).toFixed(0)}% of secondary pitches in zone across ${uniqueBatterIds.size} batters — check delivery differences`
-        });
+  // Build all candidate signals, then pick the largest-gap one (de-dup)
+  function _evalPivots(subset, batters, opts) {
+    const candidates = [];
+    const hard = _swingRatesByZone(subset, TIP_HARD);
+    const pivots = [
+      { label: 'BREAKING',  types: TIP_BREAKING },
+      { label: 'OFFSPEED',  types: TIP_OFFSPEED },
+      { label: 'SECONDARY', types: TIP_SECONDARY }
+    ];
+    pivots.forEach(({label, types}) => {
+      const sec = _swingRatesByZone(subset, types);
+      // IZ comparison
+      if (hard.izRate !== null && sec.izRate !== null &&
+          hard.izCount >= opts.minSample && sec.izCount >= opts.minSample) {
+        const gap = hard.izRate - sec.izRate;
+        if (gap >= opts.gapMin && hard.izRate >= opts.hardRateMinIz) {
+          candidates.push({
+            zone: 'in zone', label, gap, hardRate: hard.izRate, secRate: sec.izRate, batters
+          });
+        }
       }
+      // Shadow comparison
+      if (hard.shadowRate !== null && sec.shadowRate !== null &&
+          hard.shadowCount >= opts.minSample && sec.shadowCount >= opts.minSample) {
+        const gap = hard.shadowRate - sec.shadowRate;
+        if (gap >= opts.gapMin && hard.shadowRate >= opts.hardRateMinShadow) {
+          candidates.push({
+            zone: 'in shadow zone', label, gap, hardRate: hard.shadowRate, secRate: sec.shadowRate, batters
+          });
+        }
+      }
+    });
+    // de-dup: keep the candidate with the largest gap
+    candidates.sort((a, b) => b.gap - a.gap);
+    return candidates[0] || null;
+  }
+
+  // Primary: full outing, ≥3 batters, gap ≥ 25pp, hard IZ ≥50% / hard shadow ≥30%, sample ≥4
+  if (uniqueBatterIds.size >= 3) {
+    const win = _evalPivots(data, uniqueBatterIds.size, {
+      minSample: 4, gapMin: 0.25, hardRateMinIz: 0.50, hardRateMinShadow: 0.30
+    });
+    if (win) {
+      insights.push({
+        type: 'warning', category: 'tipping', priority: 3,
+        message: `⚠️ Tipping signal: HARD vs ${win.label} — batters swing at ${(win.hardRate*100).toFixed(0)}% of fastballs vs ${(win.secRate*100).toFixed(0)}% of ${win.label.toLowerCase()} pitches ${win.zone} (gap ${(win.gap*100).toFixed(0)}pp, ${win.batters} batters)`
+      });
     }
   }
 
-  // Secondary: current inning, ≥3 batters, gap ≥ 20pp
+  // Secondary: current inning, ≥2 batters, gap ≥ 20pp, sample ≥3
   const lastInnData    = data.filter(p => p.inning === currentInning);
   const lastInnBatters = new Set(lastInnData.map(p => p.batterId).filter(Boolean));
-  if (!insights.some(i => i.category === 'tipping') && lastInnBatters.size >= 3) {
-    const r = _swingRates(lastInnData);
-    if (r.fbRate !== null && r.secRate !== null && r.fbCount >= 3 && r.secCount >= 3) {
-      const gap = r.fbRate - r.secRate;
-      if (gap >= 0.20 && r.fbRate >= 0.45) {
-        insights.push({
-          type: 'warning', category: 'tipping', priority: 2,
-          message: `⚠️ Tipping pattern this inning: ${(r.fbRate*100).toFixed(0)}% FB swing rate vs ${(r.secRate*100).toFixed(0)}% secondary IZ swing rate across ${lastInnBatters.size} batters`
-        });
-      }
-    }
-  }
-
-  // Collapse signal: secondary swing rate this inning ≥15pp below full-outing baseline
-  if (!insights.some(i => i.category === 'tipping') && lastInnBatters.size >= 3) {
-    const fullR = _swingRates(data);
-    const innR  = _swingRates(lastInnData);
-    if (fullR.secRate !== null && innR.secRate !== null && fullR.secCount >= 5 && innR.secCount >= 3) {
-      const drop = fullR.secRate - innR.secRate;
-      if (drop >= 0.15) {
-        insights.push({
-          type: 'warning', category: 'tipping', priority: 2,
-          message: `⚠️ Batters attacking secondary pitches at only ${(innR.secRate*100).toFixed(0)}% this inning vs ${(fullR.secRate*100).toFixed(0)}% overall — possible adjustment or tip`
-        });
-      }
+  if (!insights.some(i => i.category === 'tipping') && lastInnBatters.size >= 2) {
+    const win = _evalPivots(lastInnData, lastInnBatters.size, {
+      minSample: 3, gapMin: 0.20, hardRateMinIz: 0.45, hardRateMinShadow: 0.25
+    });
+    if (win) {
+      insights.push({
+        type: 'warning', category: 'tipping', priority: 2,
+        message: `⚠️ Tipping pattern this inning — HARD vs ${win.label}: ${(win.hardRate*100).toFixed(0)}% vs ${(win.secRate*100).toFixed(0)}% swing rate ${win.zone} (${win.batters} batters)`
+      });
     }
   }
 
@@ -2353,8 +2542,31 @@ function computeInsights(data) {
   if (battersWith2ShadowTakes >= 3 && !insights.some(i => i.category === 'tipping')) {
     insights.push({
       type: 'warning', category: 'tipping', priority: 2,
-      message: `⚠️ Multiple batters taking shadow-zone pitches repeatedly — they may have a read on your release point`
+      message: `⚠️ Multiple batters taking shadow-zone pitches repeatedly — they may have a read on your pitches`
     });
+  }
+
+  // --- 11. Fatigue flag: rolling-window IZ% drop + NonComp% rise ---
+  // Two-window: last 10 pitches by current pitcher vs prior 20 pitches by same pitcher.
+  // Fires once per pitcher per outing (cleared on pitcher switch / new session).
+  if (currentPitcherId) {
+    const pitcherPitches = data.filter(p => p.pitcherId === currentPitcherId);
+    if (pitcherPitches.length >= 30 && !_fatigueFlagFired.has(currentPitcherId)) {
+      const recent   = pitcherPitches.slice(-10);
+      const baseline = pitcherPitches.slice(-30, -10);
+      const izRate = arr => arr.length ? arr.filter(p => strikeLocations.includes(p.location)).length / arr.length * 100 : 0;
+      const ncRate = arr => arr.length ? arr.filter(p => nonCompetitiveLocations.includes(p.location)).length / arr.length * 100 : 0;
+      const izDrop = izRate(recent) - izRate(baseline);
+      const ncRise = ncRate(recent) - ncRate(baseline);
+      if (izDrop <= -10 && ncRise >= 8) {
+        const pitcher = pitchers.find(p => p.id === currentPitcherId);
+        insights.push({
+          type: 'warning', category: 'fatigue', priority: 3,
+          message: `⚠️ ${pitcher?.name || 'Pitcher'} fatigue signal: IZ% ${izDrop.toFixed(0)}pp, NonComp% +${ncRise.toFixed(0)}pp over last 10 pitches`
+        });
+        _fatigueFlagFired.add(currentPitcherId);
+      }
+    }
   }
 
   // Sort by priority descending
@@ -2752,6 +2964,9 @@ function renderPitchLog() {
     innings.filter(i => !currentPitcherId || i.pitcherId === currentPitcherId).map(i => i.inningNumber)
   );
 
+  // Set of AB numbers with a final result row in atBats[] (= completed)
+  const completedAbNums = new Set(atBats.map(a => a.atBatNumber));
+
   let lastAtBatNumber = null;
   let lastInningNum   = null;
 
@@ -2768,20 +2983,39 @@ function renderPitchLog() {
     }
     lastInningNum = p.inning;
 
+    // AB group header (collapsible)
     if (p.atBatNumber !== lastAtBatNumber) {
-      const divider = document.createElement('li');
-      divider.classList.add('atbat-divider');
-      const abBatter = batters.find(b => b.id === p.batterId);
-      const abHand = getBatterHand(p);
-      const nameLabel = abBatter ? ` — ${abBatter.name}` : '';
-      divider.innerHTML =
-        `At-Bat #${p.atBatNumber}${nameLabel}` +
-        (abBatter ? ` <button class="ab-hand-toggle" data-abnum="${p.atBatNumber}">${abHand || '?'}</button>` : '');
-      ul.appendChild(divider);
+      const header = document.createElement('li');
+      header.classList.add('ab-group-header');
+      header.setAttribute('data-ab', p.atBatNumber);
+
+      const abBatter    = batters.find(b => b.id === p.batterId);
+      const abHand      = getBatterHand(p);
+      const nameLabel   = abBatter ? abBatter.name : '';
+      const abEntry     = atBats.find(a => a.atBatNumber === p.atBatNumber);
+      const isCompleted = completedAbNums.has(p.atBatNumber);
+      const pitchCount  = abEntry ? abEntry.pitchCount : pitchData.filter(x => x.atBatNumber === p.atBatNumber).length;
+      const resultText  = abEntry ? abEntry.result : 'in progress';
+
+      // Default: completed ABs collapsed, in-progress AB expanded
+      if (isCompleted) header.classList.add('collapsed');
+      const chevron = isCompleted ? '▶' : '▼';
+      const handBtn = abBatter
+        ? ` <button class="ab-hand-toggle" data-abnum="${p.atBatNumber}">${abHand || '?'}</button>`
+        : '';
+      header.innerHTML =
+        `<span class="ab-chevron">${chevron}</span> ` +
+        `AB ${p.atBatNumber}${nameLabel ? ' — ' + nameLabel : ''}${handBtn}` +
+        ` <span class="ab-summary">— ${resultText}, ${pitchCount}p</span>`;
+      ul.appendChild(header);
       lastAtBatNumber = p.atBatNumber;
     }
 
     const li = document.createElement('li');
+    li.classList.add('ab-pitch');
+    li.setAttribute('data-ab', p.atBatNumber);
+    if (completedAbNums.has(p.atBatNumber)) li.style.display = 'none';
+
     const pt = (p.pitchType || 'UNKNOWN').toUpperCase();
     const loc = (p.location ?? 'UNKNOWN');
     const res = p.result || 'UNKNOWN';
@@ -2808,7 +3042,7 @@ function renderPitchLog() {
 
   // If weâ€™re currently in tagging mode, keep items selectable
   if (isTaggingMode) {
-    document.querySelectorAll('#pitchLog li:not(.atbat-divider)').forEach(item => {
+    document.querySelectorAll('#pitchLog li.ab-pitch').forEach(item => {
       item.classList.add('selectable');
       item.addEventListener('click', togglePitchSelection);
     });
@@ -2816,6 +3050,28 @@ function renderPitchLog() {
   // Update inning bar chart whenever pitch log re-renders
   renderInningBarChart();
 }
+
+// Click delegation for AB group header collapse/expand.
+// Wired once on first call; idempotent thereafter.
+function _wireAbGroupCollapse() {
+  const log = document.getElementById('pitchLog');
+  if (!log || log._abCollapseWired) return;
+  log._abCollapseWired = true;
+  log.addEventListener('click', e => {
+    if (e.target.closest('.ab-hand-toggle')) return;          // hand-toggle has its own handler
+    const header = e.target.closest('.ab-group-header');
+    if (!header) return;
+    const abNum = header.getAttribute('data-ab');
+    const collapsing = !header.classList.contains('collapsed');
+    header.classList.toggle('collapsed', collapsing);
+    const chev = header.querySelector('.ab-chevron');
+    if (chev) chev.textContent = collapsing ? '▶' : '▼';
+    document.querySelectorAll(`#pitchLog li.ab-pitch[data-ab="${abNum}"]`).forEach(li => {
+      li.style.display = collapsing ? 'none' : '';
+    });
+  });
+}
+_wireAbGroupCollapse();
 
 /**
  * Render the at-bat summary log based on atBats and the current batter filter.
@@ -3172,14 +3428,34 @@ function updateUI() {
     strikePercentageElementLiveBP.textContent = kpiStrikePct.toFixed(2);
     strikePercentageElementLiveBP.style.color = getTigersPercentColor(kpiStrikePct);
 
-    // Inning KPI card
+    // Inning KPI card — tighter scale: <15 ok, 15-19 watch, 20-24 warn, 25-28 stop, >=29 hard
     const innP = currentInningPitchCount();
     const innEl = document.getElementById('inningKpiLiveBP');
     if (innEl) innEl.textContent = `${currentInning} — ${innP}p`;
     const innCard = document.getElementById('inningKpiCard');
     if (innCard) {
-      innCard.classList.remove('inn-ok','inn-watch','inn-warn','inn-stop');
-      innCard.classList.add(innP >= 31 ? 'inn-stop' : innP >= 29 ? 'inn-warn' : innP >= 25 ? 'inn-watch' : 'inn-ok');
+      innCard.classList.remove('inn-ok','inn-watch','inn-warn','inn-stop','inn-hard');
+      innCard.classList.add(
+        innP >= 29 ? 'inn-hard' :
+        innP >= 25 ? 'inn-stop' :
+        innP >= 20 ? 'inn-warn' :
+        innP >= 15 ? 'inn-watch' : 'inn-ok'
+      );
+    }
+
+    // Total pitches KPI card — color vs current pitcher's daily limit (default 75 if unset)
+    const totalCard = document.getElementById('totalPitchesKpiCard');
+    if (totalCard) {
+      const pitcher = pitchers.find(p => p.id === currentPitcherId);
+      const limit   = pitcher?.limits?.pitches || 75;
+      const usedPct = limit > 0 ? (kpiTotal / limit) : 0;
+      totalCard.classList.remove('total-ok','total-watch','total-warn','total-stop','total-hard');
+      totalCard.classList.add(
+        usedPct >= 1.00 ? 'total-hard' :
+        usedPct >= 0.90 ? 'total-stop' :
+        usedPct >= 0.75 ? 'total-warn' :
+        usedPct >= 0.60 ? 'total-watch' : 'total-ok'
+      );
     }
 
     // Workload alert dismissal check
@@ -4289,6 +4565,14 @@ function metricCount(stats, metric) {
     case 'earlySwingPct': return stats.earlySwing;
     case 'lateSwingPct' : return stats.lateSwing;
     case 'chasePct'     : return stats.oozSwing;
+    case 'whiffPct'     : return stats.whiff;
+    case 'whiffHardPct' : return stats.hardWhiff;
+    case 'whiffBreakPct': return stats.breakWhiff;
+    case 'whiffSoftPct' : return stats.softWhiff;
+    case 'nonCompPct'   : return stats.nonComp;
+    case 'izWhiffPct'   : return stats.izWhiff;
+    case 'aheadPct'     : return stats.ahead;
+    case 'behindPct'    : return stats.behind;
     case 'usagePct'     : return stats.pitches;
     default             : return stats.pitches;
   }
@@ -4314,15 +4598,21 @@ function updateHeatmapBatterFilter () {
 /* ========== helpers for the per-pitch / per-batter tables ========== */
 function initStats () {
   return {
-    pitches:0, swing:0, csw:0, strike:0,
+    pitches:0, swing:0, whiff:0, csw:0, strike:0,
     iz:0, ooz:0,            // all O-O-Z pitches
     oozSwing:0,             // swings at O-O-Z pitches
+    nonComp:0,              // non-competitive locations only (not shadow)
+    izWhiff:0,              // whiffs on in-zone pitches
+    ahead:0, behind:0,      // pitch count state pre-pitch
     fly:0, gb:0, ld:0, pu:0,
     inPlayOuts:0, inPlayHits:0,
     gbOut:0, fbOut:0, ldOut:0, puOut:0,
     gbHit:0, fbHit:0, ldHit:0, puHit:0,
     earlySwing:0, lateSwing:0,
-    earlyPitches:0, latePitches:0
+    earlyPitches:0, latePitches:0,
+    hardWhiff:0, hardSwing:0,
+    breakWhiff:0, breakSwing:0,
+    softWhiff:0,  softSwing:0
   };
 }
 
@@ -4368,9 +4658,26 @@ function accumulate(stats, p) {
     if (bucket === 'early') stats.earlySwing++; else stats.lateSwing++;
   }
 
+  const isWhiff = p.outcome === 'whiff';
+  if (isWhiff) stats.whiff++;
+
+  // Per-category whiff/swing tracking
+  if (HARD_TYPES.includes(p.pitchType))     { if (swung) stats.hardSwing++;  if (isWhiff) stats.hardWhiff++;  }
+  if (BREAKING_TYPES.includes(p.pitchType)) { if (swung) stats.breakSwing++; if (isWhiff) stats.breakWhiff++; }
+  if (SOFT_TYPES.includes(p.pitchType))     { if (swung) stats.softSwing++;  if (isWhiff) stats.softWhiff++;  }
+
   if (isStrike) stats.strike++;
   if (isCSW)    stats.csw++;
   if (inIZ)     stats.iz++;
+  if (inIZ && isWhiff) stats.izWhiff++;
+  if (nonCompetitiveLocations.includes(p.location)) stats.nonComp++;
+
+  // Ahead/Behind based on pre-pitch count
+  if (p.prePitchCount && typeof p.prePitchCount.balls === 'number' && typeof p.prePitchCount.strikes === 'number') {
+    if (p.prePitchCount.balls < p.prePitchCount.strikes)      stats.ahead++;
+    else if (p.prePitchCount.balls > p.prePitchCount.strikes) stats.behind++;
+    // even counts (0-0, 1-1, 2-2) count as neither
+  }
 
   if (inOOZ) {
     stats.ooz++;
@@ -4450,7 +4757,15 @@ function buildAggregators (dataArr) {
     inPlayOutPct  : pct(s.inPlayOuts, s.inPlayOuts + s.inPlayHits),
     earlySwingPct : pct(s.earlySwing, s.earlyPitches),
     lateSwingPct  : pct(s.lateSwing , s.latePitches),
-    chasePct      : pct(s.oozSwing , s.swing)   // correct â€“ swings / swings
+    chasePct      : pct(s.oozSwing  , s.swing),
+    whiffPct      : pct(s.whiff     , s.swing),
+    whiffHardPct  : pct(s.hardWhiff , s.hardSwing),
+    whiffBreakPct : pct(s.breakWhiff, s.breakSwing),
+    whiffSoftPct  : pct(s.softWhiff , s.softSwing),
+    nonCompPct    : pct(s.nonComp   , s.pitches),
+    izWhiffPct    : pct(s.izWhiff   , s.iz),
+    aheadPct      : pct(s.ahead     , s.pitches),
+    behindPct     : pct(s.behind    , s.pitches)
   });
 
   addPcts(overall);
@@ -4814,6 +5129,12 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.retagTypeBtn').forEach(btn => {
     btn.addEventListener('click', () => retagPitch(btn.dataset.type));
   });
+
+  // Fix 4: wire the static "All" button in the pitch-type heatmap filter
+  const pitchAllBtn = document.querySelector('#pitchFilterBtns [data-value="all"]');
+  if (pitchAllBtn) {
+    pitchAllBtn.addEventListener('click', () => handleFilterToggle(pitchAllBtn, 'pitchFilterBtns'));
+  }
 });
 
 
