@@ -212,10 +212,11 @@ function currentInningPitchCount() {
 }
 
 function countOutsInCurrentInning() {
-  // Get AB numbers that have pitches in current inning for current pitcher
+  // Outs are an inning-level concept; do NOT filter by current pitcher
+  // (a pitcher change mid-inning must not reset the count).
   const innAbNums = new Set(
     pitchData
-      .filter(p => p.inning === currentInning && (!currentPitcherId || p.pitcherId === currentPitcherId))
+      .filter(p => p.inning === currentInning)
       .map(p => p.atBatNumber)
   );
   return atBats.filter(ab => {
@@ -3406,15 +3407,27 @@ function updateUI() {
       ['whiff','calledStrike','foul','strike','inPlay'].includes(p.outcome)
     ).length;
     const kpiStrikePct = kpiTotal > 0 ? (kpiStrikes / kpiTotal) * 100 : 0;
-    const kpiRaceWins = kpiData.filter(p =>
-      p.prePitchCount?.strikes === 2 && ['whiff','calledStrike'].includes(p.outcome)
-    ).length;
-    // Opportunities = at-bats where a 2-strike count was reached
-    const absWith2Strikes = new Set(
-      kpiData.filter(p => p.prePitchCount?.strikes === 2).map(p => p.atBatNumber)
-    ).size;
-    const winPct = absWith2Strikes > 0 ? (kpiRaceWins / absWith2Strikes) * 100 : 0;
-    const raceWinsSummary = `${fireEmoji} ${kpiRaceWins}/${absWith2Strikes} (${winPct.toFixed(0)}%)`;
+    // Race Wins: ABs where pitcher reached 2 strikes within the first 3 pitches of the AB.
+    // Denominator: ABs that lasted >=3 pitches OR achieved a race win.
+    // (Short ABs that ended on pitch 1-2 without reaching 2 strikes — e.g., first-pitch in-play —
+    //  aren't "races" and shouldn't dilute the rate either way.)
+    const _abPitches = new Map();
+    kpiData.forEach(p => {
+      if (!p.atBatNumber) return;
+      if (!_abPitches.has(p.atBatNumber)) _abPitches.set(p.atBatNumber, []);
+      _abPitches.get(p.atBatNumber).push(p);
+    });
+    let kpiRaceWins = 0, kpiRaceOpps = 0;
+    _abPitches.forEach(arr => {
+      // Walk pitches in order; find the first one where postPitchCount.strikes === 2
+      const firstTwoStrikeIdx = arr.findIndex(p => p.postPitchCount?.strikes === 2);
+      const wonRace = firstTwoStrikeIdx >= 0 && (firstTwoStrikeIdx + 1) <= 3;
+      const longEnough = arr.length >= 3;
+      if (wonRace || longEnough) kpiRaceOpps++;
+      if (wonRace) kpiRaceWins++;
+    });
+    const winPct = kpiRaceOpps > 0 ? (kpiRaceWins / kpiRaceOpps) * 100 : 0;
+    const raceWinsSummary = `${fireEmoji} ${kpiRaceWins}/${kpiRaceOpps} (${winPct.toFixed(0)}%)`;
     const { reached, converted } = compute2KConversion(kpiData);
     const twoKPct = reached > 0 ? (converted / reached * 100).toFixed(0) : 0;
 
@@ -4757,7 +4770,7 @@ function buildAggregators (dataArr) {
     inPlayOutPct  : pct(s.inPlayOuts, s.inPlayOuts + s.inPlayHits),
     earlySwingPct : pct(s.earlySwing, s.earlyPitches),
     lateSwingPct  : pct(s.lateSwing , s.latePitches),
-    chasePct      : pct(s.oozSwing  , s.swing),
+    chasePct      : pct(s.oozSwing  , s.ooz),       // MLB O-Swing%: OOZ swings / OOZ pitches
     whiffPct      : pct(s.whiff     , s.swing),
     whiffHardPct  : pct(s.hardWhiff , s.hardSwing),
     whiffBreakPct : pct(s.breakWhiff, s.breakSwing),
