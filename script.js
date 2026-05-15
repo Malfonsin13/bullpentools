@@ -54,7 +54,6 @@ let innings        = [];           // [{inningNumber, pitchCount, pitcherId}]
 let workloadAlertShownAtPitchId = -1;
 let workloadAlertDismissPitchId = -1;
 let autoEndInningOn = false;       // auto-end inning on 3 recorded outs
-let _fatigueFlagFired = new Set(); // pitcherIds that have already triggered the fatigue flag this session
 
 /* ---------- GRID POV ---------- */
 let gridPOV = localStorage.getItem('gridPOV') || 'catcher';
@@ -211,6 +210,174 @@ function currentInningPitchCount() {
   ).length;
 }
 
+// Pitch count thrown by `pitcherId` in the most recent COMPLETED inning they appeared in.
+// Returns 0 if they have no completed inning in the session yet.
+function previousInningPitchCount(pitcherId) {
+  if (!pitcherId) return 0;
+  // The current inning is in-progress and not yet in innings[]. Look at last completed.
+  for (let i = innings.length - 1; i >= 0; i--) {
+    const inn = innings[i];
+    // Count pitches this pitcher threw in that inning from pitchData
+    const n = pitchData.filter(p => p.inning === inn.inningNumber && p.pitcherId === pitcherId).length;
+    if (n > 0) return n;
+  }
+  return 0;
+}
+
+/* ---------- FATIGUE DETECTION (multi-signal, phase-aware) ---------- */
+
+// Low-miss locations (rows 6-7 of the 7x7 zone grid + low side corners):
+// row 6 (shadow low): 21,22,23,24,25 / row 7 (non-comp low): 43-49 / side bottoms: 41,42
+const LOW_MISS_LOCATIONS = [21, 22, 23, 24, 25, 41, 42, 43, 44, 45, 46, 47, 48, 49];
+
+// Phase thresholds: how much delta from baseline each signal needs to fire, by phase.
+const FATIGUE_THRESHOLDS = {
+  mild:   { iz: -15, nc: 12, chase: -15, putaway: -20 },
+  alert:  { iz: -10, nc:  8, chase: -10, putaway: -15 },
+  severe: { iz:  -7, nc:  5, chase:  -7, putaway: -10 }
+};
+
+function getFatigueSignals(pitcherId) {
+  if (!pitcherId) return { phase: 'baseline', signals: [], severity: 'none', execDelta: 0 };
+
+  const allPitches = pitchData.filter(p => p.pitcherId === pitcherId);
+  if (allPitches.length < 10) return { phase: 'baseline', signals: [], severity: 'none', execDelta: 0 };
+
+  const innCount = allPitches.filter(p => p.inning === currentInning).length;
+  const prevInn  = previousInningPitchCount(pitcherId);
+
+  // Determine phase (inning pitch count + inter-inning carryover)
+  let phase;
+  if (innCount >= 20) phase = 'severe';
+  else if (innCount >= 15) phase = 'alert';
+  else if (innCount >= 10) phase = (prevInn >= 20) ? 'alert' : 'mild';
+  else {
+    if (prevInn >= 20) phase = 'alert';
+    else if (prevInn >= 15) phase = 'mild';
+    else return { phase: 'baseline', signals: [], severity: 'none', execDelta: 0 };
+  }
+
+  const TH = FATIGUE_THRESHOLDS[phase];
+  // Baseline = first 10 pitches of pitcher's outing. Recent = last 10.
+  const baseline = allPitches.slice(0, 10);
+  const recent   = allPitches.slice(-10);
+
+  // Rate helpers — return null when sample is insufficient
+  const izEarlyRate = arr => {
+    const e = arr.filter(p => (p.prePitchCount?.strikes ?? 0) < 2);
+    if (e.length < 3) return null;
+    return e.filter(p => strikeLocations.includes(p.location)).length / e.length * 100;
+  };
+  const ncRate = arr => arr.length ? arr.filter(p => nonCompetitiveLocations.includes(p.location)).length / arr.length * 100 : null;
+  const chase2KRate = arr => {
+    const twoK = arr.filter(p => p.prePitchCount?.strikes === 2);
+    const ooz  = twoK.filter(p => shadowLocations.includes(p.location) || nonCompetitiveLocations.includes(p.location));
+    if (ooz.length < 3) return null;
+    const swings = ooz.filter(p => ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play'));
+    return swings.length / ooz.length * 100;
+  };
+  const putawayWhiffRate = arr => {
+    const cands = arr.filter(p => p.prePitchCount?.strikes === 2 && shadowLocations.includes(p.location));
+    if (cands.length < 3) return null;
+    return cands.filter(p => p.outcome === 'whiff').length / cands.length * 100;
+  };
+
+  const signals = [];
+
+  // Signal 1: IZ% in early counts dropping
+  const izB = izEarlyRate(baseline), izR = izEarlyRate(recent);
+  if (izB !== null && izR !== null) {
+    const d = izR - izB;
+    if (d <= TH.iz) signals.push({ name: 'IZ%', delta: d, label: `IZ% ${d.toFixed(0)}pp` });
+  }
+
+  // Signal 2: NonComp% rising
+  const ncB = ncRate(baseline), ncR = ncRate(recent);
+  if (ncB !== null && ncR !== null) {
+    const d = ncR - ncB;
+    if (d >= TH.nc) signals.push({ name: 'NonComp%', delta: d, label: `NonComp% +${d.toFixed(0)}pp` });
+  }
+
+  // Signal 3: Chase generation dropping on 2-strike OOZ pitches
+  const chB = chase2KRate(baseline), chR = chase2KRate(recent);
+  if (chB !== null && chR !== null) {
+    const d = chR - chB;
+    if (d <= TH.chase) signals.push({ name: 'chase', delta: d, label: `chase ${d.toFixed(0)}pp` });
+  }
+
+  // Signal 4: Low-location miss cluster (alert+ phases only)
+  if (phase === 'alert' || phase === 'severe') {
+    const last5 = allPitches.slice(-5);
+    const lowMisses = last5.filter(p => LOW_MISS_LOCATIONS.includes(p.location)).length;
+    if (lowMisses >= 3) signals.push({ name: 'low miss', delta: lowMisses, label: `missing low (${lowMisses}/5)` });
+  }
+
+  // Signal 5: Putaway-pitch whiff drop
+  const pwB = putawayWhiffRate(baseline), pwR = putawayWhiffRate(recent);
+  if (pwB !== null && pwR !== null) {
+    const d = pwR - pwB;
+    if (d <= TH.putaway) signals.push({ name: 'putaway', delta: d, label: `putaway whiff ${d.toFixed(0)}pp` });
+  }
+
+  // Severity from {phase, #signals} per plan table
+  const sevMatrix = {
+    mild:   ['none',    'watch',    'warning',  'critical'],
+    alert:  ['watch',   'warning',  'critical', 'critical'],
+    severe: ['warning', 'critical', 'critical', 'critical']
+  };
+  const idx = Math.min(signals.length, 3);
+  const severity = sevMatrix[phase][idx];
+
+  // Execution-score delta — equal-weighted, clamped ±25
+  let execDelta = 0;
+  signals.forEach(s => {
+    if (s.name === 'IZ%')           execDelta += s.delta;       // already negative
+    else if (s.name === 'NonComp%') execDelta -= s.delta;       // delta positive = bad
+    else if (s.name === 'chase')    execDelta += s.delta;       // negative = bad
+    else if (s.name === 'putaway')  execDelta += s.delta;       // negative = bad
+    else if (s.name === 'low miss') execDelta -= (s.delta - 2) * 5; // 3/5→-5, 4/5→-10, 5/5→-15
+  });
+  execDelta = Math.max(-25, Math.min(25, Math.round(execDelta)));
+
+  return { phase, signals, severity, execDelta };
+}
+
+// Build the fatigue-status insight object (scope='recent') from getFatigueSignals.
+// Returns null when severity is 'none'.
+function buildFatigueInsight(pitcherId) {
+  const r = getFatigueSignals(pitcherId);
+  if (!r || r.severity === 'none') return null;
+
+  const pitcher = pitchers.find(p => p.id === pitcherId);
+  const name    = pitcher?.name || 'Pitcher';
+  const innCount = pitchData.filter(p => p.pitcherId === pitcherId && p.inning === currentInning).length;
+  const prevInn  = previousInningPitchCount(pitcherId);
+
+  // Pitch-count context — include previous inning if it was heavy
+  const context = prevInn >= 15
+    ? `${prevInn}p last inning, ${innCount}p this inning`
+    : `${innCount} pitches this inning`;
+
+  // Trend phrase
+  let trend;
+  if (r.execDelta <= -10) trend = `execution ${r.execDelta} points`;
+  else if (r.execDelta < 0) trend = `execution declining`;
+  else trend = `monitor`;
+
+  // Sub-line (only when there are signals)
+  const subLine = r.signals.length ? ` (${r.signals.map(s => s.label).join(', ')})` : '';
+
+  const message = `${name}: ${context}, ${trend}${subLine}`;
+
+  // Map severity → {type, priority} so the renderer's severity logic maps back to the same tier
+  let type = 'warning', priority = 1;
+  if (r.severity === 'critical') { type = 'warning'; priority = 3; }
+  else if (r.severity === 'warning') { type = 'warning'; priority = 2; }
+  // 'watch' uses type='warning' priority=1 → renderer maps to 'watch' tier
+
+  return { scope: 'recent', type, category: 'fatigue', priority, message };
+}
+
 function countOutsInCurrentInning() {
   // Outs are an inning-level concept; do NOT filter by current pitcher
   // (a pitcher change mid-inning must not reset the count).
@@ -268,6 +435,12 @@ function updateWorkloadAlert() {
 
 // Track the inning pitch count at which each threshold was last alerted
 let _lastAlertedInnPitchCount = 0;
+
+// Lineup insights persist across pitcher switches.
+// Once a lineup insight fires it is cached here and re-injected whenever
+// the current pitcher has too few pitches to produce fresh lineup reads.
+// Cleared only when a new session is started (page reload).
+let _persistentLineupInsights = [];
 
 function checkAndTriggerWorkloadAlerts() {
   const ip = currentInningPitchCount();
@@ -532,6 +705,32 @@ function computeBatterInsights(batterId) {
   return lines;
 }
 
+/**
+ * Wrap computeBatterInsights string output into scope='batter' insight objects
+ * for the unified panel renderer.
+ *
+ * Severity heuristic from message text:
+ *  - "swing rate" / "chase" / "chasing" / "passive" / "not attacking" → warning
+ *  - "patient" / session summary ("K / BB so far") → info
+ */
+function getBatterInsightObjects(batterId) {
+  const lines = computeBatterInsights(batterId);
+  return lines.map(msg => {
+    const lc = msg.toLowerCase();
+    let type = 'info', priority = 1;
+    if (/chasing|chase|first-pitch swing|takes \d|not attacking|very patient/.test(lc)) {
+      type = 'warning'; priority = 2;
+    }
+    return {
+      scope: 'batter',
+      type,
+      category: 'batter',
+      priority,
+      message: msg
+    };
+  });
+}
+
 function showBatterToast(batterId) {
   if (!batterId) return;
   const batter = batters.find(b => b.id === batterId);
@@ -641,7 +840,6 @@ document.getElementById('pitcherSelect').addEventListener('change', e => {
   _lastAlertedInnPitchCount = 0;
   workloadAlertShownAtPitchId = -1;
   workloadAlertDismissPitchId = -1;
-  _fatigueFlagFired = new Set();
   const _alertEl = document.getElementById('workloadAlert');
   if (_alertEl) _alertEl.style.display = 'none';
   updateLiveStats();
@@ -1892,6 +2090,19 @@ function updateLiveStats () {
 
   /* ----- coaching insights ----- */
   const insights = computeInsights(allData);
+
+  // Lineup insight persistence across pitcher switches:
+  // When fresh lineup insights are produced, update the cache.
+  // When the current pitcher has <15 pitches and produces no lineup insights,
+  // inject the cached ones so they don't silently disappear on a pitcher change.
+  const freshLineup = insights.filter(i => i.scope === 'lineup');
+  if (freshLineup.length > 0) {
+    _persistentLineupInsights = freshLineup; // refresh cache
+  } else if (allData.length < 15 && _persistentLineupInsights.length > 0) {
+    // New pitcher, not enough data yet — keep the cached lineup reads visible
+    insights.push(..._persistentLineupInsights);
+  }
+
   renderInsights(insights);
 }
 
@@ -2191,6 +2402,12 @@ const SOFT_TYPES      = ['changeup', 'splitter'];
 
 function computeInsights(data) {
   const insights = [];
+
+  // Batter section: pull insights for current batter regardless of overall data threshold
+  if (currentBatterId) {
+    insights.push(...getBatterInsightObjects(currentBatterId));
+  }
+
   if (data.length < 10) return insights;
 
   const pl = PITCH_LABELS || {};
@@ -2211,33 +2428,35 @@ function computeInsights(data) {
   // Hitter's counts: mean=36%, T1=61%, T2=86%
   if (hTotal >= 6) {
     const r = hFB / hTotal * 100;
-    if (r > 86) insights.push({ type:'warning', category:'sequencing', priority:3,
+    if (r > 86) insights.push({ scope:'pitcher', type:'warning', category:'sequencing', priority:3,
       message:`Very heavy fastball in hitter's counts (${r.toFixed(0)}% — MLB avg 36%) — batters sitting on it` });
-    else if (r > 61) insights.push({ type:'warning', category:'sequencing', priority:2,
+    else if (r > 61) insights.push({ scope:'pitcher', type:'warning', category:'sequencing', priority:2,
       message:`Heavy fastball in hitter's counts (${r.toFixed(0)}% — MLB avg 36%)` });
   }
 
   // Pitcher's counts: mean=30%, T1=49%, T2=68%
   if (pTotal >= 6) {
     const r = pFB / pTotal * 100;
-    if (r > 68) insights.push({ type:'warning', category:'sequencing', priority:3,
+    if (r > 68) insights.push({ scope:'pitcher', type:'warning', category:'sequencing', priority:3,
       message:`Heavy fastball even when ahead in the count (${r.toFixed(0)}% — MLB avg 30%) — missing secondary pitch usage` });
-    else if (r > 49) insights.push({ type:'warning', category:'sequencing', priority:2,
+    else if (r > 49) insights.push({ scope:'pitcher', type:'warning', category:'sequencing', priority:2,
       message:`Higher than average fastball usage in pitcher's counts (${r.toFixed(0)}% — MLB avg 30%)` });
   }
 
   // Early (less than 2 strikes): mean=32%, T1=54%, T2=75%
   if (eTotal >= 8) {
     const r = eFB / eTotal * 100;
-    if (r > 75) insights.push({ type:'warning', category:'sequencing', priority:3,
+    if (r > 75) insights.push({ scope:'pitcher', type:'warning', category:'sequencing', priority:3,
       message:`Very heavy fastball before 2 strikes (${r.toFixed(0)}% — MLB avg 32%)` });
-    else if (r > 54) insights.push({ type:'warning', category:'sequencing', priority:2,
+    else if (r > 54) insights.push({ scope:'pitcher', type:'warning', category:'sequencing', priority:2,
       message:`Above average fastball usage before 2 strikes (${r.toFixed(0)}% — MLB avg 32%)` });
   }
 
   // --- 2. High early-count swing rate ---
+  // Uses pitchData (unfiltered) so this lineup insight persists across pitcher switches.
   let earlyPitches = 0, earlySwings = 0;
-  data.forEach(p => {
+  pitchData.forEach(p => {
+    if (!p.prePitchCount) return;
     if (p.prePitchCount.strikes < 2) {
       earlyPitches++;
       const swung = ['whiff','foul'].includes(p.outcome) || (p.result||'').startsWith('In Play');
@@ -2247,10 +2466,10 @@ function computeInsights(data) {
   if (earlyPitches >= 10) {
     const earlySwingPct = earlySwings / earlyPitches * 100;
     if (earlySwingPct > 54) {
-      insights.push({ type:'warning', category:'swing', priority:3,
+      insights.push({ scope:'lineup', type:'warning', category:'swing', priority:3,
         message:`Hitters very aggressive early (${earlySwingPct.toFixed(0)}% swing <2 strikes — MLB avg 42%)` });
     } else if (earlySwingPct > 48) {
-      insights.push({ type:'warning', category:'swing', priority:2,
+      insights.push({ scope:'lineup', type:'warning', category:'swing', priority:2,
         message:`Hitters jumping early (${earlySwingPct.toFixed(0)}% swing <2 strikes — MLB avg 42%)` });
     }
   }
@@ -2268,13 +2487,13 @@ function computeInsights(data) {
     const total = b.outs + b.hits;
     if (total >= 3 && (b.hits / total) > 0.6) {
       insights.push({
-        type: 'warning', category: 'contact', priority: 2,
+        scope: 'pitcher', type: 'warning', category: 'contact', priority: 2,
         message: `${pl[pt] || pt} getting hit hard (${Math.round(b.hits / total * 100)}% non-out on ${total} BIP)`
       });
     }
     if (total >= 3 && (b.outs / total) >= 0.7) {
       insights.push({
-        type: 'positive', category: 'contact', priority: 1,
+        scope: 'pitcher', type: 'positive', category: 'contact', priority: 1,
         message: `${pl[pt] || pt} generating outs effectively (${Math.round(b.outs / total * 100)}% out rate on ${total} BIP)`
       });
     }
@@ -2291,7 +2510,7 @@ function computeInsights(data) {
     if (streak >= 3) {
       const pt = last[last.length - 1].pitchType;
       insights.push({
-        type: 'warning', category: 'sequencing', priority: 3,
+        scope: 'recent', type: 'warning', category: 'sequencing', priority: 3,
         message: `${streak}x ${pl[pt] || pt} in a row — consider mixing`
       });
     }
@@ -2315,7 +2534,7 @@ function computeInsights(data) {
       for (const [q, count] of Object.entries(quadrants)) {
         if (count / valid >= 0.7) {
           insights.push({
-            type: 'warning', category: 'location', priority: 2,
+            scope: 'recent', type: 'warning', category: 'location', priority: 2,
             message: `Location pattern: ${Math.round(count / valid * 100)}% ${q} in last ${valid} pitches`
           });
         }
@@ -2324,9 +2543,11 @@ function computeInsights(data) {
   }
 
   // --- 6. Declining chase rate ---
-  if (data.length >= 20) {
+  // Uses pitchData (unfiltered) so this lineup insight persists across pitcher switches.
+  if (pitchData.length >= 20) {
     let twoStrikePitches = 0, chaseSwings = 0;
-    data.forEach(p => {
+    pitchData.forEach(p => {
+      if (!p.prePitchCount) return;
       if (p.prePitchCount.strikes === 2) {
         const inOOZ = shadowLocations.includes(p.location) || nonCompetitiveLocations.includes(p.location);
         if (inOOZ) {
@@ -2339,10 +2560,10 @@ function computeInsights(data) {
     if (twoStrikePitches >= 6) {
       const chasePct = chaseSwings / twoStrikePitches * 100;
       if (chasePct < 13) {
-        insights.push({ type:'warning', category:'chase', priority:3,
+        insights.push({ scope:'lineup', type:'warning', category:'chase', priority:3,
           message:`Hitters very disciplined on 2-strike chase pitches (${chasePct.toFixed(0)}% — MLB avg 39%)` });
       } else if (chasePct < 26) {
-        insights.push({ type:'info', category:'chase', priority:1,
+        insights.push({ scope:'lineup', type:'info', category:'chase', priority:1,
           message:`Hitters laying off 2-strike chase pitches (${chasePct.toFixed(0)}% — MLB avg 39%)` });
       }
     }
@@ -2357,7 +2578,7 @@ function computeInsights(data) {
       const weakContact = bips.filter(p => p.result.includes('popup') || p.result.includes('flyball')).length;
       if (weakContact / bips.length >= 0.5) {
         insights.push({
-          type: 'positive', category: 'contact', priority: 1,
+          scope: 'pitcher', type: 'positive', category: 'contact', priority: 1,
           message: `${pl[pt] || pt} producing weak pop contact (${Math.round(weakContact / bips.length * 100)}% popup+flyball)`
         });
       }
@@ -2380,7 +2601,7 @@ function computeInsights(data) {
     if (counts.ooz >= 3 || counts.nonComp >= 2) {
       const label = (pl[pt] || pt).toUpperCase();
       insights.push({
-        type: 'positive', category: 'chase', priority: 2,
+        scope: 'pitcher', type: 'positive', category: 'chase', priority: 2,
         message: `Batters chasing ${label} out of zone (${counts.ooz}x) — keep using it late in counts`
       });
     }
@@ -2406,10 +2627,10 @@ function computeInsights(data) {
       const label = pl[pt] || pt;
       const usage = Math.round(b.total / twoKPitches.length * 100);
       if (rate > 21.3) {
-        insights.push({ type:'positive', category:'putaway', priority:2,
+        insights.push({ scope:'pitcher', type:'positive', category:'putaway', priority:2,
           message:`${label} is working on 2 strikes (${rate.toFixed(0)}% SwStrk, ${usage}% usage — MLB avg 14%)` });
       } else if (rate < 6.3 && b.total >= 5) {
-        insights.push({ type:'warning', category:'putaway', priority:2,
+        insights.push({ scope:'pitcher', type:'warning', category:'putaway', priority:2,
           message:`${label} not generating misses on 2 strikes (${rate.toFixed(0)}% SwStrk, ${b.total} pitches — MLB avg 14%)` });
       }
     });
@@ -2427,9 +2648,9 @@ function computeInsights(data) {
     if (b.total < 6) return;
     const r = b.nc / b.total * 100;
     // T1 = 25%, T2 = 32% (above MLB ~16-21%)
-    if (r > 32) insights.push({ type:'warning', category:'command', priority:3,
+    if (r > 32) insights.push({ scope:'pitcher', type:'warning', category:'command', priority:3,
       message:`${pl[pt]||pt}: ${r.toFixed(0)}% non-competitive (${b.nc}/${b.total}) — wasting pitches` });
-    else if (r > 25) insights.push({ type:'warning', category:'command', priority:2,
+    else if (r > 25) insights.push({ scope:'pitcher', type:'warning', category:'command', priority:2,
       message:`${pl[pt]||pt}: ${r.toFixed(0)}% non-competitive (${b.nc}/${b.total})` });
   });
 
@@ -2437,9 +2658,9 @@ function computeInsights(data) {
   if (twoKPitches.length >= 8) {
     const ncCount = twoKPitches.filter(p => nonCompetitiveLocations.includes(p.location)).length;
     const r = ncCount / twoKPitches.length * 100;
-    if (r > 30) insights.push({ type:'warning', category:'command', priority:3,
+    if (r > 30) insights.push({ scope:'pitcher', type:'warning', category:'command', priority:3,
       message:`${r.toFixed(0)}% non-competitive on 2 strikes (${ncCount}/${twoKPitches.length}) — burning putaway counts` });
-    else if (r > 23) insights.push({ type:'warning', category:'command', priority:2,
+    else if (r > 23) insights.push({ scope:'pitcher', type:'warning', category:'command', priority:2,
       message:`${r.toFixed(0)}% non-competitive on 2 strikes (${ncCount}/${twoKPitches.length})` });
   }
 
@@ -2511,8 +2732,8 @@ function computeInsights(data) {
     });
     if (win) {
       insights.push({
-        type: 'warning', category: 'tipping', priority: 3,
-        message: `⚠️ Tipping signal: HARD vs ${win.label} — batters swing at ${(win.hardRate*100).toFixed(0)}% of fastballs vs ${(win.secRate*100).toFixed(0)}% of ${win.label.toLowerCase()} pitches ${win.zone} (gap ${(win.gap*100).toFixed(0)}pp, ${win.batters} batters)`
+        scope: 'pitcher', type: 'warning', category: 'tipping', priority: 3,
+        message: `Tipping signal: HARD vs ${win.label} — batters swing at ${(win.hardRate*100).toFixed(0)}% of fastballs vs ${(win.secRate*100).toFixed(0)}% of ${win.label.toLowerCase()} pitches ${win.zone} (gap ${(win.gap*100).toFixed(0)}pp, ${win.batters} batters)`
       });
     }
   }
@@ -2526,13 +2747,14 @@ function computeInsights(data) {
     });
     if (win) {
       insights.push({
-        type: 'warning', category: 'tipping', priority: 2,
-        message: `⚠️ Tipping pattern this inning — HARD vs ${win.label}: ${(win.hardRate*100).toFixed(0)}% vs ${(win.secRate*100).toFixed(0)}% swing rate ${win.zone} (${win.batters} batters)`
+        scope: 'inning', type: 'warning', category: 'tipping', priority: 2,
+        message: `Tipping pattern this inning — HARD vs ${win.label}: ${(win.hardRate*100).toFixed(0)}% vs ${(win.secRate*100).toFixed(0)}% swing rate ${win.zone} (${win.batters} batters)`
       });
     }
   }
 
   // Tertiary: shadow-zone takes (any count), ≥2 per batter, ≥3 batters
+  // Pitcher-tipping framing: uses current pitcher's data only (data param).
   const shadowTakesByBatter = {};
   data.forEach(p => {
     if (shadowLocations.includes(p.location) && p.outcome === 'ball' && p.batterId) {
@@ -2540,34 +2762,35 @@ function computeInsights(data) {
     }
   });
   const battersWith2ShadowTakes = Object.values(shadowTakesByBatter).filter(n => n >= 2).length;
-  if (battersWith2ShadowTakes >= 3 && !insights.some(i => i.category === 'tipping')) {
+  if (battersWith2ShadowTakes >= 3) {
+    // Pitcher framing — only if no other tipping insight already fired
+    if (!insights.some(i => i.category === 'tipping')) {
+      insights.push({
+        scope: 'pitcher', type: 'warning', category: 'tipping', priority: 2,
+        message: `Multiple batters taking shadow-zone pitches repeatedly — they may have a read on your pitches`
+      });
+    }
+  }
+  // Lineup discipline framing: uses pitchData (unfiltered) so it persists across pitcher switches.
+  const shadowTakesByBatterGlobal = {};
+  pitchData.forEach(p => {
+    if (shadowLocations.includes(p.location) && p.outcome === 'ball' && p.batterId) {
+      shadowTakesByBatterGlobal[p.batterId] = (shadowTakesByBatterGlobal[p.batterId] || 0) + 1;
+    }
+  });
+  const battersWith2ShadowTakesGlobal = Object.values(shadowTakesByBatterGlobal).filter(n => n >= 2).length;
+  if (battersWith2ShadowTakesGlobal >= 3) {
     insights.push({
-      type: 'warning', category: 'tipping', priority: 2,
-      message: `⚠️ Multiple batters taking shadow-zone pitches repeatedly — they may have a read on your pitches`
+      scope: 'lineup', type: 'info', category: 'discipline', priority: 1,
+      message: `This lineup is laying off shadow zone consistently — strong plate discipline`
     });
   }
 
-  // --- 11. Fatigue flag: rolling-window IZ% drop + NonComp% rise ---
-  // Two-window: last 10 pitches by current pitcher vs prior 20 pitches by same pitcher.
-  // Fires once per pitcher per outing (cleared on pitcher switch / new session).
+  // --- 11. Fatigue (multi-signal, phase-aware) ---
+  // Always recomputed; updates in place as conditions evolve.
   if (currentPitcherId) {
-    const pitcherPitches = data.filter(p => p.pitcherId === currentPitcherId);
-    if (pitcherPitches.length >= 30 && !_fatigueFlagFired.has(currentPitcherId)) {
-      const recent   = pitcherPitches.slice(-10);
-      const baseline = pitcherPitches.slice(-30, -10);
-      const izRate = arr => arr.length ? arr.filter(p => strikeLocations.includes(p.location)).length / arr.length * 100 : 0;
-      const ncRate = arr => arr.length ? arr.filter(p => nonCompetitiveLocations.includes(p.location)).length / arr.length * 100 : 0;
-      const izDrop = izRate(recent) - izRate(baseline);
-      const ncRise = ncRate(recent) - ncRate(baseline);
-      if (izDrop <= -10 && ncRise >= 8) {
-        const pitcher = pitchers.find(p => p.id === currentPitcherId);
-        insights.push({
-          type: 'warning', category: 'fatigue', priority: 3,
-          message: `⚠️ ${pitcher?.name || 'Pitcher'} fatigue signal: IZ% ${izDrop.toFixed(0)}pp, NonComp% +${ncRise.toFixed(0)}pp over last 10 pitches`
-        });
-        _fatigueFlagFired.add(currentPitcherId);
-      }
-    }
+    const fat = buildFatigueInsight(currentPitcherId);
+    if (fat) insights.push(fat);
   }
 
   // Sort by priority descending
@@ -2575,12 +2798,80 @@ function computeInsights(data) {
   return insights;
 }
 
+/* ---------- INSIGHT RENDER PIPELINE ---------- */
+
+// Map {type, priority} → severity tier.
+function _insightSeverity(ins) {
+  if (ins.type === 'positive') return 'positive';
+  if (ins.type === 'info')     return 'info';
+  // type === 'warning'
+  if (ins.priority >= 3) return 'critical';
+  if (ins.priority === 2) return 'warning';
+  return 'watch';
+}
+
+// Emoji prefix — only loud severities get one.
+function _severityEmoji(sev) {
+  if (sev === 'critical') return '🚨';
+  if (sev === 'warning')  return '⚠️';
+  return ''; // watch / info / positive get no prefix; shading carries the signal
+}
+
+// Strip any leading emoji that might still be in a message string (defensive),
+// so the renderer is the sole source of emoji prefixes.
+function _stripLeadingEmoji(s) {
+  return (s || '').replace(/^\s*[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}]+\s*/u, '');
+}
+
+// Section order + display labels.
+const _INSIGHT_SECTIONS = [
+  { scope: 'batter',   label: 'THIS BATTER',     getSuffix: () => {
+      const b = batters.find(x => x.id === currentBatterId);
+      return b ? ` — ${b.name} (${b.hand || '?'})` : '';
+    } },
+  { scope: 'lineup',   label: 'THIS LINEUP',     getSuffix: () => '' },
+  { scope: 'pitcher',  label: 'CURRENT PITCHER', getSuffix: () => {
+      const p = pitchers.find(x => x.id === currentPitcherId);
+      return p ? ` — ${p.name}` : '';
+    } },
+  { scope: 'recent',   label: 'LAST 10 PITCHES', getSuffix: () => '' },
+  { scope: 'inning',   label: 'THIS INNING',     getSuffix: () => '' },
+  { scope: 'staff',    label: 'GAME FLOW',       getSuffix: () => '' }
+];
+
+// Recency tracking: signature → firstSeenPitchId
+const _insightFirstSeen = new Map();
+
+function _insightSig(ins) {
+  return `${ins.scope || 'pitcher'}|${ins.category || ''}|${ins.message}`;
+}
+
 function renderInsights(insights) {
-  const panel = document.getElementById('insightsPanel');
-  const list = document.getElementById('insightsList');
-  const badge = document.getElementById('insightCount');
+  const panel  = document.getElementById('insightsPanel');
+  const list   = document.getElementById('insightsList');
+  const badge  = document.getElementById('insightCount');
   const toggle = document.getElementById('statsDrawerToggle');
   if (!panel || !list) return;
+
+  // Normalize: ensure every insight has a scope (legacy items default to pitcher)
+  insights.forEach(ins => {
+    if (!ins.scope) ins.scope = 'pitcher';
+    ins.severity = _insightSeverity(ins);
+    ins.message  = _stripLeadingEmoji(ins.message);
+  });
+
+  // Update recency map and stamp firstSeenPitchId on each insight
+  const currentSigs = new Set();
+  insights.forEach(ins => {
+    const sig = _insightSig(ins);
+    currentSigs.add(sig);
+    if (!_insightFirstSeen.has(sig)) _insightFirstSeen.set(sig, pitchId);
+    ins.firstSeenPitchId = _insightFirstSeen.get(sig);
+  });
+  // Cleanup: drop signatures no longer present so they don't accumulate
+  for (const sig of _insightFirstSeen.keys()) {
+    if (!currentSigs.has(sig)) _insightFirstSeen.delete(sig);
+  }
 
   if (insights.length === 0) {
     panel.style.display = 'none';
@@ -2589,19 +2880,50 @@ function renderInsights(insights) {
   }
 
   panel.style.display = 'block';
-  badge.textContent = String(insights.length);
+  // Badge counts only insights the coach actually needs to react to
+  const actionable = insights.filter(i => i.severity === 'critical' || i.severity === 'warning').length;
+  badge.textContent = String(actionable || insights.length);
   list.innerHTML = '';
 
-  insights.forEach(ins => {
-    const li = document.createElement('li');
-    li.className = `insight-item ${ins.type}`;
-    li.textContent = ins.message;
-    list.appendChild(li);
+  // Severity sort within section (critical > warning > watch > info > positive)
+  const sevRank = { critical: 4, warning: 3, watch: 2, info: 1, positive: 0 };
+
+  _INSIGHT_SECTIONS.forEach(section => {
+    const items = insights.filter(i => i.scope === section.scope);
+    if (items.length === 0) return;
+
+    // Sort: NEW first (within 3 pitches), then severity desc
+    items.sort((a, b) => {
+      const aNew = (pitchId - a.firstSeenPitchId) <= 3 ? 1 : 0;
+      const bNew = (pitchId - b.firstSeenPitchId) <= 3 ? 1 : 0;
+      if (aNew !== bNew) return bNew - aNew;
+      return (sevRank[b.severity] || 0) - (sevRank[a.severity] || 0);
+    });
+
+    // Section header
+    const header = document.createElement('li');
+    header.className = 'insights-section-header';
+    header.textContent = section.label + section.getSuffix();
+    list.appendChild(header);
+
+    // Items
+    items.forEach(ins => {
+      const li = document.createElement('li');
+      li.className = `insight-item ${ins.severity}`;
+      const emoji = _severityEmoji(ins.severity);
+      const delta = pitchId - ins.firstSeenPitchId;
+      const newBadge = (delta <= 3)
+        ? `<span class="insight-new-pill">NEW</span>`
+        : (delta <= 10 ? `<span class="insight-ago">${delta} pitches ago</span>` : '');
+      const prefix = emoji ? `<span class="insight-emoji">${emoji}</span>` : '';
+      li.innerHTML = `${prefix}${newBadge}<span class="insight-text">${ins.message}</span>`;
+      list.appendChild(li);
+    });
   });
 
   // Alert dot on drawer toggle
   if (toggle) {
-    toggle.classList.toggle('has-insights', insights.some(i => i.priority >= 2));
+    toggle.classList.toggle('has-insights', insights.some(i => i.severity === 'critical' || i.severity === 'warning'));
   }
 }
 
