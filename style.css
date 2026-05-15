@@ -1288,6 +1288,16 @@ button:active {
   background: rgba(250, 70, 22, 0.08);
 }
 
+.insight-item.critical {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.insight-item.watch {
+  border-left-color: #facc15;
+  background: rgba(250, 204, 21, 0.08);
+}
+
 .insight-item.positive {
   border-left-color: #4a9e6e;
   background: rgba(74, 158, 110, 0.08);
@@ -1296,6 +1306,55 @@ button:active {
 .insight-item.info {
   border-left-color: var(--accent-blue);
   background: rgba(28, 63, 110, 0.08);
+}
+
+/* ---------- Section headers + recency badges ---------- */
+.insights-section-header {
+  list-style: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 8px 4px 4px 4px;
+  margin-top: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.insights-section-header:first-child {
+  margin-top: 0;
+}
+.insight-emoji {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 13px;
+  vertical-align: middle;
+}
+.insight-new-pill {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  background: #fa4616;
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 6px;
+  margin-right: 6px;
+  vertical-align: middle;
+  animation: insightNewPulse 0.8s ease-in-out 0s 3;
+}
+.insight-ago {
+  display: inline-block;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+@keyframes insightNewPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.7; transform: scale(1.06); }
+}
+.insight-text {
+  vertical-align: middle;
 }
 
 
