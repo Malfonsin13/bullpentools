@@ -27,6 +27,10 @@ let pendingInPlayType = null;  // holds 'groundball'|'flyball'|'linedrive'|'popu
 let isIntendedMissMapMode = false;
 let isTaggingMode = false;
 
+// Pitch-log "Select" mode: tap log pitches to highlight just those on the heatmap.
+let heatmapSelectMode = false;
+let heatmapSelectedPitchIds = new Set();
+
 let pitchTags = {};
 let missMapSelectedPitchType = 'all';
 const EMOJI_FIRE = '\u{1F525}';
@@ -53,7 +57,7 @@ let currentInning  = 1;
 let innings        = [];           // [{inningNumber, pitchCount, pitcherId}]
 let workloadAlertShownAtPitchId = -1;
 let workloadAlertDismissPitchId = -1;
-let autoEndInningOn = false;       // auto-end inning on 3 recorded outs
+let autoEndInningOn = true;        // auto-end inning on 3 recorded outs (default on)
 
 /* ---------- GRID POV ---------- */
 let gridPOV = localStorage.getItem('gridPOV') || 'catcher';
@@ -176,7 +180,7 @@ function loadSession() {
     innings                    = s.innings                    || [];
     workloadAlertShownAtPitchId = s.workloadAlertShownAtPitchId ?? -1;
     workloadAlertDismissPitchId = s.workloadAlertDismissPitchId ?? -1;
-    autoEndInningOn             = s.autoEndInningOn             ?? false;
+    autoEndInningOn             = s.autoEndInningOn             ?? true;
   } catch (e) { console.warn('loadSession failed:', e); }
 }
 
@@ -794,6 +798,41 @@ if (pitchLogDrawer && pitchLogDrawerToggle) {
     pitchLogDrawerToggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
   });
 }
+
+// "Select" toggle: when on, tapping pitches in the log highlights them on the heatmap.
+const logSelectToggle = document.getElementById('logSelectToggle');
+if (logSelectToggle) {
+  logSelectToggle.addEventListener('click', () => {
+    heatmapSelectMode = !heatmapSelectMode;
+    logSelectToggle.classList.toggle('active', heatmapSelectMode);
+    if (!heatmapSelectMode) heatmapSelectedPitchIds.clear();
+    renderPitchLog();
+    updateHeatMap();
+  });
+}
+
+// Delegated selection click — survives pitch-log re-renders (mirrors _wireAbGroupCollapse).
+function _wireLogSelectMode() {
+  const log = document.getElementById('pitchLog');
+  if (!log || log._selectWired) return;
+  log._selectWired = true;
+  log.addEventListener('click', e => {
+    if (!heatmapSelectMode || isTaggingMode) return;
+    const li = e.target.closest('li.ab-pitch');
+    if (!li) return;
+    const pid = Number(li.getAttribute('data-pitch-id'));
+    if (Number.isNaN(pid)) return;
+    if (heatmapSelectedPitchIds.has(pid)) {
+      heatmapSelectedPitchIds.delete(pid);
+      li.classList.remove('hm-selected');
+    } else {
+      heatmapSelectedPitchIds.add(pid);
+      li.classList.add('hm-selected');
+    }
+    updateHeatMap();
+  });
+}
+_wireLogSelectMode();
 
 /* === BATTER UI handlers === */
 document.getElementById('addBatterBtn').addEventListener('click', () => {
@@ -1424,41 +1463,60 @@ function exportIntendedZoneStats() {
     });
 }
 
-function updateHeatMap () {
+// Read the current heatmap filter UI into a plain state object (computed once per render).
+function getHeatmapFilterState() {
   const activePitch  = [...document.querySelectorAll('#pitchFilterBtns  .filterToggleBtn.active')].map(b => b.dataset.value);
   const activeResult = [...document.querySelectorAll('#resultFilterBtns .filterToggleBtn.active')].map(b => b.dataset.value);
-  const fPitchAll  = activePitch.includes('all')  || activePitch.length  === 0;
-  const fResultAll = activeResult.includes('all') || activeResult.length === 0;
-  const fCount  = document.getElementById('filterCount').value;
-  const fBatter = document.getElementById('filterBatter').value;
+  return {
+    activePitch, activeResult,
+    fPitchAll:  activePitch.includes('all')  || activePitch.length  === 0,
+    fResultAll: activeResult.includes('all') || activeResult.length === 0,
+    fCount:  document.getElementById('filterCount')?.value  ?? 'all',
+    fBatter: document.getElementById('filterBatter')?.value ?? 'all'
+  };
+}
+
+// Does a pitch pass the current heatmap filters? Shared by the heatmap and the pitch log.
+function pitchPassesHeatmapFilters(p, fs) {
+  if (!fs.fPitchAll && !fs.activePitch.includes(p.pitchType)) return false;
+
+  // Pitcher filter — honour main pitcher dropdown
+  if (currentPitcherId && p.pitcherId !== currentPitcherId) return false;
+
+  // Batter filter — specific batter from main dropdown, else heatmap L/R selector
+  if (currentBatterId !== null) {
+    if (p.batterId !== currentBatterId) return false;
+  } else if (fs.fBatter !== 'all') {
+    if (getBatterHand(p) !== fs.fBatter) return false;
+  }
+
+  // Count bucket filter
+  const preStrikes = (p.prePitchCount && typeof p.prePitchCount.strikes === 'number')
+    ? p.prePitchCount.strikes : 0;
+  const bucket = preStrikes === 2 ? 'late' : 'early';
+  if (fs.fCount !== 'all' && bucket !== fs.fCount) return false;
+
+  // Result/outcome filter
+  if (!fs.fResultAll && !fs.activeResult.includes(p.outcome)) return false;
+
+  return true;
+}
+
+function updateHeatMap () {
+  const fs = getHeatmapFilterState();
+  // When the user has hand-picked pitches in the log's Select mode, the heatmap
+  // shows ONLY those pitches (still scoped to the current pitcher).
+  const useSelection = heatmapSelectMode && heatmapSelectedPitchIds.size > 0;
 
   const locationCounts = Array(50).fill(0);
 
   pitchData.forEach(p => {
-    if (!fPitchAll  && !activePitch.includes(p.pitchType)) return;
-
-    // Pitcher filter — honour main pitcher dropdown
-    if (currentPitcherId && p.pitcherId !== currentPitcherId) return;
-
-    // Batter filter — if a specific batter is selected in the main dropdown use that;
-    // otherwise fall back to the heatmap L/R selector
-    if (currentBatterId !== null) {
-      if (p.batterId !== currentBatterId) return;
-    } else if (fBatter !== 'all') {
-      const hand = getBatterHand(p);
-      if (hand !== fBatter) return;
+    if (useSelection) {
+      if (!heatmapSelectedPitchIds.has(p.pitchId)) return;
+      if (currentPitcherId && p.pitcherId !== currentPitcherId) return;
+    } else if (!pitchPassesHeatmapFilters(p, fs)) {
+      return;
     }
-
-    // Count bucket filter
-    const preStrikes = (p.prePitchCount && typeof p.prePitchCount.strikes === 'number')
-      ? p.prePitchCount.strikes
-      : 0;
-    const bucket = preStrikes === 2 ? 'late' : 'early';
-    if (fCount !== 'all' && bucket !== fCount) return;
-
-    // Result/outcome filter
-    if (!fResultAll && !activeResult.includes(p.outcome)) return;
-
     locationCounts[p.location]++;
   });
 
@@ -2085,6 +2143,7 @@ function updateLiveStats () {
   const aggAll      = buildAggregators(allData);  // reference row
 
   renderLiveTables(aggFiltered, aggAll);
+  renderCountSplitTables(filtered);
   renderInPlayOutTable(aggFiltered);
   renderOutTypeBarChart(aggFiltered);
 
@@ -2144,29 +2203,36 @@ function insertTotalRow(tbody, label, stats, columns) {
 }
 
 /* â–¬â–¬ paint the two live-stats tables with heat-colors â–¬â–¬ */
-function renderLiveTables(aggFiltered, aggAll) {
-  /* ---------- BY PITCH TYPE ---------- */
-  const tpBody = document.querySelector('#tbl-pitchType tbody');
-  tpBody.innerHTML = '';
+// Fill a by-pitch-type table body: '- All -' total row, then one row per pitch type,
+// with per-column shading. Reused by the main table and the early/late count tables.
+function fillPitchTypeTable(bodySelector, agg, cols) {
+  const tbody = document.querySelector(bodySelector);
+  if (!tbody) return;
+  tbody.innerHTML = '';
 
-  const pitchCols = ['usagePct','izPct','oozPct','nonCompPct','cswPct','strikePct','swingPct','chasePct','whiffPct','izWhiffPct','flyPct','gbPct','ldPct','puPct'];
-  const pitchMax  = computeColumnMax(aggFiltered.byPitch, pitchCols);
+  const colMax = computeColumnMax(agg.byPitch, cols);
+  insertTotalRow(tbody, '- All -', agg.overall, cols);
 
-  // â¬†ï¸ TOTAL row first (for the *filtered* set)
-  insertTotalRow(tpBody, '- All -', aggFiltered.overall, pitchCols);
-
-  // then each pitch type
-  aggFiltered.byPitch.forEach((stats, pt) => {
-    const row = tpBody.insertRow();
+  agg.byPitch.forEach((stats, pt) => {
+    const row = tbody.insertRow();
     row.insertCell().textContent = pt.toUpperCase();
-    pitchCols.forEach(metric => {
+    cols.forEach(metric => {
       const pctVal   = stats[metric];
       const rawCount = metricCount(stats, metric);
       const cell     = row.insertCell();
       cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
-      shadeCellByColumn(cell, pctVal, pitchMax[metric]);
+      shadeCellByColumn(cell, pctVal, colMax[metric]);
     });
   });
+}
+
+// Columns for the early/late count split tables (no OOZ%; adds whiff-by-category).
+const COUNT_SPLIT_COLS = ['usagePct','izPct','nonCompPct','cswPct','strikePct','swingPct','chasePct','whiffPct','izWhiffPct','whiffHardPct','whiffBreakPct','whiffSoftPct','flyPct','gbPct','ldPct','puPct'];
+
+function renderLiveTables(aggFiltered, aggAll) {
+  /* ---------- BY PITCH TYPE ---------- */
+  const pitchCols = ['usagePct','izPct','oozPct','nonCompPct','cswPct','strikePct','swingPct','chasePct','whiffPct','izWhiffPct','aheadUsagePct','behindUsagePct','flyPct','gbPct','ldPct','puPct'];
+  fillPitchTypeTable('#tbl-pitchType tbody', aggFiltered, pitchCols);
 
   /* ---------- USAGE DONUT ---------- */
   renderUsageDonut(aggFiltered);
@@ -2178,7 +2244,6 @@ function renderLiveTables(aggFiltered, aggAll) {
   const batterCols = ['earlySwingPct','lateSwingPct','chasePct','cswPct','strikePct','whiffPct','whiffHardPct','whiffBreakPct','whiffSoftPct','izWhiffPct'];
   const batterMax  = computeColumnMax(aggFiltered.byBatter, batterCols);
 
-  // â¬†ï¸ TOTAL row first (for the *filtered* set)
   // earlySwing% & lateSwing% use early/late denominators; chase% = OOZ-swings / swings
   insertTotalRow(btBody, '- All -', aggFiltered.overall, batterCols);
 
@@ -2242,6 +2307,23 @@ function renderLiveTables(aggFiltered, aggAll) {
     const section = document.getElementById('handSplitSection');
     if (section) section.style.display = aggFiltered.byHand.size > 0 ? '' : 'none';
   }
+}
+
+// Early-count (<2 strikes) and late-count (2 strikes) per-pitch-type tables.
+// Splits the data by pre-pitch strikes and reuses buildAggregators so all the
+// percentage machinery (and the '- All -' total row) comes for free.
+function renderCountSplitTables(dataArr) {
+  const earlyData = dataArr.filter(p => inferPreStrikes(p) < 2);
+  const lateData  = dataArr.filter(p => inferPreStrikes(p) === 2);
+
+  fillPitchTypeTable('#tbl-pitchType-early tbody', buildAggregators(earlyData), COUNT_SPLIT_COLS);
+  fillPitchTypeTable('#tbl-pitchType-late tbody',  buildAggregators(lateData),  COUNT_SPLIT_COLS);
+
+  // Hide a section when its bucket has no pitches yet
+  const earlySection = document.getElementById('countSplitEarlySection');
+  if (earlySection) earlySection.style.display = earlyData.length > 0 ? '' : 'none';
+  const lateSection = document.getElementById('countSplitLateSection');
+  if (lateSection) lateSection.style.display = lateData.length > 0 ? '' : 'none';
 }
 
 /* ---------- DRAWER TAB SWITCHING ---------- */
@@ -3290,12 +3372,18 @@ function renderPitchLog() {
   // Set of AB numbers with a final result row in atBats[] (= completed)
   const completedAbNums = new Set(atBats.map(a => a.atBatNumber));
 
+  // When the heatmap is open, mirror its filters in the log so the two views stay in sync.
+  const hmGrid = document.getElementById('heatmapGrid');
+  const heatmapVisible = hmGrid && hmGrid.style.display !== 'none';
+  const hmFilterState = heatmapVisible ? getHeatmapFilterState() : null;
+
   let lastAtBatNumber = null;
   let lastInningNum   = null;
 
   pitchData.forEach(p => {
     if (wantBatterId  && p.batterId  !== wantBatterId)  return;
     if (wantPitcherId && p.pitcherId !== wantPitcherId) return;
+    if (heatmapVisible && !pitchPassesHeatmapFilters(p, hmFilterState)) return;
 
     // Insert end-of-inning divider when crossing into a new inning (and old one is completed)
     if (lastInningNum !== null && p.inning !== lastInningNum && completedInningNums.has(lastInningNum)) {
@@ -3338,6 +3426,10 @@ function renderPitchLog() {
     li.classList.add('ab-pitch');
     li.setAttribute('data-ab', p.atBatNumber);
     if (completedAbNums.has(p.atBatNumber)) li.style.display = 'none';
+    if (heatmapSelectMode) {
+      li.classList.add('selectable');
+      if (heatmapSelectedPitchIds.has(p.pitchId)) li.classList.add('hm-selected');
+    }
 
     const pt = (p.pitchType || 'UNKNOWN').toUpperCase();
     const loc = (p.location ?? 'UNKNOWN');
@@ -3523,6 +3615,7 @@ function handleFilterToggle(btn, groupId) {
     if (allBtn) allBtn.classList.toggle('active', !anySpecificActive);
   }
   updateHeatMap();
+  renderPitchLog(); // keep the log in sync with heatmap filters
 }
 
 function exitTaggingMode() {
@@ -4908,6 +5001,8 @@ function metricCount(stats, metric) {
     case 'izWhiffPct'   : return stats.izWhiff;
     case 'aheadPct'     : return stats.ahead;
     case 'behindPct'    : return stats.behind;
+    case 'aheadUsagePct': return stats.ahead;
+    case 'behindUsagePct': return stats.behind;
     case 'usagePct'     : return stats.pitches;
     default             : return stats.pitches;
   }
@@ -4951,6 +5046,24 @@ function initStats () {
   };
 }
 
+// Robust pre-pitch strikes for a pitch entry.
+// Prefer prePitchCount.strikes; if missing, infer from postPitchCount and outcome.
+// Shared by accumulate() and the early/late count split.
+function inferPreStrikes(p) {
+  if (p.prePitchCount && typeof p.prePitchCount.strikes === 'number') {
+    return p.prePitchCount.strikes;
+  }
+  if (p.postPitchCount && typeof p.postPitchCount.strikes === 'number') {
+    const madeStrike = ['whiff','calledStrike','foul','strike','inPlay'].includes(p.outcome);
+    if (!madeStrike) return p.postPitchCount.strikes; // ball/HBP/inPlay-without strike
+    // If post is 3, pre was 2. If post is 2, pre could be 1 (or 2 on foul with two).
+    if (p.postPitchCount.strikes === 3) return 2;
+    if (p.postPitchCount.strikes === 2 && p.outcome === 'foul') return 2;
+    return Math.max(0, p.postPitchCount.strikes - 1);
+  }
+  return 0; // last resort
+}
+
 function accumulate(stats, p) {
   stats.pitches++;
 
@@ -4960,27 +5073,7 @@ function accumulate(stats, p) {
                    .includes(p.outcome);
   const isCSW = ['whiff','calledStrike'].includes(p.outcome);
 
-  // Robust preâ€'pitch strikes:
-  // Prefer prePitchCount.strikes. If missing, infer from postPitchCount and outcome.
-  let preStrikes;
-  if (p.prePitchCount && typeof p.prePitchCount.strikes === 'number') {
-    preStrikes = p.prePitchCount.strikes;
-  } else if (p.postPitchCount && typeof p.postPitchCount.strikes === 'number') {
-    // If the pitch produced a strike, post = pre+1 (except 2â€'strike fouls keep post=2).
-    const madeStrike = isStrike;
-    if (!madeStrike) {
-      preStrikes = p.postPitchCount.strikes; // ball/HBP/inPlay-without strike counted
-    } else {
-      // If post is 3, pre was 2. If post is 2, pre could be 1 (or 2 on foul with two).
-      // Heuristic: if outcome is 'foul' and post===2, assume pre===2; else pre=post-1.
-      if (p.postPitchCount.strikes === 3) preStrikes = 2;
-      else if (p.postPitchCount.strikes === 2 && p.outcome === 'foul') preStrikes = 2;
-      else preStrikes = Math.max(0, p.postPitchCount.strikes - 1);
-    }
-  } else {
-    preStrikes = 0; // last resort
-  }
-
+  const preStrikes = inferPreStrikes(p);
   const bucket = preStrikes === 2 ? 'late' : 'early';
   if (bucket === 'early') stats.earlyPitches++; else stats.latePitches++;
 
@@ -5114,6 +5207,14 @@ function buildAggregators (dataArr) {
   byHand.forEach(s => { s.usagePct = pct(s.pitches, totalP); });
   overall.usagePct = totalP ? 100 : 0;
 
+  // Pitch-mix by count: of all ahead/behind pitches, what share is this pitch type
+  byPitch.forEach(s => {
+    s.aheadUsagePct  = pct(s.ahead,  overall.ahead);
+    s.behindUsagePct = pct(s.behind, overall.behind);
+  });
+  overall.aheadUsagePct  = overall.ahead  ? 100 : 0;
+  overall.behindUsagePct = overall.behind ? 100 : 0;
+
   return { overall, byPitch, byBatter, byHand };
 }
 
@@ -5148,10 +5249,11 @@ document.getElementById('heatMapBtn').addEventListener('click', function() {
     hideHeatMap();
     this.innerText = 'HEAT MAP';
   }
+  renderPitchLog(); // re-sync the log: filter while heatmap open, full list when closed
 });
 
 ['filterCount','filterBatter']
-  .forEach(id => document.getElementById(id)?.addEventListener('change', updateHeatMap));
+  .forEach(id => document.getElementById(id)?.addEventListener('change', () => { updateHeatMap(); renderPitchLog(); }));
 
 document.querySelectorAll('#resultFilterBtns .filterToggleBtn').forEach(btn => {
   btn.addEventListener('click', () => handleFilterToggle(btn, 'resultFilterBtns'));
