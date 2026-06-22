@@ -101,6 +101,7 @@
                 <tr>
                   <th>Pitch</th><th>Usage%</th><th>IZ%</th><th>OOZ%</th><th>NonComp%</th><th>CSW%</th>
                   <th>Strike%</th><th>Swing%</th><th>Chase%</th><th>Whiff%</th><th>IZ Whiff%</th>
+                  <th>Ahead Use%</th><th>Behind Use%</th>
                   <th>Fly%</th><th>GB%</th><th>LD%</th><th>PU%</th>
                 </tr>
               </thead>
@@ -129,6 +130,34 @@
                 <th>Hand</th><th>Pitches</th><th>IZ%</th><th>CSW%</th>
                 <th>Strike%</th><th>Swing%</th><th>Chase%</th>
                 <th>Ahead%</th><th>Behind%</th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <!-- FULL-WIDTH: EARLY-COUNT (<2 strikes) per pitch type -->
+          <div id="countSplitEarlySection" class="side-panel side-panel--full">
+            <h3>Early Count (&lt;2 strikes)</h3>
+            <table class="liveTbl" id="tbl-pitchType-early">
+              <thead><tr>
+                <th>Pitch</th><th>Usage%</th><th>IZ%</th><th>NonComp%</th><th>CSW%</th>
+                <th>Strike%</th><th>Swing%</th><th>Chase%</th><th>Whiff%</th><th>IZ Whiff%</th>
+                <th>Whiff Hard%</th><th>Whiff BB%</th><th>Whiff Soft%</th>
+                <th>Fly%</th><th>GB%</th><th>LD%</th><th>PU%</th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <!-- FULL-WIDTH: LATE-COUNT (2 strikes) per pitch type -->
+          <div id="countSplitLateSection" class="side-panel side-panel--full">
+            <h3>Late Count (2 strikes)</h3>
+            <table class="liveTbl" id="tbl-pitchType-late">
+              <thead><tr>
+                <th>Pitch</th><th>Usage%</th><th>IZ%</th><th>NonComp%</th><th>CSW%</th>
+                <th>Strike%</th><th>Swing%</th><th>Chase%</th><th>Whiff%</th><th>IZ Whiff%</th>
+                <th>Whiff Hard%</th><th>Whiff BB%</th><th>Whiff Soft%</th>
+                <th>Fly%</th><th>GB%</th><th>LD%</th><th>PU%</th>
               </tr></thead>
               <tbody></tbody>
             </table>
@@ -566,7 +595,8 @@
   <aside id="pitchLogDrawer" class="pitchlog-drawer">
     <button id="pitchLogDrawerToggle" type="button" aria-expanded="false">Pitch Log</button>
     <div id="pitchLogDrawerHeader">
-      Pitch Log
+      <span class="pitchlog-title">Pitch Log</span>
+      <button id="logSelectToggle" type="button" title="Tap pitches to highlight them on the heat map">Select</button>
       <div id="sequenceSparkline"></div>
     </div>
     <div id="pitchLogDrawerContent">
