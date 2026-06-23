@@ -2202,37 +2202,206 @@ function insertTotalRow(tbody, label, stats, columns) {
   });
 }
 
-/* â–¬â–¬ paint the two live-stats tables with heat-colors â–¬â–¬ */
-// Fill a by-pitch-type table body: '- All -' total row, then one row per pitch type,
-// with per-column shading. Reused by the main table and the early/late count tables.
-function fillPitchTypeTable(bodySelector, agg, cols) {
-  const tbody = document.querySelector(bodySelector);
-  if (!tbody) return;
+/* === PER-PITCH TABLE COLUMN MODEL === */
+// Single source of truth for column key -> header label.
+const PITCH_COL_DEFS = {
+  usagePct:'Usage%', izPct:'IZ%', oozPct:'OOZ%', nonCompPct:'NonComp%',
+  cswPct:'CSW%', strikePct:'Strike%', swingPct:'Swing%', chasePct:'Chase%', whiffPct:'Whiff%',
+  izWhiffPct:'IZ Whiff%', aheadUsagePct:'Ahead Use%', behindUsagePct:'Behind Use%',
+  whiffHardPct:'Whiff Hard%', whiffBreakPct:'Whiff BB%', whiffSoftPct:'Whiff Soft%',
+  inPlayOutPct:'BIP Out%', flyPct:'Fly%', gbPct:'GB%', ldPct:'LD%', puPct:'PU%'
+};
+// Compact view: the six stats the coach reads first.
+const CORE_COLS       = ['usagePct','izPct','strikePct','cswPct','whiffPct','inPlayOutPct'];
+const PITCH_FULL_COLS = ['usagePct','izPct','oozPct','nonCompPct','cswPct','strikePct','swingPct','chasePct','whiffPct','izWhiffPct','aheadUsagePct','behindUsagePct','inPlayOutPct','flyPct','gbPct','ldPct','puPct'];
+const COUNT_FULL_COLS = ['usagePct','izPct','nonCompPct','cswPct','strikePct','swingPct','chasePct','whiffPct','izWhiffPct','whiffHardPct','whiffBreakPct','whiffSoftPct','inPlayOutPct','flyPct','gbPct','ldPct','puPct'];
+
+// Persisted layout state
+let pitchTableCompact   = JSON.parse(localStorage.getItem('pitchTableCompact') ?? 'true');
+let pitchGroupExpanded  = new Set(JSON.parse(localStorage.getItem('pitchGroupExpanded') ?? '[]'));
+
+const FAMILY_LABELS = { fastball:'FAST', breaking:'BREAKING', offspeed:'OFFSPEED' };
+const FAMILY_ORDER  = ['fastball', 'breaking', 'offspeed'];
+
+/* â–¬â–¬ paint the per-pitch live-stats tables with heat-colors â–¬â–¬ */
+// Build the <thead> + <tbody> for a by-pitch-type table.
+// Rows: '- All -' total, then for each family a collapsible group subtotal row
+// followed by its (heat-shaded) member pitch rows. Honors compact/full + group state.
+function fillPitchTypeTable(tableId, agg, fullCols) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const cols = pitchTableCompact ? CORE_COLS : fullCols;
+
+  // Header (single source of truth — replaces any static <th>s)
+  const thead = table.tHead || table.createTHead();
+  thead.innerHTML = '';
+  const htr = thead.insertRow();
+  ['Pitch', ...cols.map(c => PITCH_COL_DEFS[c] || c)].forEach(label => {
+    const th = document.createElement('th');
+    th.textContent = label;
+    htr.appendChild(th);
+  });
+
+  const tbody = table.tBodies[0] || table.createTBody();
   tbody.innerHTML = '';
 
   const colMax = computeColumnMax(agg.byPitch, cols);
   insertTotalRow(tbody, '- All -', agg.overall, cols);
 
-  agg.byPitch.forEach((stats, pt) => {
-    const row = tbody.insertRow();
-    row.insertCell().textContent = pt.toUpperCase();
+  const fillCells = (row, stats, shade) => {
     cols.forEach(metric => {
-      const pctVal   = stats[metric];
+      const pctVal   = Number(stats[metric]) || 0;
       const rawCount = metricCount(stats, metric);
       const cell     = row.insertCell();
       cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
-      shadeCellByColumn(cell, pctVal, colMax[metric]);
+      if (shade) shadeCellByColumn(cell, pctVal, colMax[metric]);
+    });
+  };
+
+  FAMILY_ORDER.forEach(fam => {
+    const famStats = agg.byFamily && agg.byFamily.get(fam);
+    if (!famStats || famStats.pitches === 0) return;
+    const expanded = pitchGroupExpanded.has(fam);
+
+    // Group subtotal row (no heat shading — reads as a subtotal)
+    const grp = tbody.insertRow();
+    grp.className = 'pitch-group';
+    grp.dataset.family = fam;
+    const gLabel = grp.insertCell();
+    gLabel.innerHTML = `<span class="grp-toggle">${expanded ? '−' : '+'}</span> ${FAMILY_LABELS[fam] || fam.toUpperCase()}`;
+    fillCells(grp, famStats, false);
+
+    // Member rows for pitch types in this family that are present
+    agg.byPitch.forEach((stats, pt) => {
+      if ((PITCH_FAMILY[pt] || 'offspeed') !== fam) return;
+      const row = tbody.insertRow();
+      row.className = 'pitch-member';
+      row.dataset.family = fam;
+      if (!expanded) row.style.display = 'none';
+      row.insertCell().textContent = (PITCH_LABELS[pt] || pt).toUpperCase();
+      fillCells(row, stats, true);
     });
   });
 }
 
-// Columns for the early/late count split tables (no OOZ%; adds whiff-by-category).
-const COUNT_SPLIT_COLS = ['usagePct','izPct','nonCompPct','cswPct','strikePct','swingPct','chasePct','whiffPct','izWhiffPct','whiffHardPct','whiffBreakPct','whiffSoftPct','flyPct','gbPct','ldPct','puPct'];
+// Columns for the early/late count split tables (kept for reference; uses COUNT_FULL_COLS).
+const COUNT_SPLIT_COLS = COUNT_FULL_COLS;
+
+/* === Layout: animation helpers + collapse wiring === */
+// Animations run only when anime.js is present and the user hasn't asked for reduced motion.
+function motionOK() {
+  return typeof anime === 'function' &&
+    !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+// Expand/collapse a panel body div (height + fade).
+function animatePanelBody(body, open) {
+  if (!body) return;
+  if (!motionOK()) { body.style.height = ''; body.style.opacity = ''; body.style.display = open ? '' : 'none'; return; }
+  anime.remove(body);
+  if (open) {
+    body.style.display = '';
+    const target = body.scrollHeight;
+    anime({ targets: body, height: [0, target], opacity: [0, 1], duration: 200, easing: 'easeOutQuad',
+      complete: () => { body.style.height = 'auto'; } });
+  } else {
+    anime({ targets: body, height: [body.scrollHeight, 0], opacity: [1, 0], duration: 180, easing: 'easeOutQuad',
+      complete: () => { body.style.display = 'none'; } });
+  }
+}
+
+// Reveal freshly-shown member rows with a small staggered fade.
+function animateMemberRows(rows) {
+  if (!rows.length) return;
+  if (!motionOK()) return;
+  anime({ targets: rows, opacity: [0, 1], translateY: [-4, 0], duration: 180, delay: anime.stagger(25), easing: 'easeOutQuad' });
+}
+
+// Toggle a pitch-family group across all three per-pitch tables (state persists).
+function togglePitchGroup(fam) {
+  if (pitchGroupExpanded.has(fam)) pitchGroupExpanded.delete(fam);
+  else pitchGroupExpanded.add(fam);
+  localStorage.setItem('pitchGroupExpanded', JSON.stringify([...pitchGroupExpanded]));
+  const expanded = pitchGroupExpanded.has(fam);
+
+  ['tbl-pitchType', 'tbl-pitchType-early', 'tbl-pitchType-late'].forEach(id => {
+    const table = document.getElementById(id);
+    if (!table) return;
+    const grpRow = table.querySelector(`tr.pitch-group[data-family="${fam}"]`);
+    if (grpRow) { const t = grpRow.querySelector('.grp-toggle'); if (t) t.textContent = expanded ? '−' : '+'; }
+    const members = [...table.querySelectorAll(`tr.pitch-member[data-family="${fam}"]`)];
+    if (expanded) {
+      members.forEach(r => { r.style.display = ''; });
+      animateMemberRows(members);
+    } else {
+      members.forEach(r => { r.style.display = 'none'; });
+    }
+  });
+}
+
+// Delegated click on each pitch table's group rows (wired once; tables persist across renders).
+function _wirePitchGroupToggles() {
+  ['tbl-pitchType', 'tbl-pitchType-early', 'tbl-pitchType-late'].forEach(id => {
+    const table = document.getElementById(id);
+    if (!table || table._groupWired) return;
+    table._groupWired = true;
+    table.addEventListener('click', e => {
+      const grp = e.target.closest('tr.pitch-group');
+      if (!grp) return;
+      togglePitchGroup(grp.dataset.family);
+    });
+  });
+}
+
+// Compact / Full column toggle (governs all three per-pitch tables).
+function _wireCompactToggle() {
+  const btn = document.getElementById('pitchCompactToggle');
+  if (!btn || btn._wired) return;
+  btn._wired = true;
+  const sync = () => { btn.textContent = pitchTableCompact ? 'Full' : 'Compact'; };
+  sync();
+  btn.addEventListener('click', e => {
+    e.stopPropagation(); // don't trigger the panel-collapse handler on the <h3>
+    pitchTableCompact = !pitchTableCompact;
+    localStorage.setItem('pitchTableCompact', JSON.stringify(pitchTableCompact));
+    sync();
+    updateLiveStats();
+  });
+}
+
+// Collapsible stats panels (click the panel's <h3>). State persists in localStorage.
+let _collapsedPanels = new Set(JSON.parse(localStorage.getItem('collapsedPanels') ?? '[]'));
+function _applyCollapsedPanels() {
+  document.querySelectorAll('#statsDrawerContent .side-panel, #statsDrawerContent #usageDonutWrapper').forEach(panel => {
+    if (!panel.id) return;
+    const body = panel.querySelector('.panel-body');
+    const collapsed = _collapsedPanels.has(panel.id);
+    panel.classList.toggle('collapsed', collapsed);
+    if (body) { body.style.display = collapsed ? 'none' : ''; body.style.height = collapsed ? '0' : 'auto'; body.style.opacity = collapsed ? '0' : '1'; }
+  });
+}
+function _wireCollapsiblePanels() {
+  const root = document.getElementById('statsDrawerContent');
+  if (!root || root._panelsWired) return;
+  root._panelsWired = true;
+  root.addEventListener('click', e => {
+    const h3 = e.target.closest('.side-panel > h3, #usageDonutWrapper > h3');
+    if (!h3) return;
+    const panel = h3.parentElement;
+    if (!panel.id) return;
+    const body = panel.querySelector('.panel-body');
+    const willCollapse = !panel.classList.contains('collapsed');
+    panel.classList.toggle('collapsed', willCollapse);
+    if (willCollapse) _collapsedPanels.add(panel.id); else _collapsedPanels.delete(panel.id);
+    localStorage.setItem('collapsedPanels', JSON.stringify([..._collapsedPanels]));
+    animatePanelBody(body, !willCollapse);
+  });
+  _applyCollapsedPanels();
+}
 
 function renderLiveTables(aggFiltered, aggAll) {
   /* ---------- BY PITCH TYPE ---------- */
-  const pitchCols = ['usagePct','izPct','oozPct','nonCompPct','cswPct','strikePct','swingPct','chasePct','whiffPct','izWhiffPct','aheadUsagePct','behindUsagePct','flyPct','gbPct','ldPct','puPct'];
-  fillPitchTypeTable('#tbl-pitchType tbody', aggFiltered, pitchCols);
+  fillPitchTypeTable('tbl-pitchType', aggFiltered, PITCH_FULL_COLS);
 
   /* ---------- USAGE DONUT ---------- */
   renderUsageDonut(aggFiltered);
@@ -2316,8 +2485,8 @@ function renderCountSplitTables(dataArr) {
   const earlyData = dataArr.filter(p => inferPreStrikes(p) < 2);
   const lateData  = dataArr.filter(p => inferPreStrikes(p) === 2);
 
-  fillPitchTypeTable('#tbl-pitchType-early tbody', buildAggregators(earlyData), COUNT_SPLIT_COLS);
-  fillPitchTypeTable('#tbl-pitchType-late tbody',  buildAggregators(lateData),  COUNT_SPLIT_COLS);
+  fillPitchTypeTable('tbl-pitchType-early', buildAggregators(earlyData), COUNT_FULL_COLS);
+  fillPitchTypeTable('tbl-pitchType-late',  buildAggregators(lateData),  COUNT_FULL_COLS);
 
   // Hide a section when its bucket has no pitches yet
   const earlySection = document.getElementById('countSplitEarlySection');
@@ -2923,6 +3092,8 @@ const _INSIGHT_SECTIONS = [
 
 // Recency tracking: signature → firstSeenPitchId
 const _insightFirstSeen = new Map();
+// Signatures already given an entrance animation (so re-renders don't re-animate).
+const _animatedInsightSigs = new Set();
 
 function _insightSig(ins) {
   return `${ins.scope || 'pitcher'}|${ins.category || ''}|${ins.message}`;
@@ -3000,8 +3171,20 @@ function renderInsights(insights) {
       const prefix = emoji ? `<span class="insight-emoji">${emoji}</span>` : '';
       li.innerHTML = `${prefix}${newBadge}<span class="insight-text">${ins.message}</span>`;
       list.appendChild(li);
+
+      // Entrance animation for genuinely-new insights, once per signature
+      const sig = _insightSig(ins);
+      if (delta <= 3 && !_animatedInsightSigs.has(sig)) {
+        _animatedInsightSigs.add(sig);
+        if (motionOK()) anime({ targets: li, opacity: [0, 1], translateX: [-6, 0], duration: 180, easing: 'easeOutQuad' });
+      }
     });
   });
+
+  // Drop animation flags for signatures no longer present
+  for (const sig of _animatedInsightSigs) {
+    if (!currentSigs.has(sig)) _animatedInsightSigs.delete(sig);
+  }
 
   // Alert dot on drawer toggle
   if (toggle) {
@@ -5003,6 +5186,7 @@ function metricCount(stats, metric) {
     case 'behindPct'    : return stats.behind;
     case 'aheadUsagePct': return stats.ahead;
     case 'behindUsagePct': return stats.behind;
+    case 'inPlayOutPct' : return stats.inPlayOuts;
     case 'usagePct'     : return stats.pitches;
     default             : return stats.pitches;
   }
@@ -5143,12 +5327,14 @@ function pct (num, den) { return den ? (num/den*100) : 0; }
 
 function buildAggregators (dataArr) {
   const byPitch  = new Map();   // pitchType â†' stats object
+  const byFamily = new Map();   // 'fastball'|'breaking'|'offspeed' â†' stats object
   const byBatter = new Map();   // batterId  â†' stats object
   const byHand   = new Map();   // 'L' | 'R' â†' stats object
   const overall  = initStats();
 
   dataArr.forEach(p => {
     const pKey = p.pitchType || 'UNK';
+    const fKey = PITCH_FAMILY[p.pitchType] || 'offspeed';
     const bKey = p.batterId  ?? 'ALL';
     const hKey = getBatterHand(p) || 'unknown';
 
@@ -5159,6 +5345,11 @@ function buildAggregators (dataArr) {
     let sPitch = byPitch.get(pKey) ?? initStats();
     accumulate(sPitch, p);
     byPitch.set(pKey, sPitch);
+
+    // by pitch family (fast / breaking / offspeed)
+    let sFam = byFamily.get(fKey) ?? initStats();
+    accumulate(sFam, p);
+    byFamily.set(fKey, sFam);
 
     // by batter
     let sBat = byBatter.get(bKey) ?? initStats();
@@ -5198,24 +5389,28 @@ function buildAggregators (dataArr) {
 
   addPcts(overall);
   [...byPitch.values()].forEach(addPcts);
+  [...byFamily.values()].forEach(addPcts);
   [...byBatter.values()].forEach(addPcts);
   [...byHand.values()].forEach(addPcts);
 
-  // usage% = pitch-type pitches / total pitches
+  // usage% = pitches / total pitches
   const totalP = overall.pitches;
-  byPitch.forEach(s => { s.usagePct = pct(s.pitches, totalP); });
-  byHand.forEach(s => { s.usagePct = pct(s.pitches, totalP); });
+  byPitch.forEach(s  => { s.usagePct = pct(s.pitches, totalP); });
+  byFamily.forEach(s => { s.usagePct = pct(s.pitches, totalP); });
+  byHand.forEach(s   => { s.usagePct = pct(s.pitches, totalP); });
   overall.usagePct = totalP ? 100 : 0;
 
-  // Pitch-mix by count: of all ahead/behind pitches, what share is this pitch type
-  byPitch.forEach(s => {
+  // Pitch-mix by count: of all ahead/behind pitches, what share is this pitch type / family
+  const addCountMix = s => {
     s.aheadUsagePct  = pct(s.ahead,  overall.ahead);
     s.behindUsagePct = pct(s.behind, overall.behind);
-  });
+  };
+  byPitch.forEach(addCountMix);
+  byFamily.forEach(addCountMix);
   overall.aheadUsagePct  = overall.ahead  ? 100 : 0;
   overall.behindUsagePct = overall.behind ? 100 : 0;
 
-  return { overall, byPitch, byBatter, byHand };
+  return { overall, byPitch, byFamily, byBatter, byHand };
 }
 
 function logCount(strikes, balls, isK, isWalk = false) {
@@ -5541,6 +5736,11 @@ document.addEventListener('DOMContentLoaded', function() {
   updateLiveStats();
   updateUI();
   applyGridPOV();
+
+  // Stats-drawer layout: compact toggle, group toggles, collapsible panels
+  _wireCompactToggle();
+  _wirePitchGroupToggles();
+  _wireCollapsiblePanels();
 
   // AB hand toggle — delegated so it works after every renderPitchLog rebuild
   document.getElementById('pitchLog').addEventListener('click', e => {
