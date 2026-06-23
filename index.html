@@ -88,90 +88,90 @@
         <div id="drawerTabOverview" class="drawer-tab-content">
           <!-- USAGE DONUT: pitch mix breakdown -->
           <div id="usageDonutWrapper">
-            <h3>Pitch Mix</h3>
-            <div id="usageDonutChart"></div>
-            <div id="usageDonutLegend"></div>
+            <h3><span class="panel-chevron">▾</span> Pitch Mix</h3>
+            <div class="panel-body">
+              <div id="usageDonutChart"></div>
+              <div id="usageDonutLegend"></div>
+            </div>
           </div>
 
           <!-- LEFT PANEL: per-pitch summary -->
           <div id="sideLeft" class="side-panel">
-            <h3>By Pitch Type</h3>
-            <table class="liveTbl" id="tbl-pitchType">
-              <thead>
-                <tr>
-                  <th>Pitch</th><th>Usage%</th><th>IZ%</th><th>OOZ%</th><th>NonComp%</th><th>CSW%</th>
-                  <th>Strike%</th><th>Swing%</th><th>Chase%</th><th>Whiff%</th><th>IZ Whiff%</th>
-                  <th>Ahead Use%</th><th>Behind Use%</th>
-                  <th>Fly%</th><th>GB%</th><th>LD%</th><th>PU%</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+            <h3><span class="panel-chevron">▾</span> By Pitch Type
+              <button id="pitchCompactToggle" type="button" class="panel-action-btn" title="Toggle core vs all columns">Full</button>
+            </h3>
+            <div class="panel-body">
+              <table class="liveTbl" id="tbl-pitchType">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </div>
 
           <!-- RIGHT PANEL: per-batter summary -->
           <div id="sideRight" class="side-panel">
-            <h3>By Batter</h3>
-            <table class="liveTbl" id="tbl-batter">
-              <thead><tr>
-                <th>Batter</th><th>Early Swing%</th><th>Late Swing%</th>
-                <th>Chase%</th><th>CSW%</th><th>Strike%</th>
-                <th>Whiff%</th><th>Whiff Hard%</th><th>Whiff BB%</th><th>Whiff Soft%</th><th>IZ Whiff%</th>
-              </tr></thead>
-              <tbody></tbody>
-            </table>
+            <h3><span class="panel-chevron">▾</span> By Batter</h3>
+            <div class="panel-body">
+              <table class="liveTbl" id="tbl-batter">
+                <thead><tr>
+                  <th>Batter</th><th>Early Swing%</th><th>Late Swing%</th>
+                  <th>Chase%</th><th>CSW%</th><th>Strike%</th>
+                  <th>Whiff%</th><th>Whiff Hard%</th><th>Whiff BB%</th><th>Whiff Soft%</th><th>IZ Whiff%</th>
+                </tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </div>
 
           <!-- FULL-WIDTH: LHH / RHH splits -->
           <div id="handSplitSection" class="side-panel side-panel--full">
-            <h3>LHH / RHH Splits</h3>
-            <table class="liveTbl" id="tbl-handSplit">
-              <thead><tr>
-                <th>Hand</th><th>Pitches</th><th>IZ%</th><th>CSW%</th>
-                <th>Strike%</th><th>Swing%</th><th>Chase%</th>
-                <th>Ahead%</th><th>Behind%</th>
-              </tr></thead>
-              <tbody></tbody>
-            </table>
+            <h3><span class="panel-chevron">▾</span> LHH / RHH Splits</h3>
+            <div class="panel-body">
+              <table class="liveTbl" id="tbl-handSplit">
+                <thead><tr>
+                  <th>Hand</th><th>Pitches</th><th>IZ%</th><th>CSW%</th>
+                  <th>Strike%</th><th>Swing%</th><th>Chase%</th>
+                  <th>Ahead%</th><th>Behind%</th>
+                </tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </div>
 
           <!-- FULL-WIDTH: EARLY-COUNT (<2 strikes) per pitch type -->
           <div id="countSplitEarlySection" class="side-panel side-panel--full">
-            <h3>Early Count (&lt;2 strikes)</h3>
-            <table class="liveTbl" id="tbl-pitchType-early">
-              <thead><tr>
-                <th>Pitch</th><th>Usage%</th><th>IZ%</th><th>NonComp%</th><th>CSW%</th>
-                <th>Strike%</th><th>Swing%</th><th>Chase%</th><th>Whiff%</th><th>IZ Whiff%</th>
-                <th>Whiff Hard%</th><th>Whiff BB%</th><th>Whiff Soft%</th>
-                <th>Fly%</th><th>GB%</th><th>LD%</th><th>PU%</th>
-              </tr></thead>
-              <tbody></tbody>
-            </table>
+            <h3><span class="panel-chevron">▾</span> Early Count (&lt;2 strikes)</h3>
+            <div class="panel-body">
+              <table class="liveTbl" id="tbl-pitchType-early">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </div>
 
           <!-- FULL-WIDTH: LATE-COUNT (2 strikes) per pitch type -->
           <div id="countSplitLateSection" class="side-panel side-panel--full">
-            <h3>Late Count (2 strikes)</h3>
-            <table class="liveTbl" id="tbl-pitchType-late">
-              <thead><tr>
-                <th>Pitch</th><th>Usage%</th><th>IZ%</th><th>NonComp%</th><th>CSW%</th>
-                <th>Strike%</th><th>Swing%</th><th>Chase%</th><th>Whiff%</th><th>IZ Whiff%</th>
-                <th>Whiff Hard%</th><th>Whiff BB%</th><th>Whiff Soft%</th>
-                <th>Fly%</th><th>GB%</th><th>LD%</th><th>PU%</th>
-              </tr></thead>
-              <tbody></tbody>
-            </table>
+            <h3><span class="panel-chevron">▾</span> Late Count (2 strikes)</h3>
+            <div class="panel-body">
+              <table class="liveTbl" id="tbl-pitchType-late">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
         <!-- TAB: IN-PLAY -->
         <div id="drawerTabInPlay" class="drawer-tab-content" style="display:none;">
           <div id="outTypeBarChart" class="side-panel">
-            <h3>Out Types by Pitch</h3>
-            <div id="outTypeBarChartSvg"></div>
+            <h3><span class="panel-chevron">▾</span> Out Types by Pitch</h3>
+            <div class="panel-body">
+              <div id="outTypeBarChartSvg"></div>
+            </div>
           </div>
           <div id="inPlayOutSection" class="side-panel">
-            <h3>In-Play Outcomes</h3>
+            <h3><span class="panel-chevron">▾</span> In-Play Outcomes</h3>
+            <div class="panel-body">
             <table class="liveTbl" id="tbl-inPlayOut">
               <thead>
                 <tr>
@@ -181,6 +181,7 @@
               </thead>
               <tbody></tbody>
             </table>
+            </div>
           </div>
         </div>
       </div>
@@ -865,6 +866,7 @@
 
 </div> <!-- /.bento-app -->
 
+  <script src="anime.min.js"></script>
   <script src="script.js"></script>
 
   <!-- Batter Scouting Toast -->
