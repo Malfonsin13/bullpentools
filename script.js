@@ -2138,14 +2138,13 @@ function updateLiveStats () {
   updateDonut('donut-bip-out', 'donut-val-bip-out', bipOutPct, 'bipOutPct');
   setLivePct('stat-bip-out', 'BIP Out%', totals.all.inPlayOuts, bipTotal);
 
-  /* ----- tables: still respond to the dropdown filter ----- */
-  const aggFiltered = buildAggregators(filtered); // filtered set
-  const aggAll      = buildAggregators(allData);  // reference row
+  /* ----- Overview stat tables (each has its own compact + side filter) ----- */
+  renderStatTables();
 
-  renderLiveTables(aggFiltered, aggAll);
-  renderCountSplitTables(filtered);
-  renderInPlayOutTable(aggFiltered);
-  renderOutTypeBarChart(aggFiltered);
+  /* ----- In-Play tab: pitcher's full set (all batters) ----- */
+  const aggAll = buildAggregators(allData);
+  renderInPlayOutTable(aggAll);
+  renderOutTypeBarChart(aggAll);
 
   /* ----- coaching insights ----- */
   const insights = computeInsights(allData);
@@ -2202,59 +2201,110 @@ function insertTotalRow(tbody, label, stats, columns) {
   });
 }
 
-/* === PER-PITCH TABLE COLUMN MODEL === */
-// Single source of truth for column key -> header label.
+/* === STAT TABLE COLUMN MODEL === */
+// Single source of truth for column key -> header label (covers all stat tables).
 const PITCH_COL_DEFS = {
   usagePct:'Usage%', izPct:'IZ%', oozPct:'OOZ%', nonCompPct:'NonComp%',
   cswPct:'CSW%', strikePct:'Strike%', swingPct:'Swing%', chasePct:'Chase%', whiffPct:'Whiff%',
   izWhiffPct:'IZ Whiff%', aheadUsagePct:'Ahead Use%', behindUsagePct:'Behind Use%',
   whiffHardPct:'Whiff Hard%', whiffBreakPct:'Whiff BB%', whiffSoftPct:'Whiff Soft%',
-  inPlayOutPct:'BIP Out%', flyPct:'Fly%', gbPct:'GB%', ldPct:'LD%', puPct:'PU%'
+  inPlayOutPct:'BIP Out%', flyPct:'Fly%', gbPct:'GB%', ldPct:'LD%', puPct:'PU%',
+  earlySwingPct:'Early Swing%', lateSwingPct:'Late Swing%', aheadPct:'Ahead%', behindPct:'Behind%'
 };
-// Compact view: the six stats the coach reads first.
+// Compact view: the stats the coach reads first.
 const CORE_COLS       = ['usagePct','izPct','strikePct','cswPct','whiffPct','inPlayOutPct'];
 const PITCH_FULL_COLS = ['usagePct','izPct','oozPct','nonCompPct','cswPct','strikePct','swingPct','chasePct','whiffPct','izWhiffPct','aheadUsagePct','behindUsagePct','inPlayOutPct','flyPct','gbPct','ldPct','puPct'];
 const COUNT_FULL_COLS = ['usagePct','izPct','nonCompPct','cswPct','strikePct','swingPct','chasePct','whiffPct','izWhiffPct','whiffHardPct','whiffBreakPct','whiffSoftPct','inPlayOutPct','flyPct','gbPct','ldPct','puPct'];
+const BATTER_FULL_COLS = ['earlySwingPct','lateSwingPct','chasePct','cswPct','strikePct','whiffPct','whiffHardPct','whiffBreakPct','whiffSoftPct','izWhiffPct'];
+const BATTER_CORE_COLS = ['chasePct','cswPct','strikePct','whiffPct'];
+const HAND_FULL_COLS = ['izPct','cswPct','strikePct','swingPct','chasePct','aheadPct','behindPct'];
+const HAND_CORE_COLS = ['izPct','cswPct','strikePct'];
 
-// Persisted layout state
-let pitchTableCompact   = JSON.parse(localStorage.getItem('pitchTableCompact') ?? 'true');
 let pitchGroupExpanded  = new Set(JSON.parse(localStorage.getItem('pitchGroupExpanded') ?? '[]'));
 
 const FAMILY_LABELS = { fastball:'FAST', breaking:'BREAKING', offspeed:'OFFSPEED' };
 const FAMILY_ORDER  = ['fastball', 'breaking', 'offspeed'];
 
+/* === COUNT LEVERAGE (standard MLB buckets) — shared app-wide === */
+// Pitcher's: 0-1,0-2,1-2,2-2 | Hitter's: 1-0,2-0,3-0,2-1,3-1 | Even: 0-0,1-1,3-2
+const PITCHER_COUNT_KEYS = new Set(['0-1','0-2','1-2','2-2']);
+const HITTER_COUNT_KEYS  = new Set(['1-0','2-0','3-0','2-1','3-1']);
+function countLeverage(balls, strikes) {
+  const key = `${balls}-${strikes}`;
+  if (PITCHER_COUNT_KEYS.has(key)) return 'pitcher';
+  if (HITTER_COUNT_KEYS.has(key))  return 'hitter';
+  return 'even';
+}
+
+/* === Per-table layout state (compact + batter-side filter), persisted === */
+let statTableState = JSON.parse(localStorage.getItem('statTableState') ?? '{}');
+function getTableState(id) {
+  if (!statTableState[id]) statTableState[id] = { compact: true, side: 'all' };
+  return statTableState[id];
+}
+function saveTableState() { localStorage.setItem('statTableState', JSON.stringify(statTableState)); }
+
+// Which split panels are toggled on (By Pitch + By Batter are always visible)
+let visibleSplits = new Set(JSON.parse(localStorage.getItem('visibleSplits') ?? '[]'));
+function saveVisibleSplits() { localStorage.setItem('visibleSplits', JSON.stringify([...visibleSplits])); }
+
+// Registry of every Overview stat table: id, host panel, renderer kind, columns, pitch subset.
+const STAT_TABLE_DEFS = [
+  { tableId:'tbl-pitchType',        panelId:'sideLeft',               kind:'pitch',  full:PITCH_FULL_COLS,  core:CORE_COLS,        subset:null,      always:true },
+  { tableId:'tbl-batter',           panelId:'sideRight',              kind:'batter', full:BATTER_FULL_COLS, core:BATTER_CORE_COLS, subset:null,      always:true },
+  { tableId:'tbl-handSplit',        panelId:'handSplitSection',       kind:'hand',   full:HAND_FULL_COLS,   core:HAND_CORE_COLS,   subset:null,      split:'hand' },
+  { tableId:'tbl-pitchType-early',  panelId:'countSplitEarlySection', kind:'pitch',  full:COUNT_FULL_COLS,  core:CORE_COLS,        subset:'early',   split:'earlylate' },
+  { tableId:'tbl-pitchType-late',   panelId:'countSplitLateSection',  kind:'pitch',  full:COUNT_FULL_COLS,  core:CORE_COLS,        subset:'late',    split:'earlylate' },
+  { tableId:'tbl-pitchType-pcount', panelId:'countPitcherSection',    kind:'pitch',  full:COUNT_FULL_COLS,  core:CORE_COLS,        subset:'pitcher', split:'hpcount' },
+  { tableId:'tbl-pitchType-hcount', panelId:'countHitterSection',     kind:'pitch',  full:COUNT_FULL_COLS,  core:CORE_COLS,        subset:'hitter',  split:'hpcount' }
+];
+
+// Group of split chips -> which split keys they control
+const SPLIT_CHIPS = [
+  { key:'hand',      label:'LHH / RHH' },
+  { key:'earlylate', label:'Early / Late' },
+  { key:'hpcount',   label:"Hitter / Pitcher Count" }
+];
+
+function pitchInSubset(p, subset) {
+  if (!subset) return true;
+  if (subset === 'early') return inferPreStrikes(p) < 2;
+  if (subset === 'late')  return inferPreStrikes(p) === 2;
+  const b = p.prePitchCount?.balls ?? 0, s = p.prePitchCount?.strikes ?? 0;
+  return countLeverage(b, s) === subset; // 'pitcher' | 'hitter'
+}
+function pitchMatchesSide(p, side) {
+  return side === 'all' ? true : getBatterHand(p) === side;
+}
+function isSplitPanelVisible(def) {
+  return def.always || visibleSplits.has(def.split);
+}
+
 /* â–¬â–¬ paint the per-pitch live-stats tables with heat-colors â–¬â–¬ */
 // Build the <thead> + <tbody> for a by-pitch-type table.
 // Rows: '- All -' total, then for each family a collapsible group subtotal row
 // followed by its (heat-shaded) member pitch rows. Honors compact/full + group state.
-function fillPitchTypeTable(tableId, agg, fullCols) {
+function fillPitchTypeTable(tableId, agg, cols) {
   const table = document.getElementById(tableId);
   if (!table) return;
-  const cols = pitchTableCompact ? CORE_COLS : fullCols;
 
   // Header (single source of truth — replaces any static <th>s)
-  const thead = table.tHead || table.createTHead();
-  thead.innerHTML = '';
-  const htr = thead.insertRow();
-  ['Pitch', ...cols.map(c => PITCH_COL_DEFS[c] || c)].forEach(label => {
-    const th = document.createElement('th');
-    th.textContent = label;
-    htr.appendChild(th);
-  });
+  buildTableHead(table, ['Pitch', ...cols.map(c => PITCH_COL_DEFS[c] || c)]);
 
   const tbody = table.tBodies[0] || table.createTBody();
   tbody.innerHTML = '';
 
-  const colMax = computeColumnMax(agg.byPitch, cols);
+  const memberMax = computeColumnMax(agg.byPitch, cols);   // members compare to each other
+  const famMax    = computeColumnMax(agg.byFamily, cols);  // family rows compare to each other
   insertTotalRow(tbody, '- All -', agg.overall, cols);
 
-  const fillCells = (row, stats, shade) => {
+  const fillCells = (row, stats, max) => {
     cols.forEach(metric => {
       const pctVal   = Number(stats[metric]) || 0;
       const rawCount = metricCount(stats, metric);
       const cell     = row.insertCell();
       cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
-      if (shade) shadeCellByColumn(cell, pctVal, colMax[metric]);
+      if (max) shadeCellByColumn(cell, pctVal, max[metric]);
     });
   };
 
@@ -2263,13 +2313,13 @@ function fillPitchTypeTable(tableId, agg, fullCols) {
     if (!famStats || famStats.pitches === 0) return;
     const expanded = pitchGroupExpanded.has(fam);
 
-    // Group subtotal row (no heat shading — reads as a subtotal)
+    // Group subtotal row (shaded against the other family rows)
     const grp = tbody.insertRow();
     grp.className = 'pitch-group';
     grp.dataset.family = fam;
     const gLabel = grp.insertCell();
     gLabel.innerHTML = `<span class="grp-toggle">${expanded ? '−' : '+'}</span> ${FAMILY_LABELS[fam] || fam.toUpperCase()}`;
-    fillCells(grp, famStats, false);
+    fillCells(grp, famStats, famMax);
 
     // Member rows for pitch types in this family that are present
     agg.byPitch.forEach((stats, pt) => {
@@ -2279,13 +2329,86 @@ function fillPitchTypeTable(tableId, agg, fullCols) {
       row.dataset.family = fam;
       if (!expanded) row.style.display = 'none';
       row.insertCell().textContent = (PITCH_LABELS[pt] || pt).toUpperCase();
-      fillCells(row, stats, true);
+      fillCells(row, stats, memberMax);
     });
   });
 }
 
-// Columns for the early/late count split tables (kept for reference; uses COUNT_FULL_COLS).
-const COUNT_SPLIT_COLS = COUNT_FULL_COLS;
+// Build a table's <thead> from a list of header labels.
+function buildTableHead(table, labels) {
+  const thead = table.tHead || table.createTHead();
+  thead.innerHTML = '';
+  const htr = thead.insertRow();
+  labels.forEach(label => {
+    const th = document.createElement('th');
+    th.textContent = label;
+    htr.appendChild(th);
+  });
+}
+
+// By-Batter table (one row per batter, '- All -' total). Honors compact cols + side filter upstream.
+function fillBatterTable(tableId, agg, cols) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  buildTableHead(table, ['Batter', ...cols.map(c => PITCH_COL_DEFS[c] || c)]);
+  const tbody = table.tBodies[0] || table.createTBody();
+  tbody.innerHTML = '';
+
+  const colMax = computeColumnMax(agg.byBatter, cols);
+  insertTotalRow(tbody, '- All -', agg.overall, cols);
+
+  agg.byBatter.forEach((stats, id) => {
+    if (id === 'ALL') return;
+    const name = (batters.find(b => b.id === id)?.name) || `B${id}`;
+    const row = tbody.insertRow();
+    row.insertCell().textContent = name;
+    cols.forEach(metric => {
+      const pctVal   = Number(stats[metric]) || 0;
+      const rawCount = metricCount(stats, metric);
+      const cell     = row.insertCell();
+      cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
+      shadeCellByColumn(cell, pctVal, colMax[metric]);
+    });
+  });
+}
+
+// LHH / RHH summary split table (rows by batter hand).
+function fillHandTable(tableId, agg, cols) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  buildTableHead(table, ['Hand', 'Pitches', ...cols.map(c => PITCH_COL_DEFS[c] || c)]);
+  const tbody = table.tBodies[0] || table.createTBody();
+  tbody.innerHTML = '';
+
+  const colMax = computeColumnMax(agg.byHand, cols);
+  const HAND_LABELS = { L: 'LHH', R: 'RHH', unknown: '?' };
+
+  // total row
+  const totalRow = tbody.insertRow();
+  totalRow.classList.add('total-row');
+  const tl = totalRow.insertCell(); tl.textContent = '- All -'; tl.classList.add('total-cell');
+  const tp = totalRow.insertCell(); tp.textContent = agg.overall.pitches; tp.classList.add('total-cell');
+  cols.forEach(metric => {
+    const pctVal = Number(agg.overall[metric]) || 0;
+    const td = totalRow.insertCell();
+    td.textContent = `${pctVal.toFixed(1)}% (${metricCount(agg.overall, metric)})`;
+    td.classList.add('total-cell');
+  });
+
+  ['L', 'R'].forEach(hKey => {
+    const stats = agg.byHand.get(hKey);
+    if (!stats) return;
+    const row = tbody.insertRow();
+    row.insertCell().textContent = HAND_LABELS[hKey] ?? hKey;
+    row.insertCell().textContent = stats.pitches;
+    cols.forEach(metric => {
+      const pctVal   = Number(stats[metric]) || 0;
+      const cell     = row.insertCell();
+      cell.textContent = `${pctVal.toFixed(1)}% (${metricCount(stats, metric)})`;
+      shadeCellByColumn(cell, pctVal, colMax[metric]);
+    });
+  });
+}
 
 /* === Layout: animation helpers + collapse wiring === */
 // Animations run only when anime.js is present and the user hasn't asked for reduced motion.
@@ -2317,14 +2440,19 @@ function animateMemberRows(rows) {
   anime({ targets: rows, opacity: [0, 1], translateY: [-4, 0], duration: 180, delay: anime.stagger(25), easing: 'easeOutQuad' });
 }
 
-// Toggle a pitch-family group across all three per-pitch tables (state persists).
+// All per-pitch-type table ids (from the registry).
+function _pitchTableIds() {
+  return STAT_TABLE_DEFS.filter(d => d.kind === 'pitch').map(d => d.tableId);
+}
+
+// Toggle a pitch-family group across every per-pitch table (state persists).
 function togglePitchGroup(fam) {
   if (pitchGroupExpanded.has(fam)) pitchGroupExpanded.delete(fam);
   else pitchGroupExpanded.add(fam);
   localStorage.setItem('pitchGroupExpanded', JSON.stringify([...pitchGroupExpanded]));
   const expanded = pitchGroupExpanded.has(fam);
 
-  ['tbl-pitchType', 'tbl-pitchType-early', 'tbl-pitchType-late'].forEach(id => {
+  _pitchTableIds().forEach(id => {
     const table = document.getElementById(id);
     if (!table) return;
     const grpRow = table.querySelector(`tr.pitch-group[data-family="${fam}"]`);
@@ -2341,7 +2469,7 @@ function togglePitchGroup(fam) {
 
 // Delegated click on each pitch table's group rows (wired once; tables persist across renders).
 function _wirePitchGroupToggles() {
-  ['tbl-pitchType', 'tbl-pitchType-early', 'tbl-pitchType-late'].forEach(id => {
+  _pitchTableIds().forEach(id => {
     const table = document.getElementById(id);
     if (!table || table._groupWired) return;
     table._groupWired = true;
@@ -2350,22 +2478,6 @@ function _wirePitchGroupToggles() {
       if (!grp) return;
       togglePitchGroup(grp.dataset.family);
     });
-  });
-}
-
-// Compact / Full column toggle (governs all three per-pitch tables).
-function _wireCompactToggle() {
-  const btn = document.getElementById('pitchCompactToggle');
-  if (!btn || btn._wired) return;
-  btn._wired = true;
-  const sync = () => { btn.textContent = pitchTableCompact ? 'Full' : 'Compact'; };
-  sync();
-  btn.addEventListener('click', e => {
-    e.stopPropagation(); // don't trigger the panel-collapse handler on the <h3>
-    pitchTableCompact = !pitchTableCompact;
-    localStorage.setItem('pitchTableCompact', JSON.stringify(pitchTableCompact));
-    sync();
-    updateLiveStats();
   });
 }
 
@@ -2399,100 +2511,105 @@ function _wireCollapsiblePanels() {
   _applyCollapsedPanels();
 }
 
-function renderLiveTables(aggFiltered, aggAll) {
-  /* ---------- BY PITCH TYPE ---------- */
-  fillPitchTypeTable('tbl-pitchType', aggFiltered, PITCH_FULL_COLS);
+// Unified renderer for every Overview stat table. Each table draws from the current
+// pitcher's pitches, narrowed by its own side filter (All/LHH/RHH) and pitch subset,
+// then rendered compact or full per its own toggle.
+function renderStatTables() {
+  const base = pitchData.filter(p => !currentPitcherId || p.pitcherId === currentPitcherId);
 
-  /* ---------- USAGE DONUT ---------- */
-  renderUsageDonut(aggFiltered);
+  // Pitch Mix donut reflects the full (pitcher, all batters) set
+  renderUsageDonut(buildAggregators(base));
 
-  /* ---------- BY BATTER (respects current filter) ---------- */
-  const btBody = document.querySelector('#tbl-batter tbody');
-  btBody.innerHTML = '';
+  STAT_TABLE_DEFS.forEach(def => {
+    const panel = document.getElementById(def.panelId);
+    if (!panel) return;
 
-  const batterCols = ['earlySwingPct','lateSwingPct','chasePct','cswPct','strikePct','whiffPct','whiffHardPct','whiffBreakPct','whiffSoftPct','izWhiffPct'];
-  const batterMax  = computeColumnMax(aggFiltered.byBatter, batterCols);
+    if (!isSplitPanelVisible(def)) { panel.style.display = 'none'; return; }
+    panel.style.display = '';
 
-  // earlySwing% & lateSwing% use early/late denominators; chase% = OOZ-swings / swings
-  insertTotalRow(btBody, '- All -', aggFiltered.overall, batterCols);
+    const st   = getTableState(def.tableId);
+    let data   = base.filter(p => pitchMatchesSide(p, st.side));
+    if (def.subset) data = data.filter(p => pitchInSubset(p, def.subset));
+    const agg  = buildAggregators(data);
+    const cols = st.compact ? def.core : def.full;
 
-  // then each batter (skip any stray aggregate key)
-  aggFiltered.byBatter.forEach((stats, id) => {
-    if (id === 'ALL') return;  // avoid duplicate/bogus aggregate rows
-    const name = (batters.find(b => b.id === id)?.name) || `B${id}`;
-    const row = btBody.insertRow();
-    row.insertCell().textContent = name;
-    batterCols.forEach(metric => {
-      const pctVal   = stats[metric];
-      const rawCount = metricCount(stats, metric);
-      const cell     = row.insertCell();
-      cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
-      shadeCellByColumn(cell, pctVal, batterMax[metric]);
-    });
+    if (def.kind === 'pitch')       fillPitchTypeTable(def.tableId, agg, cols);
+    else if (def.kind === 'batter') fillBatterTable(def.tableId, agg, cols);
+    else if (def.kind === 'hand')   fillHandTable(def.tableId, agg, cols);
+
+    syncTableControls(def, st);
   });
-
-  /* ---------- LHH / RHH SPLITS ---------- */
-  const hsBody = document.querySelector('#tbl-handSplit tbody');
-  if (hsBody) {
-    hsBody.innerHTML = '';
-    const handCols = ['izPct','cswPct','strikePct','swingPct','chasePct','aheadPct','behindPct'];
-    const handMax  = computeColumnMax(aggFiltered.byHand, handCols);
-    const HAND_LABELS = { L: 'LHH', R: 'RHH', unknown: '?' };
-
-    // total row first (mirrors pitchType / batter tables)
-    const totalRow = hsBody.insertRow();
-    totalRow.classList.add('total-row');
-    const totalLabelCell = totalRow.insertCell();
-    totalLabelCell.textContent = '- All -';
-    totalLabelCell.classList.add('total-cell');
-    const totalPitchesCell = totalRow.insertCell();
-    totalPitchesCell.textContent = aggFiltered.overall.pitches;
-    totalPitchesCell.classList.add('total-cell');
-    handCols.forEach(metric => {
-      const pctVal   = Number(aggFiltered.overall[metric]) || 0;
-      const rawCount = metricCount(aggFiltered.overall, metric);
-      const td       = totalRow.insertCell();
-      td.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
-      td.classList.add('total-cell');
-    });
-
-    // render in a fixed order: L then R
-    ['L', 'R'].forEach(hKey => {
-      const stats = aggFiltered.byHand.get(hKey);
-      if (!stats) return;
-      const row = hsBody.insertRow();
-      row.insertCell().textContent = HAND_LABELS[hKey] ?? hKey;
-      row.insertCell().textContent = stats.pitches;
-      handCols.forEach(metric => {
-        const pctVal   = stats[metric];
-        const rawCount = metricCount(stats, metric);
-        const cell     = row.insertCell();
-        cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
-        shadeCellByColumn(cell, pctVal, handMax[metric]);
-      });
-    });
-
-    // show/hide the section based on whether there's any hand data
-    const section = document.getElementById('handSplitSection');
-    if (section) section.style.display = aggFiltered.byHand.size > 0 ? '' : 'none';
-  }
 }
 
-// Early-count (<2 strikes) and late-count (2 strikes) per-pitch-type tables.
-// Splits the data by pre-pitch strikes and reuses buildAggregators so all the
-// percentage machinery (and the '- All -' total row) comes for free.
-function renderCountSplitTables(dataArr) {
-  const earlyData = dataArr.filter(p => inferPreStrikes(p) < 2);
-  const lateData  = dataArr.filter(p => inferPreStrikes(p) === 2);
+/* === Per-table control bar (Compact/Full + side filter) === */
+// Build a control bar into each panel's <h3> once.
+function _initTableControls() {
+  STAT_TABLE_DEFS.forEach(def => {
+    const panel = document.getElementById(def.panelId);
+    if (!panel) return;
+    const h3 = panel.querySelector('h3');
+    if (!h3 || h3.querySelector('.table-controls')) return;
 
-  fillPitchTypeTable('tbl-pitchType-early', buildAggregators(earlyData), COUNT_FULL_COLS);
-  fillPitchTypeTable('tbl-pitchType-late',  buildAggregators(lateData),  COUNT_FULL_COLS);
+    const bar = document.createElement('span');
+    bar.className = 'table-controls';
+    bar.innerHTML =
+      `<button type="button" class="panel-action-btn" data-act="compact">Full</button>` +
+      `<span class="side-seg">` +
+        `<button type="button" data-side="all">All</button>` +
+        `<button type="button" data-side="L">LHH</button>` +
+        `<button type="button" data-side="R">RHH</button>` +
+      `</span>`;
+    h3.appendChild(bar);
 
-  // Hide a section when its bucket has no pitches yet
-  const earlySection = document.getElementById('countSplitEarlySection');
-  if (earlySection) earlySection.style.display = earlyData.length > 0 ? '' : 'none';
-  const lateSection = document.getElementById('countSplitLateSection');
-  if (lateSection) lateSection.style.display = lateData.length > 0 ? '' : 'none';
+    bar.addEventListener('click', e => {
+      e.stopPropagation(); // don't collapse the panel
+      const st = getTableState(def.tableId);
+      const compactBtn = e.target.closest('[data-act="compact"]');
+      const sideBtn    = e.target.closest('[data-side]');
+      if (compactBtn) { st.compact = !st.compact; }
+      else if (sideBtn) { st.side = sideBtn.dataset.side; }
+      else return;
+      saveTableState();
+      renderStatTables();
+    });
+  });
+}
+
+// Reflect a table's state in its control bar (button labels + active states).
+function syncTableControls(def, st) {
+  const panel = document.getElementById(def.panelId);
+  const bar = panel && panel.querySelector('.table-controls');
+  if (!bar) return;
+  const cBtn = bar.querySelector('[data-act="compact"]');
+  if (cBtn) cBtn.textContent = st.compact ? 'Full' : 'Compact';
+  bar.querySelectorAll('[data-side]').forEach(b => {
+    b.classList.toggle('active', b.dataset.side === st.side);
+  });
+}
+
+/* === Split visibility chips === */
+function _initSplitChips() {
+  const bar = document.getElementById('splitToggleBar');
+  if (!bar || bar._wired) return;
+  bar._wired = true;
+  bar.innerHTML = SPLIT_CHIPS.map(c =>
+    `<button type="button" class="split-chip" data-split="${c.key}">${c.label}</button>`
+  ).join('');
+  bar.addEventListener('click', e => {
+    const chip = e.target.closest('.split-chip');
+    if (!chip) return;
+    const key = chip.dataset.split;
+    if (visibleSplits.has(key)) visibleSplits.delete(key); else visibleSplits.add(key);
+    saveVisibleSplits();
+    _syncSplitChips();
+    renderStatTables();
+  });
+  _syncSplitChips();
+}
+function _syncSplitChips() {
+  document.querySelectorAll('#splitToggleBar .split-chip').forEach(chip => {
+    chip.classList.toggle('active', visibleSplits.has(chip.dataset.split));
+  });
 }
 
 /* ---------- DRAWER TAB SWITCHING ---------- */
@@ -5284,11 +5401,12 @@ function accumulate(stats, p) {
   if (inIZ && isWhiff) stats.izWhiff++;
   if (nonCompetitiveLocations.includes(p.location)) stats.nonComp++;
 
-  // Ahead/Behind based on pre-pitch count
+  // Ahead/Behind by standard MLB count buckets (ahead = pitcher's count, behind = hitter's)
   if (p.prePitchCount && typeof p.prePitchCount.balls === 'number' && typeof p.prePitchCount.strikes === 'number') {
-    if (p.prePitchCount.balls < p.prePitchCount.strikes)      stats.ahead++;
-    else if (p.prePitchCount.balls > p.prePitchCount.strikes) stats.behind++;
-    // even counts (0-0, 1-1, 2-2) count as neither
+    const lev = countLeverage(p.prePitchCount.balls, p.prePitchCount.strikes);
+    if (lev === 'pitcher')     stats.ahead++;
+    else if (lev === 'hitter') stats.behind++;
+    // even counts (0-0, 1-1, 3-2) count as neither
   }
 
   if (inOOZ) {
@@ -5730,17 +5848,19 @@ document.addEventListener('DOMContentLoaded', function() {
   if (autoToggleEl) autoToggleEl.checked = autoEndInningOn;
   // Re-populate the pitch-type filter buttons from restored pitch data
   pitchData.forEach(p => p.pitchType && addPitchTypeToFilter(p.pitchType));
+  // Stats-drawer layout: build per-table controls + split chips BEFORE first render
+  // so their active states are in sync, then wire group/panel collapse behavior.
+  _initSplitChips();
+  _initTableControls();
+  _wirePitchGroupToggles();
+  _wireCollapsiblePanels();
+
   // NEW: render logs on page load based on current data (initially empty)
   renderPitchLog();
   renderAtBatLog();
   updateLiveStats();
   updateUI();
   applyGridPOV();
-
-  // Stats-drawer layout: compact toggle, group toggles, collapsible panels
-  _wireCompactToggle();
-  _wirePitchGroupToggles();
-  _wireCollapsiblePanels();
 
   // AB hand toggle — delegated so it works after every renderPitchLog rebuild
   document.getElementById('pitchLog').addEventListener('click', e => {
