@@ -1964,10 +1964,18 @@ button:active {
 }
 .side-panel.collapsed > h3 .panel-chevron,
 #usageDonutWrapper.collapsed > h3 .panel-chevron { transform: rotate(-90deg); }
-.panel-body { overflow: hidden; }
+/* overflow-y hidden lets the collapse animation clip height; overflow-x auto enables
+   horizontal scroll on wide tables. */
+.panel-body { overflow-x: auto; overflow-y: hidden; }
 
-.panel-action-btn {
+/* Per-table control bar (sits at the right of each panel header) */
+.table-controls {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.panel-action-btn {
   min-height: unset;
   padding: 2px 10px;
   font-size: 11px;
@@ -1982,6 +1990,48 @@ button:active {
   box-shadow: none;
 }
 .panel-action-btn:hover { background: rgba(255,255,255,0.2); }
+
+/* All / LHH / RHH segmented control */
+.side-seg { display: inline-flex; border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.25); }
+.side-seg button {
+  min-height: unset;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  border: none;
+  border-left: 1px solid rgba(255,255,255,0.18);
+  cursor: pointer;
+  box-shadow: none;
+}
+.side-seg button:first-child { border-left: none; }
+.side-seg button:hover { background: rgba(255,255,255,0.16); }
+.side-seg button.active { background: var(--accent-orange); color: #fff; }
+
+/* Split-table toggle chips */
+.split-toggle-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 0 var(--space-sm);
+}
+.split-chip {
+  min-height: unset;
+  padding: 3px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.22);
+  color: var(--text-on-dark);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: none;
+}
+.split-chip:hover { background: rgba(255,255,255,0.16); }
+.split-chip.active { background: var(--accent-orange); border-color: var(--accent-orange); color: #fff; }
 
 @media (prefers-reduced-motion: reduce) {
   .panel-chevron { transition: none; }
