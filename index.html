@@ -86,6 +86,9 @@
 
         <!-- TAB: OVERVIEW -->
         <div id="drawerTabOverview" class="drawer-tab-content">
+          <!-- SPLIT TABLE TOGGLES (chips populated by JS) -->
+          <div id="splitToggleBar" class="split-toggle-bar"></div>
+
           <!-- USAGE DONUT: pitch mix breakdown -->
           <div id="usageDonutWrapper">
             <h3><span class="panel-chevron">▾</span> Pitch Mix</h3>
@@ -95,11 +98,9 @@
             </div>
           </div>
 
-          <!-- LEFT PANEL: per-pitch summary -->
+          <!-- LEFT PANEL: per-pitch summary (always visible) -->
           <div id="sideLeft" class="side-panel">
-            <h3><span class="panel-chevron">▾</span> By Pitch Type
-              <button id="pitchCompactToggle" type="button" class="panel-action-btn" title="Toggle core vs all columns">Full</button>
-            </h3>
+            <h3><span class="panel-chevron">▾</span> By Pitch Type</h3>
             <div class="panel-body">
               <table class="liveTbl" id="tbl-pitchType">
                 <thead></thead>
@@ -108,38 +109,30 @@
             </div>
           </div>
 
-          <!-- RIGHT PANEL: per-batter summary -->
+          <!-- RIGHT PANEL: per-batter summary (always visible) -->
           <div id="sideRight" class="side-panel">
             <h3><span class="panel-chevron">▾</span> By Batter</h3>
             <div class="panel-body">
               <table class="liveTbl" id="tbl-batter">
-                <thead><tr>
-                  <th>Batter</th><th>Early Swing%</th><th>Late Swing%</th>
-                  <th>Chase%</th><th>CSW%</th><th>Strike%</th>
-                  <th>Whiff%</th><th>Whiff Hard%</th><th>Whiff BB%</th><th>Whiff Soft%</th><th>IZ Whiff%</th>
-                </tr></thead>
+                <thead></thead>
                 <tbody></tbody>
               </table>
             </div>
           </div>
 
-          <!-- FULL-WIDTH: LHH / RHH splits -->
-          <div id="handSplitSection" class="side-panel side-panel--full">
+          <!-- FULL-WIDTH: LHH / RHH splits (toggleable) -->
+          <div id="handSplitSection" class="side-panel side-panel--full" style="display:none;">
             <h3><span class="panel-chevron">▾</span> LHH / RHH Splits</h3>
             <div class="panel-body">
               <table class="liveTbl" id="tbl-handSplit">
-                <thead><tr>
-                  <th>Hand</th><th>Pitches</th><th>IZ%</th><th>CSW%</th>
-                  <th>Strike%</th><th>Swing%</th><th>Chase%</th>
-                  <th>Ahead%</th><th>Behind%</th>
-                </tr></thead>
+                <thead></thead>
                 <tbody></tbody>
               </table>
             </div>
           </div>
 
-          <!-- FULL-WIDTH: EARLY-COUNT (<2 strikes) per pitch type -->
-          <div id="countSplitEarlySection" class="side-panel side-panel--full">
+          <!-- FULL-WIDTH: EARLY-COUNT (<2 strikes) per pitch type (toggleable) -->
+          <div id="countSplitEarlySection" class="side-panel side-panel--full" style="display:none;">
             <h3><span class="panel-chevron">▾</span> Early Count (&lt;2 strikes)</h3>
             <div class="panel-body">
               <table class="liveTbl" id="tbl-pitchType-early">
@@ -149,11 +142,33 @@
             </div>
           </div>
 
-          <!-- FULL-WIDTH: LATE-COUNT (2 strikes) per pitch type -->
-          <div id="countSplitLateSection" class="side-panel side-panel--full">
+          <!-- FULL-WIDTH: LATE-COUNT (2 strikes) per pitch type (toggleable) -->
+          <div id="countSplitLateSection" class="side-panel side-panel--full" style="display:none;">
             <h3><span class="panel-chevron">▾</span> Late Count (2 strikes)</h3>
             <div class="panel-body">
               <table class="liveTbl" id="tbl-pitchType-late">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- FULL-WIDTH: PITCHER'S COUNT per pitch type (toggleable) -->
+          <div id="countPitcherSection" class="side-panel side-panel--full" style="display:none;">
+            <h3><span class="panel-chevron">▾</span> Pitcher's Count</h3>
+            <div class="panel-body">
+              <table class="liveTbl" id="tbl-pitchType-pcount">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- FULL-WIDTH: HITTER'S COUNT per pitch type (toggleable) -->
+          <div id="countHitterSection" class="side-panel side-panel--full" style="display:none;">
+            <h3><span class="panel-chevron">▾</span> Hitter's Count</h3>
+            <div class="panel-body">
+              <table class="liveTbl" id="tbl-pitchType-hcount">
                 <thead></thead>
                 <tbody></tbody>
               </table>
