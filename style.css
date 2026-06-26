@@ -1316,18 +1316,13 @@ button:active {
 }
 
 .insight-item.warning {
-  border-left-color: var(--accent-orange);
-  background: rgba(250, 70, 22, 0.08);
+  border-left-color: #facc15;
+  background: rgba(250, 204, 21, 0.08);
 }
 
 .insight-item.critical {
   border-left-color: #ef4444;
   background: rgba(239, 68, 68, 0.12);
-}
-
-.insight-item.watch {
-  border-left-color: #facc15;
-  background: rgba(250, 204, 21, 0.08);
 }
 
 .insight-item.positive {
@@ -2745,6 +2740,27 @@ button:active {
   padding-top: 20px; /* room for tick labels above first bar */
   border-top: 1px solid var(--panel-border, #ddd);
   margin-top: var(--space-sm);
+}
+
+/* Lineup Threat bar chart (sits below the inning chart in the dark drawer) */
+.lineup-strength-chart {
+  padding: var(--space-sm);
+  border-top: 1px solid var(--panel-border, rgba(255,255,255,0.12));
+  margin-top: var(--space-sm);
+}
+.lineup-strength-chart:empty { display: none; }
+.lineup-chart-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text-on-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+.lineup-chart-caption {
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+  margin-top: 2px;
 }
 .inn-row {
   display: flex;
