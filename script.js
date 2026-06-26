@@ -1502,13 +1502,45 @@ function pitchPassesHeatmapFilters(p, fs) {
   return true;
 }
 
+// Heatmap zone fill — shared light-grey base for zero/empty/low-sample cells so
+// "nothing here" looks identical across every mode; ramps to red at the max.
+// (Separate from getHeatMapColor, which the tables use, so tables are unaffected.)
+const HEAT_ZERO = 'rgb(235,235,235)';
+function heatZoneColor(value, max) {
+  if (!max) return HEAT_ZERO;
+  const ratio = Math.max(0, Math.min(1, value / max));
+  const r = Math.round(235 + 20  * ratio);
+  const g = Math.round(235 - 135 * ratio);
+  const b = Math.round(235 - 135 * ratio);
+  return `rgb(${r},${g},${b})`;
+}
+
+// Heatmap view mode: 'volume' (counts, default) or a per-zone rate.
+let heatmapMode = 'volume';
+const HEATMAP_RATE_MODES = ['strike', 'swing', 'whiff', 'chase', 'bipNoOut'];
+const HEATMAP_MIN_SAMPLE = 2; // rate modes hide zones with fewer than this in the denominator
+const HEATMAP_MODE_CAPTIONS = {
+  volume:   'Pitch volume — red = more pitches',
+  strike:   'Strike% by zone — red = more strikes',
+  swing:    'Swing% by zone — red = swung at more',
+  whiff:    'Whiff% by zone — red = more swings missed (good)',
+  chase:    'Chase% by zone (out-of-zone only) — red = expands more (good)',
+  bipNoOut: 'BIP no-out% by zone — red = getting hit (bad)'
+};
+
 function updateHeatMap () {
+  const rateMode = heatmapMode !== 'volume';
+  // Rate modes need the full population for their denominators, so ignore the
+  // Result/outcome filter while a rate mode is active.
   const fs = getHeatmapFilterState();
+  if (rateMode) { fs.fResultAll = true; fs.activeResult = ['all']; }
   // When the user has hand-picked pitches in the log's Select mode, the heatmap
   // shows ONLY those pitches (still scoped to the current pitcher).
   const useSelection = heatmapSelectMode && heatmapSelectedPitchIds.size > 0;
 
-  const locationCounts = Array(50).fill(0);
+  // Per-zone accumulator (index by location 1-49)
+  const z = [];
+  for (let i = 0; i < 50; i++) z[i] = { pitches: 0, strikes: 0, swings: 0, whiffs: 0, bip: 0, bipNonOut: 0 };
 
   pitchData.forEach(p => {
     if (useSelection) {
@@ -1517,18 +1549,66 @@ function updateHeatMap () {
     } else if (!pitchPassesHeatmapFilters(p, fs)) {
       return;
     }
-    locationCounts[p.location]++;
+    const s = z[p.location];
+    if (!s) return;
+    s.pitches++;
+    const swung   = ['whiff','foul'].includes(p.outcome) || (p.result || '').startsWith('In Play');
+    const isStrike= ['whiff','calledStrike','foul','strike','inPlay'].includes(p.outcome);
+    const isWhiff = p.outcome === 'whiff';
+    if (isStrike) s.strikes++;
+    if (swung)    s.swings++;
+    if (isWhiff)  s.whiffs++;
+    if ((p.result || '').startsWith('In Play')) {
+      s.bip++;
+      if (p.inPlayOut === false) s.bipNonOut++;
+    }
   });
 
-  const maxCount = Math.max(...locationCounts);
+  // Compute each zone's display value for the active mode.
+  const zoneVal = (loc) => {
+    const s = z[loc];
+    if (heatmapMode === 'volume') return { text: String(s.pitches), color: null, count: s.pitches };
+    const inZone = strikeLocations.includes(loc);
+    let num = 0, den = 0, applicable = true;
+    switch (heatmapMode) {
+      case 'strike':   num = s.strikes;   den = s.pitches; break;
+      case 'swing':    num = s.swings;    den = s.pitches; break;
+      case 'whiff':    num = s.whiffs;    den = s.swings;  break;
+      case 'chase':    num = s.swings;    den = s.pitches; applicable = !inZone; break; // OOZ only
+      case 'bipNoOut': num = s.bipNonOut; den = s.bip;     break;
+    }
+    if (!applicable || den < HEATMAP_MIN_SAMPLE) return { muted: true };
+    return { rate: (num / den) * 100, den };
+  };
+
+  // Volume uses relative-max shading; rate modes use a fixed 0-100 scale.
+  let maxCount = 0;
+  if (heatmapMode === 'volume') for (let loc = 1; loc <= 49; loc++) maxCount = Math.max(maxCount, z[loc].pitches);
 
   for (let loc = 1; loc <= 49; loc++) {
     const btn = document.getElementById('heatmap-' + loc);
     if (!btn) continue;
-    const cnt = locationCounts[loc];
-    btn.style.backgroundColor = getHeatMapColor(cnt, maxCount);
-    btn.innerText = cnt;
+    btn.classList.remove('heatmapBtn--muted');
+    const v = zoneVal(loc);
+    if (heatmapMode === 'volume') {
+      btn.style.backgroundColor = heatZoneColor(v.count, maxCount);
+      btn.innerText = v.count;
+    } else if (v.muted) {
+      btn.classList.add('heatmapBtn--muted');
+      btn.style.backgroundColor = HEAT_ZERO; // same grey as every other zero cell
+      btn.innerText = '';
+    } else {
+      btn.style.backgroundColor = heatZoneColor(v.rate, 100);
+      btn.innerText = Math.round(v.rate);
+    }
   }
+
+  // Mode caption
+  const cap = document.getElementById('heatmapModeCaption');
+  if (cap) cap.textContent = HEATMAP_MODE_CAPTIONS[heatmapMode] || '';
+  // Result filter only applies in Volume mode
+  const resultRow = document.getElementById('resultFilterRow');
+  if (resultRow) resultRow.style.display = rateMode ? 'none' : '';
 }
 
 function saveCurrentState() {
@@ -1961,27 +2041,33 @@ function makeCounters () {
 
 const DONUT_C = 2 * Math.PI * 24; // 150.796 — circumference for r=24
 
-// MLB benchmarks for donut outer-ring color rating.
+// MLB benchmarks for "vs MLB average" color rating (donut rings + table cell accents).
 // `inverse:true` flips the color sense (higher = bad, e.g., NonComp%).
+// Only metrics with a well-known MLB-wide average get a benchmark; everything else
+// has no "should be X" target and is intentionally left out.
 const MLB_DONUT_BENCHMARKS = {
-  strikePct:  { mean: 62,   sd: 6, inverse: false },
-  cswPct:     { mean: 25.3, sd: 4, inverse: false },
-  izPct:      { mean: 47.3, sd: 5, inverse: false },
-  swingPct:   { mean: 47.6, sd: 5, inverse: false },
-  bipOutPct:  { mean: 70,   sd: 6, inverse: false },
-  nonCompPct: { mean: 18,   sd: 4, inverse: true  }
+  strikePct:    { mean: 62,   sd: 6, inverse: false },
+  cswPct:       { mean: 25.3, sd: 4, inverse: false },
+  izPct:        { mean: 47.3, sd: 5, inverse: false },
+  swingPct:     { mean: 47.6, sd: 5, inverse: false },
+  bipOutPct:    { mean: 70,   sd: 6, inverse: false },
+  nonCompPct:   { mean: 18,   sd: 4, inverse: true  },
+  // table-only additions (same scale used for the per-pitch/per-batter table accents)
+  inPlayOutPct: { mean: 70,   sd: 6, inverse: false }, // alias of bipOutPct under the table's column key
+  chasePct:     { mean: 29,   sd: 5, inverse: false }, // MLB O-Swing% avg — higher chase is good for the pitcher
+  whiffPct:     { mean: 25,   sd: 5, inverse: false }  // swinging-strike rate per swing
 };
 
 function donutBenchColor(value, metricKey) {
   const b = MLB_DONUT_BENCHMARKS[metricKey];
   if (!b) return null;
   const z = (value - b.mean) / b.sd;
-  // |z| <= 1 → white (within ±1 SD)
+  // |z| <= 1 → white (within ±1 SD). Otherwise RED = better than MLB avg, BLUE = worse
+  // (matches the table coloring; `inverse` metrics flip so good still reads red).
   if (Math.abs(z) <= 1) return '#ffffff';
   const above = z > 1;
-  // For inverse metrics (lower = better), flip the meaning
-  if (b.inverse) return above ? '#ef4444' : '#22c55e';
-  return above ? '#22c55e' : '#ef4444';
+  const good = b.inverse ? !above : above;
+  return good ? '#d62828' : '#2a6fce';
 }
 
 // Inject (or update) the MLB-benchmark outer ring on a donut card.
@@ -2130,7 +2216,14 @@ function updateLiveStats () {
   updateDonut('donut-csw',    'donut-val-csw',    pctValue(totals.all.csw,    denoms.all), 'cswPct');
   updateDonut('donut-iz',     'donut-val-iz',     pctValue(totals.all.iz,     denoms.all), 'izPct');
   updateDonut('donut-swing',  'donut-val-swing',  pctValue(totals.all.swing,  denoms.all), 'swingPct');
-  updateBattedBallDonut(totals.all.fly, totals.all.gb, totals.all.ld, totals.all.pu, totals.all.ipo);
+  // Ahead% — share of pitches thrown in a pitcher's count (standard MLB buckets).
+  const aheadCount = allData.filter(p =>
+    p.prePitchCount && typeof p.prePitchCount.balls === 'number' &&
+    countLeverage(p.prePitchCount.balls, p.prePitchCount.strikes) === 'pitcher'
+  ).length;
+  const aheadPctVal = pctValue(aheadCount, denoms.all);
+  updateDonut('donut-ahead', 'donut-val-ahead', aheadPctVal, 'aheadPct'); // no benchmark ring (aheadPct not in MLB_DONUT_BENCHMARKS)
+  setLivePct('stat-ahead', 'Ahead%', aheadCount, denoms.all);
 
   /* ----- BIP Out% donut ----- */
   const bipTotal = totals.all.inPlayOuts + totals.all.inPlayHits;
@@ -2197,7 +2290,14 @@ function insertTotalRow(tbody, label, stats, columns) {
     const rawCount = metricCount(stats, metric);
     const td = tr.insertCell();
     td.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
-    td.classList.add('total-cell');   // <- no heatmap here
+    td.classList.add('total-cell');
+    // Benchmarked metrics get the blue/white/red "vs MLB" fill on the total row too;
+    // non-benchmarked metrics stay neutral (no relative-max heat on the reference row).
+    const bench = benchScaleColor(pctVal, metric);
+    if (bench) {
+      td.style.backgroundColor = `rgb(${bench[0]},${bench[1]},${bench[2]})`;
+      td.style.color = textColorFor(bench);
+    }
   });
 }
 
@@ -2211,6 +2311,36 @@ const PITCH_COL_DEFS = {
   inPlayOutPct:'BIP Out%', flyPct:'Fly%', gbPct:'GB%', ldPct:'LD%', puPct:'PU%',
   earlySwingPct:'Early Swing%', lateSwingPct:'Late Swing%', aheadPct:'Ahead%', behindPct:'Behind%'
 };
+// Plain-language definition for every column, shown in each table's "ⓘ" legend.
+// Always states numerator AND denominator explicitly — that's the ambiguity that
+// actually confuses a coach reading the table, not the abbreviation itself.
+const METRIC_DEFINITIONS = {
+  usagePct:      'Pitches of this type ÷ all pitches.',
+  izPct:         'In-zone pitches ÷ all pitches.',
+  oozPct:        'Out-of-zone pitches (shadow + chase) ÷ all pitches.',
+  nonCompPct:    'Non-competitive (well outside the zone) pitches ÷ all pitches.',
+  cswPct:        'Called strikes + whiffs ÷ all pitches.',
+  strikePct:     'All strikes (called, whiff, foul, in-play) ÷ all pitches.',
+  swingPct:      'Swings (whiff + foul + in-play) ÷ all pitches.',
+  chasePct:      'Swings at pitches outside the zone ÷ all pitches outside the zone (MLB O-Swing%).',
+  whiffPct:      'Whiffs ÷ swings.',
+  izWhiffPct:    'Whiffs on in-zone pitches ÷ swings at in-zone pitches.',
+  whiffHardPct:  'Whiffs on fastballs/sinkers/cutters ÷ swings against them.',
+  whiffBreakPct: 'Whiffs on breaking balls ÷ swings against them.',
+  whiffSoftPct:  'Whiffs on changeups/splitters ÷ swings against them.',
+  inPlayOutPct:  'Outs on balls in play ÷ all balls in play.',
+  flyPct:        'Fly balls ÷ all balls in play.',
+  gbPct:         'Ground balls ÷ all balls in play.',
+  ldPct:         'Line drives ÷ all balls in play.',
+  puPct:         'Popups ÷ all balls in play.',
+  earlySwingPct: 'Swings before 2 strikes ÷ all pitches before 2 strikes.',
+  lateSwingPct:  'Swings on 2-strike pitches ÷ all 2-strike pitches.',
+  aheadPct:      "Pitches thrown in a pitcher's count (0-1,0-2,1-2,2-2) ÷ all pitches.",
+  behindPct:     "Pitches thrown in a hitter's count (1-0,2-0,3-0,2-1,3-1) ÷ all pitches.",
+  aheadUsagePct: "Of all pitcher's-count pitches thrown, the share that were this pitch type.",
+  behindUsagePct:"Of all hitter's-count pitches thrown, the share that were this pitch type."
+};
+
 // Compact view: the stats the coach reads first.
 const CORE_COLS       = ['usagePct','izPct','strikePct','cswPct','whiffPct','inPlayOutPct'];
 const PITCH_FULL_COLS = ['usagePct','izPct','oozPct','nonCompPct','cswPct','strikePct','swingPct','chasePct','whiffPct','izWhiffPct','aheadUsagePct','behindUsagePct','inPlayOutPct','flyPct','gbPct','ldPct','puPct'];
@@ -2304,7 +2434,7 @@ function fillPitchTypeTable(tableId, agg, cols) {
       const rawCount = metricCount(stats, metric);
       const cell     = row.insertCell();
       cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
-      if (max) shadeCellByColumn(cell, pctVal, max[metric]);
+      if (max) shadeCellByColumn(cell, pctVal, max[metric], metric);
     });
   };
 
@@ -2367,7 +2497,7 @@ function fillBatterTable(tableId, agg, cols) {
       const rawCount = metricCount(stats, metric);
       const cell     = row.insertCell();
       cell.textContent = `${pctVal.toFixed(1)}% (${rawCount})`;
-      shadeCellByColumn(cell, pctVal, colMax[metric]);
+      shadeCellByColumn(cell, pctVal, colMax[metric], metric);
     });
   });
 }
@@ -2393,6 +2523,11 @@ function fillHandTable(tableId, agg, cols) {
     const td = totalRow.insertCell();
     td.textContent = `${pctVal.toFixed(1)}% (${metricCount(agg.overall, metric)})`;
     td.classList.add('total-cell');
+    const bench = benchScaleColor(pctVal, metric);
+    if (bench) {
+      td.style.backgroundColor = `rgb(${bench[0]},${bench[1]},${bench[2]})`;
+      td.style.color = textColorFor(bench);
+    }
   });
 
   ['L', 'R'].forEach(hKey => {
@@ -2405,7 +2540,7 @@ function fillHandTable(tableId, agg, cols) {
       const pctVal   = Number(stats[metric]) || 0;
       const cell     = row.insertCell();
       cell.textContent = `${pctVal.toFixed(1)}% (${metricCount(stats, metric)})`;
-      shadeCellByColumn(cell, pctVal, colMax[metric]);
+      shadeCellByColumn(cell, pctVal, colMax[metric], metric);
     });
   });
 }
@@ -2541,18 +2676,24 @@ function renderStatTables() {
   });
 }
 
-/* === Per-table control bar (Compact/Full + side filter) === */
-// Build a control bar into each panel's <h3> once.
+/* === Per-table control bar (Compact/Full + side filter + ⓘ legend) === */
+// Which tables currently have their column-definitions legend open (transient — not persisted).
+const _openLegends = new Set();
+
+// Build a control bar into each panel's <h3>, and a hidden legend block above its
+// table, once per panel.
 function _initTableControls() {
   STAT_TABLE_DEFS.forEach(def => {
     const panel = document.getElementById(def.panelId);
     if (!panel) return;
     const h3 = panel.querySelector('h3');
+    const body = panel.querySelector('.panel-body');
     if (!h3 || h3.querySelector('.table-controls')) return;
 
     const bar = document.createElement('span');
     bar.className = 'table-controls';
     bar.innerHTML =
+      `<button type="button" class="panel-action-btn legend-btn" data-act="legend" title="What do these columns mean?">ⓘ</button>` +
       `<button type="button" class="panel-action-btn" data-act="compact">Full</button>` +
       `<span class="side-seg">` +
         `<button type="button" data-side="all">All</button>` +
@@ -2561,12 +2702,26 @@ function _initTableControls() {
       `</span>`;
     h3.appendChild(bar);
 
+    if (body) {
+      const legend = document.createElement('div');
+      legend.className = 'metric-legend';
+      legend.style.display = 'none';
+      body.insertBefore(legend, body.firstChild);
+    }
+
     bar.addEventListener('click', e => {
       e.stopPropagation(); // don't collapse the panel
       const st = getTableState(def.tableId);
+      const legendBtn  = e.target.closest('[data-act="legend"]');
       const compactBtn = e.target.closest('[data-act="compact"]');
       const sideBtn    = e.target.closest('[data-side]');
-      if (compactBtn) { st.compact = !st.compact; }
+      if (legendBtn) {
+        if (_openLegends.has(def.tableId)) _openLegends.delete(def.tableId);
+        else _openLegends.add(def.tableId);
+        legendBtn.classList.toggle('active', _openLegends.has(def.tableId));
+        renderMetricLegend(panel, def);
+        return; // legend visibility doesn't need a full table re-render
+      } else if (compactBtn) { st.compact = !st.compact; }
       else if (sideBtn) { st.side = sideBtn.dataset.side; }
       else return;
       saveTableState();
@@ -2575,7 +2730,8 @@ function _initTableControls() {
   });
 }
 
-// Reflect a table's state in its control bar (button labels + active states).
+// Reflect a table's state in its control bar (button labels + active states) and
+// keep an open legend's content in sync if compact/full changed underneath it.
 function syncTableControls(def, st) {
   const panel = document.getElementById(def.panelId);
   const bar = panel && panel.querySelector('.table-controls');
@@ -2585,6 +2741,23 @@ function syncTableControls(def, st) {
   bar.querySelectorAll('[data-side]').forEach(b => {
     b.classList.toggle('active', b.dataset.side === st.side);
   });
+  bar.querySelector('.legend-btn')?.classList.toggle('active', _openLegends.has(def.tableId));
+  if (_openLegends.has(def.tableId)) renderMetricLegend(panel, def);
+}
+
+// Build/show (or hide) a table's column-definitions legend from its CURRENTLY
+// displayed columns, so it trims itself when compact mode hides columns.
+function renderMetricLegend(panel, def) {
+  const legend = panel.querySelector('.metric-legend');
+  if (!legend) return;
+  const open = _openLegends.has(def.tableId);
+  if (!open) { legend.style.display = 'none'; return; }
+  const st = getTableState(def.tableId);
+  const cols = st.compact ? def.core : def.full;
+  legend.innerHTML = '<ul>' + cols.map(c =>
+    `<li><strong>${PITCH_COL_DEFS[c] || c}</strong> — ${METRIC_DEFINITIONS[c] || 'No definition available.'}</li>`
+  ).join('') + '</ul>';
+  legend.style.display = '';
 }
 
 /* === Split visibility chips === */
@@ -5257,11 +5430,43 @@ function shadeCell(el, pct) {
   el.style.color = pct > 60 ? '#fff' : '#000';            // readability
 }
 
-function shadeCellByColumn(el, value, colMax) {
-  const max = colMax || 0;
-  el.style.backgroundColor = getHeatMapColor(value, max);
-  const ratio = max ? (value / max) : 0;
-  el.style.color = ratio > 0.6 ? '#fff' : '#000';
+// Diverging blue→white→red fill for a benchmarked metric: BLUE = worse than the
+// MLB average, WHITE = around average, RED = better than average. `inverse` metrics
+// (lower is better, e.g. NonComp%) flip so that good still reads red. Saturation
+// maxes out at ±2 SD from the mean. Returns an [r,g,b] array, or null if the metric
+// has no benchmark.
+function benchScaleColor(value, metricKey) {
+  const b = MLB_DONUT_BENCHMARKS[metricKey];
+  if (!b) return null;
+  const z = (value - b.mean) / b.sd;
+  let g = b.inverse ? -z : z;                 // positive g = good
+  g = Math.max(-2, Math.min(2, g));
+  const WHITE = [255, 255, 255], RED = [214, 40, 40], BLUE = [42, 111, 206];
+  const lerp = (a, c, t) => Math.round(a + (c - a) * t);
+  const mix = (to, t) => [lerp(WHITE[0], to[0], t), lerp(WHITE[1], to[1], t), lerp(WHITE[2], to[2], t)];
+  return g >= 0 ? mix(RED, g / 2) : mix(BLUE, -g / 2);
+}
+
+// Black or white text depending on how dark the background is (perceived luminance).
+function textColorFor(rgb) {
+  const lum = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+  return lum < 150 ? '#fff' : '#000';
+}
+
+// Shade a table cell.
+//  - Benchmarked metric → blue/white/red "vs MLB average" diverging scale.
+//  - Everything else     → the existing white→red relative-to-column-max gradient.
+function shadeCellByColumn(el, value, colMax, metricKey) {
+  const bench = metricKey ? benchScaleColor(value, metricKey) : null;
+  if (bench) {
+    el.style.backgroundColor = `rgb(${bench[0]},${bench[1]},${bench[2]})`;
+    el.style.color = textColorFor(bench);
+  } else {
+    const max = colMax || 0;
+    el.style.backgroundColor = getHeatMapColor(value, max);
+    const ratio = max ? (value / max) : 0;
+    el.style.color = ratio > 0.6 ? '#fff' : '#000';
+  }
 }
 
 function computeColumnMax(map, columns) {
@@ -5333,6 +5538,7 @@ function initStats () {
     iz:0, ooz:0,            // all O-O-Z pitches
     oozSwing:0,             // swings at O-O-Z pitches
     nonComp:0,              // non-competitive locations only (not shadow)
+    izSwing:0,              // swings at in-zone pitches (denominator for izWhiffPct)
     izWhiff:0,              // whiffs on in-zone pitches
     ahead:0, behind:0,      // pitch count state pre-pitch
     fly:0, gb:0, ld:0, pu:0,
@@ -5398,6 +5604,7 @@ function accumulate(stats, p) {
   if (isStrike) stats.strike++;
   if (isCSW)    stats.csw++;
   if (inIZ)     stats.iz++;
+  if (inIZ && swung)   stats.izSwing++;
   if (inIZ && isWhiff) stats.izWhiff++;
   if (nonCompetitiveLocations.includes(p.location)) stats.nonComp++;
 
@@ -5487,10 +5694,11 @@ function buildAggregators (dataArr) {
     cswPct        : pct(s.csw       , s.pitches),
     strikePct     : pct(s.strike    , s.pitches),
     swingPct      : pct(s.swing     , s.pitches),
-    flyPct        : pct(s.fly       , s.pitches),
-    gbPct         : pct(s.gb        , s.pitches),
-    ldPct         : pct(s.ld        , s.pitches),
-    puPct         : pct(s.pu        , s.pitches),
+    // Batted-ball mix is % of balls in play (matches BIP Out%'s denominator), not % of all pitches.
+    flyPct        : pct(s.fly       , s.inPlayOuts + s.inPlayHits),
+    gbPct         : pct(s.gb        , s.inPlayOuts + s.inPlayHits),
+    ldPct         : pct(s.ld        , s.inPlayOuts + s.inPlayHits),
+    puPct         : pct(s.pu        , s.inPlayOuts + s.inPlayHits),
     inPlayOutPct  : pct(s.inPlayOuts, s.inPlayOuts + s.inPlayHits),
     earlySwingPct : pct(s.earlySwing, s.earlyPitches),
     lateSwingPct  : pct(s.lateSwing , s.latePitches),
@@ -5500,7 +5708,7 @@ function buildAggregators (dataArr) {
     whiffBreakPct : pct(s.breakWhiff, s.breakSwing),
     whiffSoftPct  : pct(s.softWhiff , s.softSwing),
     nonCompPct    : pct(s.nonComp   , s.pitches),
-    izWhiffPct    : pct(s.izWhiff   , s.iz),
+    izWhiffPct    : pct(s.izWhiff   , s.izSwing),   // whiffs / IZ SWINGS (consistent with whiffPct)
     aheadPct      : pct(s.ahead     , s.pitches),
     behindPct     : pct(s.behind    , s.pitches)
   });
@@ -5570,6 +5778,16 @@ document.getElementById('heatMapBtn').addEventListener('click', function() {
 
 document.querySelectorAll('#resultFilterBtns .filterToggleBtn').forEach(btn => {
   btn.addEventListener('click', () => handleFilterToggle(btn, 'resultFilterBtns'));
+});
+
+// Heatmap view-mode toggle (single-select): Volume / Strike% / Swing% / Whiff% / Chase% / BIP↛Out
+document.querySelectorAll('#heatmapModeBtns .filterToggleBtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#heatmapModeBtns .filterToggleBtn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    heatmapMode = btn.dataset.mode;
+    updateHeatMap();
+  });
 });
 
 /**
