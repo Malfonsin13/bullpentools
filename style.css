@@ -924,6 +924,22 @@ button:active {
   margin: auto;
 }
 
+/* Outline around the 3×3 strike zone (center of the 7×7 grid).
+   Absolutely positioned so it overlays without taking a grid cell; percentages
+   track the center 3 of 7 columns/rows and hold across cell-size breakpoints. */
+#heatmap { position: relative; }
+.strike-zone-box {
+  position: absolute;
+  left: 28.8%;
+  top: 28.8%;
+  width: 42.4%;
+  height: 42.4%;
+  border: 2px solid rgba(20, 30, 50, 0.85);
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 2;
+}
+
 .locationBtn, .heatmapBtn,
 .intendedZoneBtn, .actualZoneBtn {
   width: 38px;
@@ -1000,15 +1016,31 @@ button:active {
   color: white !important;
 }
 
-/* Heatmap — transparent base for dynamic JS coloring */
+/* Heatmap — transparent base for dynamic JS coloring. Cells sit on a light
+   grey→red scale, so text is always dark for contrast (no white text — it would
+   vanish on the light/zero cells). */
 .heatmapBtn {
   background-color: transparent;
-  color: black;
+  color: #1a1a1a;
   pointer-events: none;
 }
 
 .heatmapBtn.nonCompetitiveZone {
-  color: rgba(255,255,255,0.5);
+  color: #1a1a1a;
+}
+
+/* Rate-mode cells below the min sample (or not applicable, e.g. Chase% in-zone):
+   same grey as every zero cell (JS sets the bg); just blank/faint text. */
+.heatmapBtn--muted {
+  color: rgba(120,120,120,0.55) !important;
+}
+
+/* Caption under the heat map naming the active view mode + what red means */
+.heatmap-mode-caption {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 2px 0 6px;
 }
 
 /* Miss map buttons */
@@ -1964,9 +1996,11 @@ button:active {
 }
 .side-panel.collapsed > h3 .panel-chevron,
 #usageDonutWrapper.collapsed > h3 .panel-chevron { transform: rotate(-90deg); }
-/* overflow-y hidden lets the collapse animation clip height; overflow-x auto enables
-   horizontal scroll on wide tables. */
-.panel-body { overflow-x: auto; overflow-y: hidden; }
+/* overflow:hidden lets the collapse animation clip height during the transition.
+   Horizontal scrolling for wide tables lives on .table-scroll instead (below), so
+   the legend block never gets carried off-screen when a table is scrolled right. */
+.panel-body { overflow: hidden; }
+.table-scroll { overflow-x: auto; overflow-y: hidden; max-width: 100%; }
 
 /* Per-table control bar (sits at the right of each panel header) */
 .table-controls {
@@ -1990,6 +2024,27 @@ button:active {
   box-shadow: none;
 }
 .panel-action-btn:hover { background: rgba(255,255,255,0.2); }
+
+/* ⓘ legend toggle — same footprint as the other panel buttons, round for distinction */
+.legend-btn { padding: 2px 8px; text-transform: none; font-size: 12px; border-radius: 999px; }
+.legend-btn.active { background: var(--accent-blue); border-color: var(--accent-blue); }
+
+/* Column-definitions legend (tap ⓘ to open). Plain list, no hover dependency — iPad-safe. */
+.metric-legend {
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+.metric-legend ul { margin: 0; padding: 0; list-style: none; }
+.metric-legend li {
+  font-size: var(--text-xs);
+  color: var(--text-on-dark);
+  line-height: 1.5;
+  padding: 2px 0;
+}
+.metric-legend li strong { color: #fff; }
 
 /* All / LHH / RHH segmented control */
 .side-seg { display: inline-flex; border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.25); }
