@@ -102,10 +102,12 @@
           <div id="sideLeft" class="side-panel">
             <h3><span class="panel-chevron">▾</span> By Pitch Type</h3>
             <div class="panel-body">
-              <table class="liveTbl" id="tbl-pitchType">
-                <thead></thead>
-                <tbody></tbody>
-              </table>
+              <div class="table-scroll">
+                <table class="liveTbl" id="tbl-pitchType">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -113,10 +115,12 @@
           <div id="sideRight" class="side-panel">
             <h3><span class="panel-chevron">▾</span> By Batter</h3>
             <div class="panel-body">
-              <table class="liveTbl" id="tbl-batter">
-                <thead></thead>
-                <tbody></tbody>
-              </table>
+              <div class="table-scroll">
+                <table class="liveTbl" id="tbl-batter">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -124,10 +128,12 @@
           <div id="handSplitSection" class="side-panel side-panel--full" style="display:none;">
             <h3><span class="panel-chevron">▾</span> LHH / RHH Splits</h3>
             <div class="panel-body">
-              <table class="liveTbl" id="tbl-handSplit">
-                <thead></thead>
-                <tbody></tbody>
-              </table>
+              <div class="table-scroll">
+                <table class="liveTbl" id="tbl-handSplit">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -135,10 +141,12 @@
           <div id="countSplitEarlySection" class="side-panel side-panel--full" style="display:none;">
             <h3><span class="panel-chevron">▾</span> Early Count (&lt;2 strikes)</h3>
             <div class="panel-body">
-              <table class="liveTbl" id="tbl-pitchType-early">
-                <thead></thead>
-                <tbody></tbody>
-              </table>
+              <div class="table-scroll">
+                <table class="liveTbl" id="tbl-pitchType-early">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -146,10 +154,12 @@
           <div id="countSplitLateSection" class="side-panel side-panel--full" style="display:none;">
             <h3><span class="panel-chevron">▾</span> Late Count (2 strikes)</h3>
             <div class="panel-body">
-              <table class="liveTbl" id="tbl-pitchType-late">
-                <thead></thead>
-                <tbody></tbody>
-              </table>
+              <div class="table-scroll">
+                <table class="liveTbl" id="tbl-pitchType-late">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -157,10 +167,12 @@
           <div id="countPitcherSection" class="side-panel side-panel--full" style="display:none;">
             <h3><span class="panel-chevron">▾</span> Pitcher's Count</h3>
             <div class="panel-body">
-              <table class="liveTbl" id="tbl-pitchType-pcount">
-                <thead></thead>
-                <tbody></tbody>
-              </table>
+              <div class="table-scroll">
+                <table class="liveTbl" id="tbl-pitchType-pcount">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -168,10 +180,12 @@
           <div id="countHitterSection" class="side-panel side-panel--full" style="display:none;">
             <h3><span class="panel-chevron">▾</span> Hitter's Count</h3>
             <div class="panel-body">
-              <table class="liveTbl" id="tbl-pitchType-hcount">
-                <thead></thead>
-                <tbody></tbody>
-              </table>
+              <div class="table-scroll">
+                <table class="liveTbl" id="tbl-pitchType-hcount">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -187,6 +201,7 @@
           <div id="inPlayOutSection" class="side-panel">
             <h3><span class="panel-chevron">▾</span> In-Play Outcomes</h3>
             <div class="panel-body">
+            <div class="table-scroll">
             <table class="liveTbl" id="tbl-inPlayOut">
               <thead>
                 <tr>
@@ -196,6 +211,7 @@
               </thead>
               <tbody></tbody>
             </table>
+            </div>
             </div>
           </div>
         </div>
@@ -287,19 +303,10 @@
         <div class="donut-card">
           <svg class="donut-svg" viewBox="0 0 64 64" aria-hidden="true">
             <circle class="donut-track" cx="32" cy="32" r="24"/>
-            <circle class="donut-segment" id="donut-bb-fly" cx="32" cy="32" r="24"/>
-            <circle class="donut-segment" id="donut-bb-gb" cx="32" cy="32" r="24"/>
-            <circle class="donut-segment" id="donut-bb-ld" cx="32" cy="32" r="24"/>
-            <circle class="donut-segment" id="donut-bb-pu" cx="32" cy="32" r="24"/>
-            <text class="donut-value" x="32" y="32" id="donut-val-bb">0</text>
+            <circle class="donut-fill" id="donut-ahead" cx="32" cy="32" r="24"/>
+            <text class="donut-value" x="32" y="32" id="donut-val-ahead">0</text>
           </svg>
-          <span id="stat-ipo" class="donut-label" style="display:none"></span>
-          <span class="bb-legend">
-            <span class="bb-legend-item" style="color:#5b8fc9">FB</span>
-            <span class="bb-legend-item" style="color:#d4652a">GB</span>
-            <span class="bb-legend-item" style="color:#4a9e6e">LD</span>
-            <span class="bb-legend-item" style="color:#a855c9">PU</span>
-          </span>
+          <span id="stat-ahead" class="donut-label">Ahead%: <span class="stat-value live-stat-value">0</span></span>
         </div>
         <div class="donut-card">
           <svg class="donut-svg" viewBox="0 0 64 64" aria-hidden="true">
@@ -471,6 +478,16 @@
     <!-- Heatmap Grid -->
     <div id="heatmapGrid" style="display:none;">
       <div id="heatmapFilters">
+        <label>View
+          <div id="heatmapModeBtns" class="filterBtnGroup">
+            <button class="filterToggleBtn active" data-mode="volume">Volume</button>
+            <button class="filterToggleBtn" data-mode="strike">Strike%</button>
+            <button class="filterToggleBtn" data-mode="swing">Swing%</button>
+            <button class="filterToggleBtn" data-mode="whiff">Whiff%</button>
+            <button class="filterToggleBtn" data-mode="chase">Chase%</button>
+            <button class="filterToggleBtn" data-mode="bipNoOut">BIP&#8603;Out</button>
+          </div>
+        </label>
         <label>Count
           <select id="filterCount">
             <option value="all">All</option>
@@ -483,7 +500,7 @@
             <button class="filterToggleBtn active" data-value="all">All</button>
           </div>
         </label>
-        <label>Result
+        <label id="resultFilterRow">Result
           <div id="resultFilterBtns" class="filterBtnGroup">
             <button class="filterToggleBtn active" data-value="all">All</button>
             <button class="filterToggleBtn" data-value="ball">Ball</button>
@@ -502,9 +519,12 @@
       </div>
 
       <h3>Heat Map</h3>
+      <div id="heatmapModeCaption" class="heatmap-mode-caption">Pitch volume — red = more pitches</div>
       <div id="heatmapContainer">
         <button class="povToggleBtn" onclick="toggleGridPOV()">⇄ Catcher POV</button>
         <div id="heatmap">
+          <!-- Outline around the 3×3 strike zone (overlay, absolutely positioned) -->
+          <div class="strike-zone-box" aria-hidden="true"></div>
           <!-- Row 1 -->
           <button class="heatmapBtn nonCompetitiveZone" id="heatmap-26">26</button>
           <button class="heatmapBtn nonCompetitiveZone" id="heatmap-27">27</button>
