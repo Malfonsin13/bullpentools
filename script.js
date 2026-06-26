@@ -373,11 +373,13 @@ function buildFatigueInsight(pitcherId) {
 
   const message = `${name}: ${context}, ${trend}${subLine}`;
 
-  // Map severity → {type, priority} so the renderer's severity logic maps back to the same tier
+  // Map fatigue's internal severity → {type, priority} so the renderer's severity
+  // logic produces the matching tier. Fatigue's own 'watch' (mildest signal) still
+  // renders as priority 1, which _insightSeverity now maps to 'warning' (orange) —
+  // there's no longer a separate yellow tier.
   let type = 'warning', priority = 1;
   if (r.severity === 'critical') { type = 'warning'; priority = 3; }
   else if (r.severity === 'warning') { type = 'warning'; priority = 2; }
-  // 'watch' uses type='warning' priority=1 → renderer maps to 'watch' tier
 
   return { scope: 'recent', type, category: 'fatigue', priority, message };
 }
@@ -631,6 +633,120 @@ function renderInningBarChart() {
   });
 
   container.innerHTML = html;
+
+  // The lineup-threat chart lives just below and always refreshes with it.
+  renderLineupStrengthChart();
+}
+
+/* ---------- LINEUP THREAT BAR CHART ---------- */
+// A dangerous hitter attacks strikes, lays off balls, doesn't miss in the zone,
+// doesn't strike out, and squares it up. Each sub-score is 0-100 (higher = more
+// dangerous) and only counts when it has enough sample; the final score is a
+// weighted average over whichever sub-scores are present.
+const THREAT_WEIGHTS = { A: 0.20, D: 0.20, Z: 0.15, K: 0.15, C: 0.30 };
+const THREAT_MIN = { iz: 3, ooz: 3, izSwing: 3, pa: 2, bip: 2 };
+const THREAT_SMALL_SAMPLE_PA = 3;           // below this → faded bar
+const THREAT_AVG_DEADBAND = 6;              // within ±this of lineup avg → gray
+
+function lineupThreatScore(s, batterId) {
+  const parts = [];
+  const clamp = v => Math.max(0, Math.min(100, v));
+
+  if (s.iz >= THREAT_MIN.iz)
+    parts.push([THREAT_WEIGHTS.A, clamp(s.izSwing / s.iz * 100)]);          // attack strikes
+  if (s.ooz >= THREAT_MIN.ooz)
+    parts.push([THREAT_WEIGHTS.D, clamp(100 - s.chasePct)]);                // lay off balls
+  if (s.izSwing >= THREAT_MIN.izSwing)
+    parts.push([THREAT_WEIGHTS.Z, clamp(100 - s.izWhiffPct)]);             // don't miss in zone
+
+  // Strikeout avoidance — from completed at-bats
+  const pa = new Set(pitchData.filter(p => p.batterId === batterId).map(p => p.atBatNumber)).size;
+  if (pa >= THREAT_MIN.pa) {
+    const ks = atBats.filter(ab => ab.batterId === batterId && ab.result === 'Strikeout').length;
+    parts.push([THREAT_WEIGHTS.K, clamp(100 - (ks / pa * 100))]);
+  }
+
+  // Contact quality — line drives + hits on balls in play
+  const bip = s.inPlayOuts + s.inPlayHits;
+  if (bip >= THREAT_MIN.bip) {
+    const hitRate = s.inPlayHits / bip;
+    const ldRate  = s.ld / bip;
+    parts.push([THREAT_WEIGHTS.C, clamp(100 * (0.5 * hitRate + 0.5 * ldRate))]);
+  }
+
+  if (!parts.length) return { score: 0, pa, hasData: false };
+  const wSum = parts.reduce((t, [w]) => t + w, 0);
+  const score = parts.reduce((t, [w, v]) => t + w * v, 0) / wSum;
+  return { score, pa, hasData: true };
+}
+
+// Diverging color by deviation from the lineup's own average.
+function threatBarColor(score, avg) {
+  const dev = score - avg;
+  if (Math.abs(dev) <= THREAT_AVG_DEADBAND) return '#888780';   // around average
+  if (dev > 0) return dev >= 18 ? '#e34948' : '#f0997b';        // hot → red
+  return dev <= -18 ? '#2a78d6' : '#85b7eb';                    // weak → blue
+}
+
+function renderLineupStrengthChart() {
+  const container = document.getElementById('lineupStrengthChart');
+  if (!container) return;
+
+  // Lineup is an opponent property — aggregate across ALL pitchers.
+  const agg = buildAggregators(pitchData).byBatter;
+
+  // One entry per batter in roster (batting) order; skip those not yet faced.
+  const rows = [];
+  batters.forEach((b, i) => {
+    const s = agg.get(b.id);
+    if (!s || s.pitches === 0) return;
+    const r = lineupThreatScore(s, b.id);
+    if (!r.hasData) return;
+    rows.push({ slot: i + 1, name: shortName(b.name), score: r.score, pa: r.pa });
+  });
+
+  if (rows.length === 0) { container.innerHTML = ''; return; }
+
+  const avg = rows.reduce((t, r) => t + r.score, 0) / rows.length;
+
+  // Geometry
+  const n = rows.length;
+  const W = 640, H = 250, baseY = 200, topY = 50, maxBarH = baseY - topY;
+  const slotW = W / n, barW = Math.min(38, slotW * 0.55);
+  const avgY = baseY - (avg / 100) * maxBarH;
+
+  let bars = '';
+  rows.forEach((r, i) => {
+    const cx = i * slotW + slotW / 2;
+    const h = (r.score / 100) * maxBarH;
+    const y = baseY - h;
+    const faded = r.pa < THREAT_SMALL_SAMPLE_PA;
+    const fill = threatBarColor(r.score, avg);
+    const op = faded ? 0.35 : 1;
+    bars +=
+      `<rect x="${(cx - barW / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${fill}" opacity="${op}"/>` +
+      `<text x="${cx.toFixed(1)}" y="${(y - 6).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="600" fill="${faded ? '#9aa0a6' : '#f0f0f0'}">${Math.round(r.score)}</text>` +
+      (faded ? `<text x="${cx.toFixed(1)}" y="${(y - 19).toFixed(1)}" text-anchor="middle" font-size="9" fill="#9aa0a6">n=${r.pa}</text>` : '') +
+      `<text x="${cx.toFixed(1)}" y="${(baseY + 18).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="600" fill="#e8e8e8">${r.slot}</text>` +
+      `<text x="${cx.toFixed(1)}" y="${(baseY + 33).toFixed(1)}" text-anchor="middle" font-size="10" fill="#a8adb3">${r.name}</text>`;
+  });
+
+  container.innerHTML =
+    `<div class="lineup-chart-title">Lineup Threat</div>` +
+    `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Lineup threat by batting order; taller bars are tougher hitters">` +
+      `<line x1="0" y1="${baseY}" x2="${W}" y2="${baseY}" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>` +
+      `<line x1="0" y1="${avgY.toFixed(1)}" x2="${W}" y2="${avgY.toFixed(1)}" stroke="rgba(255,255,255,0.4)" stroke-width="1" stroke-dasharray="4 4"/>` +
+      `<text x="${W - 4}" y="${(avgY - 4).toFixed(1)}" text-anchor="end" font-size="11" fill="#a8adb3">lineup avg ${Math.round(avg)}</text>` +
+      bars +
+    `</svg>` +
+    `<div class="lineup-chart-caption">taller = tougher out · red hot bat · blue weak spot · faded = small sample</div>`;
+}
+
+// First word / surname for compact labels.
+function shortName(name) {
+  if (!name) return '';
+  const parts = String(name).trim().split(/\s+/);
+  return parts.length > 1 ? parts[parts.length - 1] : parts[0];
 }
 
 /* ---------- BATTER SCOUTING TOAST ---------- */
@@ -2271,9 +2387,13 @@ function advanceToNextBatter () {
   // show batter scouting toast for the incoming batter
   showBatterToast(currentBatterId);
 
-  // update any UI that depends on the selection
+  // update any UI that depends on the selection — including the logs, which
+  // filter by currentBatterId (otherwise they stay stuck on the previous batter
+  // until the next pitch is logged).
   updateLiveStats();
   updateHeatMap();
+  renderPitchLog();
+  renderAtBatLog();
 }
 
 // Insert a TOTAL row at index 0 with no heat coloring
@@ -3342,13 +3462,15 @@ function computeInsights(data) {
 /* ---------- INSIGHT RENDER PIPELINE ---------- */
 
 // Map {type, priority} → severity tier.
+// Only 4 visible tiers: critical/warning/info/positive. 'watch' (priority 1 warnings,
+// e.g. the fatigue system's mildest signal) renders as warning — it was a distinct
+// yellow color with no distinct meaning from orange, so it's merged in.
 function _insightSeverity(ins) {
   if (ins.type === 'positive') return 'positive';
   if (ins.type === 'info')     return 'info';
   // type === 'warning'
   if (ins.priority >= 3) return 'critical';
-  if (ins.priority === 2) return 'warning';
-  return 'watch';
+  return 'warning';
 }
 
 // Emoji prefix — only loud severities get one.
@@ -3428,8 +3550,8 @@ function renderInsights(insights) {
   badge.textContent = String(actionable || insights.length);
   list.innerHTML = '';
 
-  // Severity sort within section (critical > warning > watch > info > positive)
-  const sevRank = { critical: 4, warning: 3, watch: 2, info: 1, positive: 0 };
+  // Severity sort within section (critical > warning > info > positive)
+  const sevRank = { critical: 3, warning: 2, info: 1, positive: 0 };
 
   _INSIGHT_SECTIONS.forEach(section => {
     const items = insights.filter(i => i.scope === section.scope);
