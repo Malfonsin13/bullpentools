@@ -1631,32 +1631,58 @@ function heatZoneColor(value, max) {
   return `rgb(${r},${g},${b})`;
 }
 
-// Heatmap view mode: 'volume' (counts, default) or a per-zone rate.
+// Heatmap view mode: 'volume' (counts) | 'results' (weighted 0-100 effectiveness score).
 let heatmapMode = 'volume';
-const HEATMAP_RATE_MODES = ['strike', 'swing', 'whiff', 'chase', 'bipNoOut'];
-const HEATMAP_MIN_SAMPLE = 2; // rate modes hide zones with fewer than this in the denominator
 const HEATMAP_MODE_CAPTIONS = {
-  volume:   'Pitch volume — red = more pitches',
-  strike:   'Strike% by zone — red = more strikes',
-  swing:    'Swing% by zone — red = swung at more',
-  whiff:    'Whiff% by zone — red = more swings missed (good)',
-  chase:    'Chase% by zone (out-of-zone only) — red = expands more (good)',
-  bipNoOut: 'BIP no-out% by zone — red = getting hit (bad)'
+  volume:  'Pitch volume — red = more pitches',
+  results: 'Results — score 0-100 · red = working for us · blue = getting hurt · faded = small sample'
 };
+
+// Per-pitch value from the pitcher's perspective (drives the Results map).
+// Whiffs rank above called strikes/fouls; a ball-in-play out is good; balls + hits are bad.
+// Returns null for pitches with no gradeable result (skipped in-play), so they're excluded.
+const PITCH_RESULT_VALUE = {
+  whiff: 1.0, calledStrike: 0.6, strike: 0.6, foul: 0.3, ball: -0.6, hbp: -0.8
+};
+function pitchResultValue(p) {
+  if ((p.result || '').startsWith('In Play') || p.outcome === 'inPlay') {
+    if (p.inPlayOut === true)  return 0.9;   // out
+    if (p.inPlayOut === false) return -1.0;  // hit
+    return null;                             // skipped — not gradeable
+  }
+  const v = PITCH_RESULT_VALUE[p.outcome];
+  return (v === undefined) ? null : v;
+}
+
+// Confidence ramp for rate-style views: full strength at HEAT_CONF_FULL pitches, floored so
+// a low-sample zone is faded (visible but clearly not to be trusted).
+const HEAT_CONF_FULL = 5;
+const HEAT_CONF_MIN  = 0.3;
+function heatConfidence(n) { return Math.max(HEAT_CONF_MIN, Math.min(1, n / HEAT_CONF_FULL)); }
+
+// Results diverging fill: avg pitch-value (-1..+1) → blue(bad) ↔ neutral grey ↔ red(good).
+// Reuses the tables' red/blue so "red = good" is consistent app-wide.
+const HEAT_RESULT_RED  = [214, 40, 40];
+const HEAT_RESULT_BLUE = [42, 111, 206];
+const HEAT_NEUTRAL     = [235, 235, 235];
+function resultsColorRGB(avg, conf) {
+  const t = Math.max(-1, Math.min(1, avg));
+  const to = t >= 0 ? HEAT_RESULT_RED : HEAT_RESULT_BLUE;
+  const m = Math.abs(t) * conf; // blend toward the target by magnitude AND confidence
+  return HEAT_NEUTRAL.map((base, i) => Math.round(base + (to[i] - base) * m));
+}
 
 function updateHeatMap () {
   const rateMode = heatmapMode !== 'volume';
-  // Rate modes need the full population for their denominators, so ignore the
-  // Result/outcome filter while a rate mode is active.
+  // Results/Whiff need the full population, so ignore the Result/outcome filter there.
   const fs = getHeatmapFilterState();
   if (rateMode) { fs.fResultAll = true; fs.activeResult = ['all']; }
-  // When the user has hand-picked pitches in the log's Select mode, the heatmap
-  // shows ONLY those pitches (still scoped to the current pitcher).
+  // Log "Select" mode restricts the heatmap to hand-picked pitches (current pitcher).
   const useSelection = heatmapSelectMode && heatmapSelectedPitchIds.size > 0;
 
   // Per-zone accumulator (index by location 1-49)
   const z = [];
-  for (let i = 0; i < 50; i++) z[i] = { pitches: 0, strikes: 0, swings: 0, whiffs: 0, bip: 0, bipNonOut: 0 };
+  for (let i = 0; i < 50; i++) z[i] = { pitches: 0, valSum: 0, valN: 0 };
 
   pitchData.forEach(p => {
     if (useSelection) {
@@ -1668,36 +1694,10 @@ function updateHeatMap () {
     const s = z[p.location];
     if (!s) return;
     s.pitches++;
-    const swung   = ['whiff','foul'].includes(p.outcome) || (p.result || '').startsWith('In Play');
-    const isStrike= ['whiff','calledStrike','foul','strike','inPlay'].includes(p.outcome);
-    const isWhiff = p.outcome === 'whiff';
-    if (isStrike) s.strikes++;
-    if (swung)    s.swings++;
-    if (isWhiff)  s.whiffs++;
-    if ((p.result || '').startsWith('In Play')) {
-      s.bip++;
-      if (p.inPlayOut === false) s.bipNonOut++;
-    }
+    const v = pitchResultValue(p);
+    if (v !== null) { s.valSum += v; s.valN++; }
   });
 
-  // Compute each zone's display value for the active mode.
-  const zoneVal = (loc) => {
-    const s = z[loc];
-    if (heatmapMode === 'volume') return { text: String(s.pitches), color: null, count: s.pitches };
-    const inZone = strikeLocations.includes(loc);
-    let num = 0, den = 0, applicable = true;
-    switch (heatmapMode) {
-      case 'strike':   num = s.strikes;   den = s.pitches; break;
-      case 'swing':    num = s.swings;    den = s.pitches; break;
-      case 'whiff':    num = s.whiffs;    den = s.swings;  break;
-      case 'chase':    num = s.swings;    den = s.pitches; applicable = !inZone; break; // OOZ only
-      case 'bipNoOut': num = s.bipNonOut; den = s.bip;     break;
-    }
-    if (!applicable || den < HEATMAP_MIN_SAMPLE) return { muted: true };
-    return { rate: (num / den) * 100, den };
-  };
-
-  // Volume uses relative-max shading; rate modes use a fixed 0-100 scale.
   let maxCount = 0;
   if (heatmapMode === 'volume') for (let loc = 1; loc <= 49; loc++) maxCount = Math.max(maxCount, z[loc].pitches);
 
@@ -1705,24 +1705,40 @@ function updateHeatMap () {
     const btn = document.getElementById('heatmap-' + loc);
     if (!btn) continue;
     btn.classList.remove('heatmapBtn--muted');
-    const v = zoneVal(loc);
+    const s = z[loc];
+
+    let rgb = null; // final [r,g,b] for text-contrast; null → leave default dark text
+
     if (heatmapMode === 'volume') {
-      btn.style.backgroundColor = heatZoneColor(v.count, maxCount);
-      btn.innerText = v.count;
-    } else if (v.muted) {
-      btn.classList.add('heatmapBtn--muted');
-      btn.style.backgroundColor = HEAT_ZERO; // same grey as every other zero cell
-      btn.innerText = '';
+      // number = pitch count; color = relative volume
+      btn.innerText = s.pitches;
+      btn.style.backgroundColor = heatZoneColor(s.pitches, maxCount);
+
+    } else { // results — number = 0-100 effectiveness score; color = same story
+      if (s.valN === 0) {
+        // no gradeable pitches here → grey + blank (0 would read as "terrible", not "no data")
+        btn.classList.add('heatmapBtn--muted');
+        btn.innerText = '';
+        rgb = HEAT_NEUTRAL;
+      } else {
+        const avg = s.valSum / s.valN;                 // -1..+1
+        btn.innerText = Math.round((avg + 1) / 2 * 100); // 0..100 (50 = even)
+        rgb = resultsColorRGB(avg, heatConfidence(s.valN));
+      }
+      btn.style.backgroundColor = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    }
+
+    // Readable number: white on dark fills, else the default dark ink.
+    if (rgb) {
+      const lum = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+      btn.style.color = lum < 140 ? '#fff' : '#1a1a1a';
     } else {
-      btn.style.backgroundColor = heatZoneColor(v.rate, 100);
-      btn.innerText = Math.round(v.rate);
+      btn.style.color = '';
     }
   }
 
-  // Mode caption
   const cap = document.getElementById('heatmapModeCaption');
   if (cap) cap.textContent = HEATMAP_MODE_CAPTIONS[heatmapMode] || '';
-  // Result filter only applies in Volume mode
   const resultRow = document.getElementById('resultFilterRow');
   if (resultRow) resultRow.style.display = rateMode ? 'none' : '';
 }
